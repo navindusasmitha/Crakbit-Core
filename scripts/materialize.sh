@@ -15,6 +15,7 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 command -v git >/dev/null || die "git is required"
 command -v python3 >/dev/null || die "python3 is required"
 command -v cmake >/dev/null || die "cmake is required"
+command -v tar >/dev/null || die "tar is required"
 
 if [ -e "$OUT" ]; then
     die "$OUT already exists; remove it explicitly before rematerializing"
@@ -106,6 +107,20 @@ core_tree=$OUT/build/wam-core
 randomx_tree=$OUT/build/randomx
 EOF
 
+# Create a reviewable full-source bundle before the node build adds object files.
+# Git metadata and compiled RandomX build directories are intentionally excluded.
+log "package transformed Crakbit testnet source"
+tar \
+    --exclude='build/wam-core/.git' \
+    --exclude='build/randomx/.git' \
+    --exclude='build/randomx/build' \
+    --exclude='build/randomx/build-shared' \
+    --exclude='pool/node_modules' \
+    -czf "$ARTIFACTS/crakbit-testnet-full-source.tar.gz" \
+    -C "$OUT" \
+    build/wam-core build/randomx miner pool explorer genesis scripts src docs COPYING README.md
+
 log "complete source tree: $OUT/build/wam-core"
+log "source archive:       $ARTIFACTS/crakbit-testnet-full-source.tar.gz"
 log "testnet genesis:     $ARTIFACTS/testnet-genesis.json"
 log "regtest genesis:     $ARTIFACTS/regtest-genesis.json"
