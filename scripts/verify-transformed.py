@@ -34,10 +34,13 @@ def main() -> int:
     require(chain, 'pchMessageStart[1] = 0x62;', 'testnet message magic byte 1')
     require(chain, 'pchMessageStart[2] = 0x69;', 'testnet message magic byte 2')
     require(chain, 'pchMessageStart[3] = 0x74;', 'testnet message magic byte 3')
-    forbid(chain, 'testnet-seed.wamcoin.org', 'WAM testnet DNS seed')
-    forbid(chain, 'seed1.wamcoin.org', 'WAM mainnet DNS seed 1')
-    forbid(chain, 'seed2.wamcoin.org', 'WAM mainnet DNS seed 2')
-    forbid(chain, 'seed3.wamcoin.org', 'WAM mainnet DNS seed 3')
+
+    # Check executable seed declarations, not explanatory comments that may
+    # legitimately mention the reference network's old seed names.
+    forbid(chain, 'vSeeds.emplace_back("testnet-seed.wamcoin.org.");', 'WAM testnet DNS seed')
+    forbid(chain, 'vSeeds.emplace_back("seed1.wamcoin.org.");', 'WAM mainnet DNS seed 1')
+    forbid(chain, 'vSeeds.emplace_back("seed2.wamcoin.org.");', 'WAM mainnet DNS seed 2')
+    forbid(chain, 'vSeeds.emplace_back("seed3.wamcoin.org.");', 'WAM mainnet DNS seed 3')
 
     # Consensus/economics.
     for needle, label in [
