@@ -32,6 +32,11 @@ jobs:
       - name: Apply consensus and network transform
         run: python3 scripts/crakbitize.py --tree /tmp/crakbit-wam --overlay overlay
 
+      - name: Pin RandomX maintenance release
+        run: |
+          python3 scripts/pin-randomx.py --tree /tmp/crakbit-wam
+          grep -F 'RANDOMX_TAG="${RANDOMX_TAG:-v1.2.3}"' /tmp/crakbit-wam/scripts/fetch-upstream.sh
+
       - name: Apply CPU miner address transform
         run: python3 scripts/patch-miner-addresses.py --tree /tmp/crakbit-wam
 
@@ -79,6 +84,11 @@ jobs:
             echo "::error title=Crakbit materialize failed::$last"
             exit "$rc"
           fi
+
+      - name: Verify dependency identity
+        run: |
+          grep '^bitcoin_core_tag=v28.1$' build/artifacts/materialized-source.txt
+          grep '^randomx_tag=v1.2.3$' build/artifacts/materialized-source.txt
 
       - name: Build node, CLI, wallet tools and CPU miner
         env:
