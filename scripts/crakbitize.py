@@ -87,6 +87,17 @@ def patch_chainparams(path: pathlib.Path) -> None:
         "testnet treasury burn address")
 
     def mainnet(body: str) -> str:
+        # The testnet branch must still be able to construct CMainParams because
+        # Core creates all chain-param objects while setting up arguments/help.
+        # Give the placeholder main object the same easy genesis target as
+        # testnet; it has no peers and packaged wrappers still force -testnet.
+        body = replace_once(
+            body,
+            'consensus.powLimit = uint256S("00000fffff000000000000000000000000000000000000000000000000000000");',
+            'consensus.powLimit = uint256S("0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");',
+            "placeholder mainnet powLimit")
+        body = replace_once(body, '/*nBits=*/   0x1e0ffff0,', '/*nBits=*/   0x1f00ffff,',
+                            "placeholder mainnet genesis bits")
         body = replace_regex_once(
             body,
             r'pchMessageStart\[0\] = 0x57;[^\n]*\n\s*pchMessageStart\[1\] = 0x41;[^\n]*\n\s*pchMessageStart\[2\] = 0x4d;[^\n]*\n\s*pchMessageStart\[3\] = 0x21;[^\n]*',
@@ -146,7 +157,7 @@ def patch_genesis_generator(path: pathlib.Path) -> None:
     src = replace_once(src, 'GENESIS_PREMINE = 2_000_000 * COIN', 'GENESIS_PREMINE = 0', "genesis premine")
     src = replace_regex_once(src, r'GENESIS_PHRASE = "[^"]+"', f'GENESIS_PHRASE = "{PHRASE}"', "genesis phrase")
     src = replace_regex_once(src, r'RANDOMX_BOOTSTRAP_KEY = b"[^"]+"', f'RANDOMX_BOOTSTRAP_KEY = b"{BOOTSTRAP_KEY}"', "RandomX bootstrap key")
-    src = replace_regex_once(src, r'GENESIS_TIME = \d+', 'GENESIS_TIME = 0', "mainnet genesis placeholder time")
+    src = replace_regex_once(src, r'GENESIS_TIME = \d+', f'GENESIS_TIME = {TESTNET_TIME}', "placeholder mainnet genesis time")
     src = replace_regex_once(src, r'TESTNET_GENESIS_TIME = \d+', f'TESTNET_GENESIS_TIME = {TESTNET_TIME}', "testnet genesis time")
     src = replace_once(src, 'PREMINE_TRANCHES = 5', 'PREMINE_TRANCHES = 1', "zero-premine tranche count")
     src = replace_once(src, 'PREMINE_TRANCHE_AMOUNT = 400_000 * COIN', 'PREMINE_TRANCHE_AMOUNT = 0', "zero-premine tranche amount")
@@ -156,6 +167,11 @@ def patch_genesis_generator(path: pathlib.Path) -> None:
     "every tranche must carry a real time lock -- a value below the CLTV " \\
     "threshold would be read as a block height and unlock almost at once"\n'''
     src = replace_once(src, old_lock_assert, 'assert GENESIS_PREMINE == 0\n', "zero-premine lock assertion")
+    src = replace_once(
+        src,
+        '"mainnet": dict(time=GENESIS_TIME,         bits=0x1E0FFFF0, pubkey=73, script=135, first="W"),',
+        '"mainnet": dict(time=GENESIS_TIME,         bits=0x1F00FFFF, pubkey=73, script=135, first="W"),',
+        "placeholder mainnet genesis target")
     src = replace_once(
         src,
         '"testnet": dict(time=TESTNET_GENESIS_TIME, bits=0x1E0FFFF0, pubkey=65, script=128, first="T"),',
@@ -169,8 +185,8 @@ def patch_genesis_generator(path: pathlib.Path) -> None:
 def patch_pool_config(path: pathlib.Path) -> None:
     src = read(path)
     src = src.replace('"coinbaseSignature": "/WAM-Pool/"', '"coinbaseSignature": "/Crakbit-Pool/"')
-    # Burn address is only a safe initial placeholder. scripts/init-testnet.sh
-    # replaces it with a wallet-owned address before a payout-capable pool run.
+    # Burn address is only a safe initial placeholder. pool-testnet.sh replaces
+    # it with a wallet-owned address before a payout-capable pool run.
     src = src.replace('"poolAddress": "twam1q3rzkye9fxxyelxq3thca59f5245cer69pq5mkm"',
                       f'"poolAddress": "{TESTNET_BURN}"')
     src = src.replace('"redisPrefix": "wamtn"', '"redisPrefix": "cbittn"')
