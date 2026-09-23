@@ -1,0 +1,56 @@
+name: Crakbit genesis preflight
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crakbit-genesis-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  genesis:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify runner prerequisites
+        run: |
+          git --version
+          python3 --version
+          cmake --version
+          c++ --version
+
+      - name: Materialize source and mine Crakbit genesis blocks
+        env:
+          CRAKBIT_JOBS: "2"
+          CRAKBIT_GENESIS_THREADS: "2"
+        run: bash scripts/materialize.sh
+
+      - name: Print frozen testnet genesis identity
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          g = json.loads(Path('build/artifacts/testnet-genesis.json').read_text())
+          for key in ('network','timestamp','bits','nonce','merkle_root','genesis_hash','pow_hash'):
+              if key in g:
+                  print(f'{key}={g[key]}')
+          PY
+
+      - name: Upload genesis manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: crakbit-genesis-manifests
+          path: |
+            build/artifacts/testnet-genesis.json
+            build/artifacts/placeholder-main-genesis.json
+            build/artifacts/regtest-genesis.json
+            build/artifacts/materialized-source.txt
+          if-no-files-found: error
