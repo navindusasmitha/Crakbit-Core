@@ -18,13 +18,23 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 init_conf() {
     mkdir -p "$DATA"
     if [ ! -f "$CONF" ]; then
-        cat > "$CONF" <<'EOF'
+        RPC_PASS="$(python3 - <<'PY'
+import secrets
+print(secrets.token_urlsafe(36))
+PY
+)"
+        cat > "$CONF" <<EOF
 # Crakbit testnet-v0.1
 server=1
 txindex=1
 listen=1
 maxconnections=125
 dbcache=450
+
+# Local RPC credentials are present because the Stratum pool needs daemon RPC.
+# The file is mode 0600 and RPC remains bound to localhost only.
+rpcuser=crakbitpool
+rpcpassword=$RPC_PASS
 
 [test]
 rpcbind=127.0.0.1
@@ -34,6 +44,22 @@ port=29111
 EOF
         chmod 600 "$CONF"
         log "created $CONF"
+    fi
+
+    # Older generated configs may predate pool RPC credentials. Upgrade them
+    # locally without printing the password.
+    if ! grep -q '^rpcuser=' "$CONF"; then
+        RPC_PASS="$(python3 - <<'PY'
+import secrets
+print(secrets.token_urlsafe(36))
+PY
+)"
+        {
+            printf '\nrpcuser=crakbitpool\n'
+            printf 'rpcpassword=%s\n' "$RPC_PASS"
+        } >> "$CONF"
+        chmod 600 "$CONF"
+        log "added local pool RPC credentials to $CONF"
     fi
 
     # Optional explicit first peer for the seedless initial testnet.
