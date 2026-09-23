@@ -58,6 +58,15 @@ def main() -> int:
                   'a Crakbit testnet address given to a mainnet miner')
     test.write_text(t, encoding='utf-8')
 
+    solo = root / 'miner/test/solo_template_test.cpp'
+    s = solo.read_text(encoding='utf-8')
+    s = once(s,
+        'wamrt1q9uynnmupf5jl920vgztyef0v3esfjvdzfxfhyt',
+        'cbtrt1q9uynnmupf5jl920vgztyef0v3esfjvdz5ywz9f',
+        'regtest solo-miner bech32 vector')
+    s = s.replace('/wam-miner/', '/crakbit-miner/')
+    solo.write_text(s, encoding='utf-8')
+
     print(f'patched Crakbit miner address table/tests under {root / "miner"}')
     return 0
 
