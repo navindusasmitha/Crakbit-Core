@@ -1,8 +1,6 @@
 name: Crakbit testnet build
 
 on:
-  push:
-    branches: [testnet-v0.1]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -89,6 +87,7 @@ jobs:
           path: |
             build/dist/
             build/artifacts/testnet-genesis.json
+            build/artifacts/placeholder-main-genesis.json
             build/artifacts/regtest-genesis.json
             build/artifacts/node-genesis-hash.txt
             build/artifacts/materialized-source.txt
