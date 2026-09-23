@@ -89,6 +89,7 @@ jobs:
         run: |
           grep '^bitcoin_core_tag=v28.1$' build/artifacts/materialized-source.txt
           grep '^randomx_tag=v1.2.3$' build/artifacts/materialized-source.txt
+          test -s build/artifacts/crakbit-testnet-full-source.tar.gz
 
       - name: Build node, CLI, wallet tools and CPU miner
         env:
@@ -151,6 +152,7 @@ jobs:
           name: crakbit-testnet-linux
           path: |
             build/dist/
+            build/artifacts/crakbit-testnet-full-source.tar.gz
             build/artifacts/testnet-genesis.json
             build/artifacts/placeholder-main-genesis.json
             build/artifacts/regtest-genesis.json
