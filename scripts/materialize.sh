@@ -29,6 +29,7 @@ ACTUAL="$(git -C "$OUT" rev-parse HEAD)"
 
 log "apply Crakbit testnet overlay"
 python3 "$ROOT/scripts/crakbitize.py" --tree "$OUT" --overlay "$ROOT/overlay"
+python3 "$ROOT/scripts/pin-randomx.py" --tree "$OUT"
 python3 "$ROOT/scripts/patch-miner-addresses.py" --tree "$OUT"
 python3 "$ROOT/scripts/patch-pool-tests.py" --tree "$OUT"
 
@@ -91,9 +92,15 @@ python3 "$OUT/genesis/genesis_generator.py" \
 # remains the pinned reference patch layer.
 cp "$OUT/src/wam/chainparams.cpp" "$OUT/build/wam-core/src/kernel/chainparams.cpp"
 
+RANDOMX_COMMIT="$(git -C "$RANDOMX_DIR" rev-parse HEAD)"
+CORE_COMMIT="$(git -C "$OUT/build/wam-core" rev-parse HEAD)"
 cat > "$ARTIFACTS/materialized-source.txt" <<EOF
 crakbit_branch=testnet-v0.1
 wam_reference_commit=$WAM_COMMIT
+bitcoin_core_tag=v28.1
+bitcoin_core_commit=$CORE_COMMIT
+randomx_tag=v1.2.3
+randomx_commit=$RANDOMX_COMMIT
 materialized_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 core_tree=$OUT/build/wam-core
 randomx_tree=$OUT/build/randomx
