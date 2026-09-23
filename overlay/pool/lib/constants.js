@@ -16,10 +16,10 @@ module.exports = {
     POW_TARGET_SPACING: 120,
     COINBASE_MATURITY: 100,
 
-    // Pool follows production epoch values. Testnet GBT reports its active
-    // network values and the testnet dashboard/config overrides to 256/16.
-    RANDOMX_EPOCH_BLOCKS: 2048,
-    RANDOMX_EPOCH_LAG: 64,
+    // This branch is specifically testnet-v0.1, so these mirror the testnet
+    // CChainParams overrides rather than future mainnet values.
+    RANDOMX_EPOCH_BLOCKS: 256,
+    RANDOMX_EPOCH_LAG: 16,
     RANDOMX_BOOTSTRAP_KEY: 'Crakbit/RandomX/testnet-v0.1/2026',
     RANDOMX_HASH_SIZE: 32,
 
