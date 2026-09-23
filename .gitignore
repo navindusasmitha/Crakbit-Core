@@ -1,0 +1,21 @@
+# Materialized/build outputs
+/build/
+
+# Local node data and credentials
+*.conf
+*.cookie
+*.pid
+
+# Node/npm
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
