@@ -13,7 +13,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  transform-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify monetary policy
+        run: python3 tests/test_policy.py
+
+      - name: Clone pinned WAM reference
+        run: |
+          git clone --quiet https://github.com/wam-coin-official/wam-coin.git /tmp/crakbit-wam
+          git -C /tmp/crakbit-wam checkout --quiet e65bc4d5767e76182bf7bc712a91a8532459498d
+          test "$(git -C /tmp/crakbit-wam rev-parse HEAD)" = "e65bc4d5767e76182bf7bc712a91a8532459498d"
+
+      - name: Apply consensus and network transform
+        run: python3 scripts/crakbitize.py --tree /tmp/crakbit-wam --overlay overlay
+
+      - name: Apply CPU miner address transform
+        run: python3 scripts/patch-miner-addresses.py --tree /tmp/crakbit-wam
+
+      - name: Apply pool policy transform
+        run: python3 scripts/patch-pool-tests.py --tree /tmp/crakbit-wam
+
   linux-testnet:
+    needs: transform-preflight
     runs-on: ubuntu-24.04
     timeout-minutes: 90
 
@@ -32,31 +58,6 @@ jobs:
 
       - name: Verify Crakbit monetary policy
         run: python3 tests/test_policy.py
-
-      # Keep each transform in its own step. If the pinned WAM source changes
-      # shape or one of our anchored edits is wrong, the Actions UI and API
-      # identify the exact transform instead of reporting one opaque failure.
-      - name: Preflight clone pinned WAM reference
-        run: |
-          rm -rf /tmp/crakbit-wam-preflight
-          git clone --quiet https://github.com/wam-coin-official/wam-coin.git /tmp/crakbit-wam-preflight
-          git -C /tmp/crakbit-wam-preflight checkout --quiet e65bc4d5767e76182bf7bc712a91a8532459498d
-          test "$(git -C /tmp/crakbit-wam-preflight rev-parse HEAD)" = "e65bc4d5767e76182bf7bc712a91a8532459498d"
-
-      - name: Preflight Crakbit consensus/network transform
-        run: python3 scripts/crakbitize.py --tree /tmp/crakbit-wam-preflight --overlay overlay
-
-      - name: Preflight CPU miner address transform
-        run: python3 scripts/patch-miner-addresses.py --tree /tmp/crakbit-wam-preflight
-
-      - name: Preflight pool policy transform
-        run: python3 scripts/patch-pool-tests.py --tree /tmp/crakbit-wam-preflight
-
-      - name: Preflight fetch pinned Bitcoin Core and RandomX
-        run: bash /tmp/crakbit-wam-preflight/scripts/fetch-upstream.sh
-
-      - name: Remove preflight tree
-        run: rm -rf /tmp/crakbit-wam-preflight
 
       - name: Materialize pinned source and mine genesis
         id: materialize
