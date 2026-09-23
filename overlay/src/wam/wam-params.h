@@ -50,8 +50,12 @@ static_assert(WAM_BIP44_COIN_TYPE < 0x80000000,
 static_assert(WAM_BIP44_COIN_TYPE != 0 && WAM_BIP44_COIN_TYPE != 1,
               "do not reuse Bitcoin/testnet BIP44 indexes for Crakbit mainnet");
 
-// Genesis times. Mainnet is deliberately not frozen on this branch.
-static constexpr int64_t WAM_GENESIS_TIME = 0;
+// The pinned Core argument/help path constructs every CChainParams object even
+// during a testnet invocation. Therefore the testnet branch must also carry a
+// structurally valid MAIN object. It deliberately shares the temporary testnet
+// genesis timestamp/target and has no discovery peers. A dedicated mainnet
+// code-freeze commit must replace it with a newly mined independent genesis.
+static constexpr int64_t WAM_GENESIS_TIME = 1790035200; // construction-only placeholder
 static constexpr int64_t WAM_TESTNET_GENESIS_TIME = 1790035200; // 2026-09-22 00:00:00 UTC
 static constexpr int64_t WAM_REGTEST_GENESIS_TIME = 1296688602;
 
