@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Apply the Crakbit testnet-v0.1 overlay to the pinned WAM source tree.
 
-This script intentionally uses anchored/checked edits. If the pinned reference
-changes shape, it aborts rather than guessing around consensus code.
+The transform is intentionally anchored. A source-shape mismatch aborts instead
+of applying a fuzzy consensus edit.
 """
 from __future__ import annotations
 
@@ -69,43 +69,37 @@ def replace_class(text: str, class_name: str, next_class: str | None, transform)
 def patch_chainparams(path: pathlib.Path) -> None:
     src = read(path)
 
-    # Zero-premine compatibility addresses. These carry hash160=0 and no known
-    # private key. With a zero-value genesis output no CBIT is assigned to them.
     src = replace_regex_once(
-        src,
-        r'static const std::string WAM_FOUNDER_ADDRESS_MAINNET = "[^"]+";',
+        src, r'static const std::string WAM_FOUNDER_ADDRESS_MAINNET = "[^"]+";',
         f'static const std::string WAM_FOUNDER_ADDRESS_MAINNET = "{MAINNET_BURN}";',
         "mainnet founder compatibility address")
     src = replace_regex_once(
-        src,
-        r'static const std::string WAM_FOUNDER_ADDRESS_TESTNET = "[^"]+";',
+        src, r'static const std::string WAM_FOUNDER_ADDRESS_TESTNET = "[^"]+";',
         f'static const std::string WAM_FOUNDER_ADDRESS_TESTNET = "{TESTNET_BURN}";',
         "testnet founder compatibility address")
     src = replace_regex_once(
-        src,
-        r'static const std::string WAM_TREASURY_ADDRESS_MAINNET = "[^"]+";',
+        src, r'static const std::string WAM_TREASURY_ADDRESS_MAINNET = "[^"]+";',
         f'static const std::string WAM_TREASURY_ADDRESS_MAINNET = "{MAINNET_BURN}";',
         "mainnet treasury placeholder")
     src = replace_regex_once(
-        src,
-        r'static const std::string WAM_TREASURY_ADDRESS_TESTNET = "[^"]+";',
+        src, r'static const std::string WAM_TREASURY_ADDRESS_TESTNET = "[^"]+";',
         f'static const std::string WAM_TREASURY_ADDRESS_TESTNET = "{TESTNET_BURN}";',
         "testnet treasury burn address")
 
     def mainnet(body: str) -> str:
-        # Mainnet deliberately remains non-runnable because its genesis assert
-        # is not re-mined on the testnet branch. Still separate its wire identity.
-        body = replace_regex_once(body,
+        body = replace_regex_once(
+            body,
             r'pchMessageStart\[0\] = 0x57;[^\n]*\n\s*pchMessageStart\[1\] = 0x41;[^\n]*\n\s*pchMessageStart\[2\] = 0x4d;[^\n]*\n\s*pchMessageStart\[3\] = 0x21;[^\n]*',
             'pchMessageStart[0] = 0x43; // C\n        pchMessageStart[1] = 0x42; // B\n        pchMessageStart[2] = 0x49; // I\n        pchMessageStart[3] = 0x54; // T',
             "mainnet message magic")
-        body = replace_regex_once(body,
-            r'consensus\.nMinimumChainWork = uint256S\("0x[0-9a-fA-F]+"\);',
-            'consensus.nMinimumChainWork = uint256{};',
-            "mainnet minimum chainwork reset")
+        body = replace_regex_once(
+            body, r'consensus\.nMinimumChainWork = uint256S\("0x[0-9a-fA-F]+"\);',
+            'consensus.nMinimumChainWork = uint256{};', "mainnet minimum chainwork reset")
         body = replace_once(body, 'bech32_hrp = "wam";', 'bech32_hrp = "cbit";', "mainnet bech32")
-        # No WAM DNS peers may ever be contacted by a Crakbit binary.
         body = re.sub(r'\s*vSeeds\.emplace_back\("seed[123]\.wamcoin\.org\."\);', '', body)
+        body = re.sub(
+            r'\s*vFixedSeeds = std::vector<uint8_t>\(std::begin\(chainparams_seed_main\),\s*\n\s*std::end\(chainparams_seed_main\)\);',
+            '\n        vFixedSeeds.clear();', body, count=1)
         return body
 
     src = replace_class(src, "CMainParams", "CTestNetParams", mainnet)
@@ -116,11 +110,11 @@ def patch_chainparams(path: pathlib.Path) -> None:
             'consensus.powLimit = uint256S("00000fffff000000000000000000000000000000000000000000000000000000");',
             'consensus.powLimit = uint256S("0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");',
             "testnet powLimit")
-        body = replace_regex_once(body,
-            r'consensus\.nMinimumChainWork = uint256S\("0x[0-9a-fA-F]+"\);',
-            'consensus.nMinimumChainWork = uint256{};',
-            "testnet minimum chainwork reset")
-        body = replace_regex_once(body,
+        body = replace_regex_once(
+            body, r'consensus\.nMinimumChainWork = uint256S\("0x[0-9a-fA-F]+"\);',
+            'consensus.nMinimumChainWork = uint256{};', "testnet minimum chainwork reset")
+        body = replace_regex_once(
+            body,
             r'pchMessageStart\[0\] = 0x77;[^\n]*\n\s*pchMessageStart\[1\] = 0x61;[^\n]*\n\s*pchMessageStart\[2\] = 0x6d;[^\n]*\n\s*pchMessageStart\[3\] = 0x21;[^\n]*',
             'pchMessageStart[0] = 0x63; // c\n        pchMessageStart[1] = 0x62; // b\n        pchMessageStart[2] = 0x69; // i\n        pchMessageStart[3] = 0x74; // t',
             "testnet message magic")
@@ -136,9 +130,9 @@ def patch_chainparams(path: pathlib.Path) -> None:
 
     def regtest(body: str) -> str:
         body = replace_once(body, 'bech32_hrp = "wamrt";', 'bech32_hrp = "cbtrt";', "regtest bech32")
-        # The first 3 message bytes are inherited WAM letters in the reference.
-        body = replace_regex_once(body,
-            r'pchMessageStart\[0\] = 0x57;\s*\n\s*pchMessageStart\[1\] = 0x41;\s*\n\s*pchMessageStart\[2\] = 0x4d;\s*\n\s*pchMessageStart\[3\] = 0xfa;',
+        body = replace_regex_once(
+            body,
+            r'pchMessageStart\[0\] = 0x57;\s*\n\s*pchMessageStart\[1\] = 0x41;\s*\n\s*pchMessageStart\[2\] = 0x4d;\s*\n\s*pchMessageStart\[3\] = 0x52;[^\n]*',
             'pchMessageStart[0] = 0xfa;\n        pchMessageStart[1] = 0xc3;\n        pchMessageStart[2] = 0xb6;\n        pchMessageStart[3] = 0xda;',
             "regtest message magic")
         return body
@@ -156,10 +150,12 @@ def patch_genesis_generator(path: pathlib.Path) -> None:
     src = replace_regex_once(src, r'TESTNET_GENESIS_TIME = \d+', f'TESTNET_GENESIS_TIME = {TESTNET_TIME}', "testnet genesis time")
     src = replace_once(src, 'PREMINE_TRANCHES = 5', 'PREMINE_TRANCHES = 1', "zero-premine tranche count")
     src = replace_once(src, 'PREMINE_TRANCHE_AMOUNT = 400_000 * COIN', 'PREMINE_TRANCHE_AMOUNT = 0', "zero-premine tranche amount")
-    src = replace_regex_once(src,
-        r'PREMINE_UNLOCK_TIMES = \[.*?\]\n',
-        'PREMINE_UNLOCK_TIMES = [0]\n',
-        "zero-premine unlock table", flags=re.S)
+    src = replace_regex_once(src, r'PREMINE_UNLOCK_TIMES = \[.*?\]\n', 'PREMINE_UNLOCK_TIMES = [0]\n',
+                             "zero-premine unlock table", flags=re.S)
+    old_lock_assert = '''assert all(t > 500_000_000 for t in PREMINE_UNLOCK_TIMES), \\
+    "every tranche must carry a real time lock -- a value below the CLTV " \\
+    "threshold would be read as a block height and unlock almost at once"\n'''
+    src = replace_once(src, old_lock_assert, 'assert GENESIS_PREMINE == 0\n', "zero-premine lock assertion")
     src = replace_once(
         src,
         '"testnet": dict(time=TESTNET_GENESIS_TIME, bits=0x1E0FFFF0, pubkey=65, script=128, first="T"),',
@@ -173,6 +169,8 @@ def patch_genesis_generator(path: pathlib.Path) -> None:
 def patch_pool_config(path: pathlib.Path) -> None:
     src = read(path)
     src = src.replace('"coinbaseSignature": "/WAM-Pool/"', '"coinbaseSignature": "/Crakbit-Pool/"')
+    # Burn address is only a safe initial placeholder. scripts/init-testnet.sh
+    # replaces it with a wallet-owned address before a payout-capable pool run.
     src = src.replace('"poolAddress": "twam1q3rzkye9fxxyelxq3thca59f5245cer69pq5mkm"',
                       f'"poolAddress": "{TESTNET_BURN}"')
     src = src.replace('"redisPrefix": "wamtn"', '"redisPrefix": "cbittn"')
@@ -193,7 +191,6 @@ def main() -> int:
 
     shutil.copy2(overlay / 'src/wam/wam-params.h', tree / 'src/wam/wam-params.h')
     shutil.copy2(overlay / 'pool/lib/constants.js', tree / 'pool/lib/constants.js')
-
     patch_chainparams(tree / 'src/wam/chainparams.cpp')
     patch_genesis_generator(tree / 'genesis/genesis_generator.py')
     patch_pool_config(tree / 'pool/config.testnet.json')
@@ -202,8 +199,7 @@ def main() -> int:
     marker.write_text(
         'network=testnet-v0.1\n'
         f'genesis_phrase={PHRASE}\n'
-        f'randomx_bootstrap_key={BOOTSTRAP_KEY}\n',
-        encoding='utf-8')
+        f'randomx_bootstrap_key={BOOTSTRAP_KEY}\n', encoding='utf-8')
     print(f'Crakbit overlay applied to {tree}')
     return 0
 
