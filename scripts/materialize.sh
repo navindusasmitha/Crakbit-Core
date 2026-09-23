@@ -30,6 +30,7 @@ ACTUAL="$(git -C "$OUT" rev-parse HEAD)"
 log "apply Crakbit testnet overlay"
 python3 "$ROOT/scripts/crakbitize.py" --tree "$OUT" --overlay "$ROOT/overlay"
 python3 "$ROOT/scripts/patch-miner-addresses.py" --tree "$OUT"
+python3 "$ROOT/scripts/patch-pool-tests.py" --tree "$OUT"
 
 log "materialize pinned Bitcoin Core + RandomX build trees"
 bash "$OUT/scripts/fetch-upstream.sh"
