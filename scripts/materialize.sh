@@ -7,6 +7,7 @@ ARTIFACTS="${CRAKBIT_ARTIFACTS:-$ROOT/build/artifacts}"
 WAM_REPO="https://github.com/wam-coin-official/wam-coin.git"
 WAM_COMMIT="e65bc4d5767e76182bf7bc712a91a8532459498d"
 TESTNET_BURN="T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb"
+MAINNET_BURN="WNg2svm2qApxheBKndKGQ9sRwporvRgRpT"
 
 log() { printf '==> %s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -59,6 +60,20 @@ python3 "$OUT/genesis/genesis_generator.py" \
     --threads "${CRAKBIT_GENESIS_THREADS:-2}" \
     --json "$ARTIFACTS/testnet-genesis.json" \
     --patch "$OUT/src/wam/chainparams.cpp"
+
+# Core constructs CMainParams while preparing command-line help even for a
+# testnet invocation. The testnet branch therefore carries a construction-only
+# placeholder main genesis, with no peers and no supported packaging path. It
+# deliberately uses the same time/target/domain as testnet and is replaced by a
+# completely independent genesis in the future mainnet code-freeze commit.
+log "mine/freeze construction-only placeholder main genesis"
+python3 "$OUT/genesis/genesis_generator.py" \
+    --network mainnet \
+    --address "$MAINNET_BURN" \
+    --threads "${CRAKBIT_GENESIS_THREADS:-2}" \
+    --json "$ARTIFACTS/placeholder-main-genesis.json" \
+    --patch "$OUT/src/wam/chainparams.cpp" \
+    --quiet
 
 log "mine/freeze Crakbit regtest genesis"
 python3 "$OUT/genesis/genesis_generator.py" \
