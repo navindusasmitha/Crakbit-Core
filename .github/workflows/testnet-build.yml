@@ -43,6 +43,9 @@ jobs:
       - name: Apply pool policy transform
         run: python3 scripts/patch-pool-tests.py --tree /tmp/crakbit-wam
 
+      - name: Verify transformed Crakbit identity
+        run: python3 scripts/verify-transformed.py --tree /tmp/crakbit-wam
+
   linux-testnet:
     needs: transform-preflight
     runs-on: ubuntu-24.04
