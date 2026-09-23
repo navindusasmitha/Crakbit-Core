@@ -34,10 +34,25 @@ jobs:
         run: python3 tests/test_policy.py
 
       - name: Materialize pinned source and mine genesis
+        id: materialize
         env:
           CRAKBIT_JOBS: "2"
           CRAKBIT_GENESIS_THREADS: "2"
-        run: bash scripts/materialize.sh
+        run: |
+          mkdir -p build/artifacts
+          set +e
+          bash scripts/materialize.sh 2>&1 | tee build/artifacts/materialize.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            echo "### Materialize failure" >> "$GITHUB_STEP_SUMMARY"
+            echo '```text' >> "$GITHUB_STEP_SUMMARY"
+            tail -n 120 build/artifacts/materialize.log >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            last="$(tail -n 1 build/artifacts/materialize.log | tr '\n' ' ' | cut -c1-220)"
+            echo "::error title=Crakbit materialize failed::$last"
+            exit "$rc"
+          fi
 
       - name: Build node, CLI, wallet tools and CPU miner
         env:
@@ -82,6 +97,16 @@ jobs:
           mkdir -p build/artifacts
           git rev-parse HEAD > build/artifacts/crakbit-source-commit.txt
           sha256sum build/dist/crakbit* > build/artifacts/SHA256SUMS 2>/dev/null || true
+
+      - name: Upload diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crakbit-testnet-diagnostics
+          path: |
+            build/artifacts/materialize.log
+            build/artifacts/crakbit-source-commit.txt
+          if-no-files-found: warn
 
       - name: Upload testnet artifacts
         if: success()
