@@ -2,7 +2,7 @@ name: Native build
 
 on:
   push:
-    branches: [native-v0.1, main]
+    branches: [native-v0.1, native-wallet-v0.2, main]
   pull_request:
 
 jobs:
@@ -21,3 +21,12 @@ jobs:
           ./build/crakbitd --datadir build/ci-chain mine ci-miner 1
           ./build/crakbitd --datadir build/ci-chain status
           ./build/crakbitd --datadir build/ci-chain balance ci-miner
+      - name: Create wallet and mine to tcb address
+        run: |
+          ./build/crakbitd --datadir build/ci-wallet wallet-create alice | tee build/wallet-create.txt
+          ADDRESS=$(./build/crakbitd --datadir build/ci-wallet wallet-address alice)
+          test "${ADDRESS#tcb1}" != "$ADDRESS"
+          test ${#ADDRESS} -ge 42
+          ./build/crakbitd --datadir build/ci-wallet mine-wallet alice 1
+          test "$(./build/crakbitd --datadir build/ci-wallet wallet-balance alice)" = "9.50000000 CBIT"
+          test "$(stat -c '%a' build/ci-wallet/wallets/alice.wallet)" = "600"
