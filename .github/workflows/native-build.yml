@@ -1,0 +1,23 @@
+name: Native build
+
+on:
+  push:
+    branches: [native-v0.1, main]
+  pull_request:
+
+jobs:
+  linux-native:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake git libssl-dev python3
+      - name: Consensus policy tests
+        run: python3 tests/test_consensus.py
+      - name: Build native Crakbit Core
+        run: CRAKBIT_JOBS=2 bash scripts/build-native.sh
+      - name: Mine one local block
+        run: |
+          ./build/crakbitd --datadir build/ci-chain mine ci-miner 1
+          ./build/crakbitd --datadir build/ci-chain status
+          ./build/crakbitd --datadir build/ci-chain balance ci-miner

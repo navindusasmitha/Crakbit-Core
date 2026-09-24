@@ -1,97 +1,83 @@
-# Crakbit Core
+# Crakbit Core — Native v0.1
 
-Crakbit Core is the reference implementation workspace for the **CBIT proof-of-work blockchain**.
+Crakbit Core is the independent reference implementation of the **Crakbit Coin (CBIT)** proof-of-work blockchain.
 
-> Status: **pre-mainnet / Testnet v0.1 engineering**. Testnet CBIT has no monetary value. Do not use this repository for real-value mainnet funds until the documented mainnet launch gates are completed and independently reviewed.
+This branch is a clean native implementation. It does not materialize, patch, transform, or depend on another blockchain project's source tree. The only consensus-engine dependency currently fetched is the official RandomX library.
 
-## Testnet v0.1
+> Status: **native local-dev/testnet engineering**. This is not mainnet-ready and must not hold real-value funds.
 
-The testnet branch builds a complete development-network stack from pinned, reviewable source inputs:
+## Native v0.1 milestone
 
-- full node + CLI + wallet utilities;
-- RandomX proof of work;
-- DarkGravityWave v3 per-block difficulty adjustment;
-- CPU miner;
-- Stratum mining pool;
-- block explorer;
-- deterministic testnet/regtest genesis generation;
-- monetary-policy and pool-accounting tests;
-- reproducible build/source identity records;
-- public-node deployment tooling.
+Implemented now:
 
-A successful GitHub Actions run publishes both Linux binaries and a **full transformed source archive** for the exact Crakbit testnet commit.
+- independent Crakbit block/header format;
+- deterministic Crakbit-native genesis mining;
+- RandomX v1.2.3 fetched directly from the official upstream repository;
+- 120-second block target;
+- 24-block DarkGravityWave-style target retarget with 3x clamp;
+- 10 CBIT initial subsidy;
+- 1,051,200-block halving interval;
+- zero premine;
+- 5% treasury accounting for heights 1..400,000;
+- persistent local chain database;
+- local CPU mining;
+- chain verification on startup;
+- local status, chain and balance commands.
 
-## Current consensus target
+Not implemented yet in this native milestone:
 
-| Parameter | Testnet v0.1 |
+- P2P networking;
+- mempool and signed transactions;
+- wallet/private-key subsystem;
+- JSON-RPC;
+- Stratum pool;
+- explorer;
+- production mainnet parameters.
+
+Those will be added on top of this native core rather than through a compatibility layer.
+
+## Consensus constants
+
+| Parameter | Native testnet v0.1 |
 |---|---:|
-| Currency | Crakbit Coin (CBIT) |
+| Currency | Crakbit Coin |
+| Ticker | CBIT |
 | Decimals | 8 |
-| Consensus | Proof of Work |
-| PoW | RandomX v1 family |
+| Proof of Work | RandomX v1.2.3 |
 | Block target | 120 seconds |
-| Difficulty | DGW v3, every block, 24-block window |
+| Retarget window | 24 blocks |
+| Retarget clamp | 3x |
 | Initial subsidy | 10 CBIT |
 | Halving interval | 1,051,200 blocks |
-| Genesis premine | 0 CBIT |
+| Premine | 0 |
 | Treasury | 5% of subsidy, heights 1..400,000 |
-| Scheduled subsidy emission | 21,023,999.86334400 CBIT |
-| Testnet P2P | TCP 29111 |
-| Testnet RPC | TCP 29110, localhost-only by default |
-| Testnet bech32 HRP | `tcb` |
-| Testnet RandomX epoch | 256 blocks |
-| Testnet RandomX seed lag | 16 blocks |
+| RandomX epoch | 256 blocks |
+| RandomX seed lag | 16 blocks |
 
-The treasury share is carved from the configured block subsidy. It does **not** mint additional CBIT. At height 1 the 10 CBIT subsidy is split into 9.5 CBIT for the miner and 0.5 CBIT for the testnet treasury destination.
-
-## Source model
-
-Crakbit Testnet v0.1 uses a pinned MIT-licensed WAM Coin snapshot as an engineering reference/compatibility layer, then applies independent Crakbit network and monetary parameters. The materialized node source is ultimately Bitcoin Core-derived. Crakbit does not connect to WAM: testnet genesis data, RandomX domain key, message magic, ports, address namespace and discovery configuration are independent.
-
-The exact dependency lock is in `SOURCE_LOCK.json`. The current testnet deliberately remains on the reference layer's Bitcoin Core v28.1 patch base; Bitcoin Core 28.x is end-of-life, so **mainnet is blocked** until the maintained-base/review requirement in `docs/MAINNET_GATES.md` is satisfied.
-
-## Build on Ubuntu
+## Build on Ubuntu / WSL2
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y \
-  build-essential libtool autotools-dev automake pkg-config bsdmainutils \
-  cmake git python3 libevent-dev libboost-dev libboost-system-dev \
-  libboost-filesystem-dev libboost-test-dev libssl-dev libsqlite3-dev \
-  nodejs npm
+sudo apt update
+sudo apt install -y build-essential cmake git libssl-dev
 
-python3 tests/test_policy.py
-CRAKBIT_JOBS=2 CRAKBIT_GENESIS_THREADS=2 bash scripts/materialize.sh
-CRAKBIT_JOBS=2 bash scripts/build-testnet.sh
+git clone -b native-v0.1 https://github.com/navindusasmitha/Crakbit-Core.git
+cd Crakbit-Core
+bash scripts/build-native.sh
 ```
 
-Then initialize and start an isolated testnet node:
+## Run locally
 
 ```bash
-bash scripts/testnet.sh init
-bash scripts/testnet.sh start
-bash scripts/testnet.sh status
+./build/crakbitd init
+./build/crakbitd status
+./build/crakbitd mine local-miner 1
+./build/crakbitd status
+./build/crakbitd chain
+./build/crakbitd balance local-miner
 ```
 
-## Public testnet deployment
+The default data directory is `~/.crakbit/native-testnet`. Override it with `--datadir /path`.
 
-After the complete CI pipeline is green, follow `docs/PUBLIC_TESTNET_DEPLOY.md`. The hardened Ubuntu installer is:
+## Security note
 
-```bash
-sudo bash deploy/install-testnet-node.sh
-```
-
-Only P2P TCP 29111 should be public. Do not expose RPC 29110 to the Internet.
-
-## Documentation
-
-- `docs/ARCHITECTURE.md` — architecture and consensus layering
-- `docs/TESTNET.md` — build/use instructions
-- `docs/PUBLIC_TESTNET_DEPLOY.md` — two-node public testnet runbook
-- `docs/WAM_REFERENCE.md` — what is learned/inherited from the pinned WAM reference and what Crakbit replaces
-- `docs/MAINNET_GATES.md` — mandatory mainnet blockers
-- `SECURITY.md` — responsible disclosure and consensus-security priorities
-
-## Mainnet
-
-Mainnet is a separate code-freeze milestone. Its genesis block, treasury custody, discovery peers, release signing, minimum-chainwork/checkpoint policy and maintained upstream base are intentionally **not** inherited from the testnet placeholder configuration.
+Native v0.1 is an engineering network. Consensus code, serialization, target arithmetic, RandomX epoch rules, transaction validation, networking and wallet code require extensive fuzzing, cross-platform tests and independent review before any mainnet release.
