@@ -45,7 +45,8 @@ bool meets_target(const std::array<std::uint8_t, 32>& hash, const Uint256& targe
 RandomXHasher::RandomXHasher(std::string key) {
     randomx_flags flags = randomx_get_flags();
     // Local/testnet light mode: cache-backed VM, no 2+ GiB full dataset requirement.
-    flags = static_cast<randomx_flags>(flags & ~RANDOMX_FLAG_FULL_MEM);
+    const int masked = static_cast<int>(flags) & ~static_cast<int>(RANDOMX_FLAG_FULL_MEM);
+    flags = static_cast<randomx_flags>(masked);
     cache_ = randomx_alloc_cache(flags);
     if (!cache_) throw std::runtime_error("RandomX cache allocation failed");
     randomx_init_cache(cache_, key.data(), key.size());
