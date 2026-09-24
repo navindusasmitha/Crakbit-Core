@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(CrakbitCore VERSION 0.1.0 LANGUAGES C CXX)
+project(CrakbitCore VERSION 0.2.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,6 +26,8 @@ add_executable(crakbitd
   src/core/block.cpp
   src/core/chain.cpp
   src/pow/randomx_pow.cpp
+  src/wallet/bech32.cpp
+  src/wallet/wallet.cpp
 )
 
 target_include_directories(crakbitd PRIVATE
