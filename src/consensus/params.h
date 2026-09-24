@@ -30,8 +30,10 @@ inline constexpr std::string_view GENESIS_MESSAGE =
     "Crakbit Native Testnet v0.1 - 24 Sep 2026 - Independent chain by Crakbit Society";
 
 inline std::uint64_t block_subsidy(std::uint64_t height) {
+    // Height 0 is zero-premine genesis. Each non-zero era contains exactly
+    // HALVING_INTERVAL subsidy-bearing blocks, preserving the locked emission.
     if (height == 0) return 0;
-    const std::uint64_t era = height / HALVING_INTERVAL;
+    const std::uint64_t era = (height - 1) / HALVING_INTERVAL;
     if (era >= 64) return 0;
     return INITIAL_SUBSIDY >> era;
 }
