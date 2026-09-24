@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import pathlib
-import re
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -15,7 +14,7 @@ TREASURY_END = 400_000
 def subsidy(height):
     if height == 0:
         return 0
-    era = height // HALVING
+    era = (height - 1) // HALVING
     return 0 if era >= 64 else INITIAL >> era
 
 
@@ -38,8 +37,13 @@ class ConsensusPolicy(unittest.TestCase):
         self.assertEqual(subsidy(1) - treasury, 950_000_000)
 
     def test_halving_boundary(self):
-        self.assertEqual(subsidy(HALVING - 1), 10 * COIN)
-        self.assertEqual(subsidy(HALVING), 5 * COIN)
+        self.assertEqual(subsidy(HALVING), 10 * COIN)
+        self.assertEqual(subsidy(HALVING + 1), 5 * COIN)
+
+    def test_treasury_window(self):
+        self.assertEqual(subsidy(1) * 5 // 100, 50_000_000)
+        self.assertEqual(subsidy(TREASURY_END) * 5 // 100, 50_000_000)
+        self.assertEqual(TREASURY_END * 50_000_000, 20_000_000_000_000)
 
     def test_exact_scheduled_emission(self):
         total = 0
@@ -51,6 +55,7 @@ class ConsensusPolicy(unittest.TestCase):
             total += reward * HALVING
             era += 1
         self.assertEqual(total, 2_102_399_986_334_400)
+        self.assertEqual(total / COIN, 21_023_999.863344)
 
     def test_native_identity(self):
         self.assertIn("Crakbit Native Testnet v0.1", PARAMS)
