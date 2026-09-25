@@ -45,5 +45,9 @@ jobs:
         run: python3 scripts/apply_economics_patch.py
       - name: Audit zero premine and zero treasury
         run: python3 scripts/audit_economics.py
+      - name: Apply CRAK-003 monetary policy
+        run: python3 scripts/apply_monetary_patch.py
+      - name: Audit CRAK-003 monetary policy
+        run: python3 scripts/audit_monetary.py
       - name: Show resolved base-source SHA
         run: cat .work/BASE_RESOLVED_SHA
