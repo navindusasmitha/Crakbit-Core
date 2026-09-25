@@ -12,13 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify source, consensus, vectors and network lock
+      - name: Verify source, consensus, vectors, network and genesis lock
         run: python3 scripts/verify-lock.py
       - name: Syntax-check migration tools and vectors
         run: |
           bash -n scripts/bootstrap.sh
-          python3 -m py_compile scripts/materialize.py
+          bash -n scripts/materialize-locked.sh
+          python3 -m py_compile scripts/materialize.py scripts/finalize-genesis.py
           python3 -m json.tool tests/yespower_vectors.json >/dev/null
+          python3 -m json.tool tests/genesis_vectors.json >/dev/null
           python3 -m json.tool consensus/params.json >/dev/null
 
   yespower-network-smoke:
@@ -31,8 +33,8 @@ jobs:
           sudo apt-get install -y build-essential cmake pkg-config libevent-dev libboost-dev
       - name: Fetch exact pinned upstreams
         run: bash scripts/bootstrap.sh
-      - name: Materialize Bitcoin Core v31.1 plus Crakbit consensus/network patches
-        run: python3 scripts/materialize.py
+      - name: Materialize locked Crakbit source tree
+        run: bash scripts/materialize-locked.sh
       - name: Verify materialized identity and network separation
         run: |
           grep -Fx 'bitcoin_core_commit=9be056a8a72b624dae9623b2f7bded92c2a21c91' .work/materialized-source.txt
@@ -44,9 +46,13 @@ jobs:
           grep -Fx 'bitcoin_mainnet_enabled=false' .work/materialized-source.txt
           grep -Fx 'bitcoin_testnet3_enabled=false' .work/materialized-source.txt
           grep -Fx 'signet_enabled=false' .work/materialized-source.txt
+          grep -Fx 'genesis_vectors_locked=true' .work/materialized-source.txt
+          grep -Fx 'testnet4_genesis=000913228cf3264838e841dfa1cb7a8d45c0b431004fbd72952cea3eed107406' .work/materialized-source.txt
+          grep -Fx 'regtest_genesis=25c66306da130d34aeafdc40bdb18fe48cd67bd973a01287ff9cb49ab247f2f0' .work/materialized-source.txt
           grep -F 'yespower_tls(' .work/crakbit/src/primitives/block.cpp
           grep -F 'bech32_hrp = "tcrak"' .work/crakbit/src/kernel/chainparams.cpp
           grep -F 'bech32_hrp = "rcrak"' .work/crakbit/src/kernel/chainparams.cpp
+          grep -F 'assert(consensus.hashGenesisBlock == uint256{' .work/crakbit/src/kernel/chainparams.cpp
           if grep -Fq 'HashWriter{} << *this' .work/crakbit/src/primitives/block.cpp; then
             echo 'unexpected SHA256d block-hash fallback remains' >&2
             exit 1
@@ -86,5 +92,17 @@ jobs:
           printf 'uint256 hash: %s\n' "$DISPLAY_ACTUAL"
           test "$RAW_ACTUAL" = "$RAW_EXPECTED"
           test "$DISPLAY_ACTUAL" = "$DISPLAY_EXPECTED"
-      - name: Mine deterministic CRAK-006 genesis candidates
-        run: .work/crakbit-build/bin/crakbit_genesis_probe
+      - name: Verify frozen CRAK-006 genesis vectors
+        run: |
+          OUTPUT="$(.work/crakbit-build/bin/crakbit_genesis_probe)"
+          printf '%s\n' "$OUTPUT"
+          TEST_NONCE="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["testnet4"]["nonce"])')"
+          TEST_HASH="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["testnet4"]["hash"])')"
+          TEST_MERKLE="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["testnet4"]["merkle_root"])')"
+          TEST_BITS="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["testnet4"]["bits"])')"
+          REG_NONCE="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["regtest"]["nonce"])')"
+          REG_HASH="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["regtest"]["hash"])')"
+          REG_MERKLE="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["regtest"]["merkle_root"])')"
+          REG_BITS="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["regtest"]["bits"])')"
+          grep -Fx "testnet4 nonce=$TEST_NONCE hash=$TEST_HASH merkle=$TEST_MERKLE bits=$TEST_BITS" <<<"$OUTPUT"
+          grep -Fx "regtest nonce=$REG_NONCE hash=$REG_HASH merkle=$REG_MERKLE bits=$REG_BITS" <<<"$OUTPUT"
