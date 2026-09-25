@@ -27,7 +27,7 @@ for bin in crakbitd crakbit-cli; do
   fi
 done
 
-for helper in crakbit-start crakbit-mine crakminer crakminer-native.py crakpool.py crakpool-accounting.py crakpool-stats.py crakpool-payout.py crakminer-stratum.py build-native-miner.sh install-package.sh; do
+for helper in crakbit-start crakbit-mine crakminer crakminer-native.py crakpool.py crakpool-accounting.py crakpool-stats.py crakpool-payout.py crakpool-pay.py crakminer-stratum.py build-native-miner.sh install-package.sh; do
   if [[ ! -f "$ROOT/scripts/$helper" ]]; then
     echo "missing helper: scripts/$helper" >&2
     exit 1
@@ -59,11 +59,12 @@ install -m 0755 "$ROOT/scripts/crakbit-mine" "$STAGE/bin/crakbit-mine"
 install -m 0755 "$ROOT/scripts/crakminer" "$STAGE/bin/crakminer"
 install -m 0755 "$ROOT/scripts/crakminer-native.py" "$STAGE/bin/crakminer-native"
 # CRAK-014 remains the internal protocol/base module. CRAK-015 is the public
-# `crakpool` command and CRAK-016 payout tooling shares the same RPC helper.
+# `crakpool` command; CRAK-016 plans payouts and CRAK-017 moves reviewed funds.
 install -m 0644 "$ROOT/scripts/crakpool.py" "$STAGE/bin/crakpool-base.py"
 install -m 0755 "$ROOT/scripts/crakpool-accounting.py" "$STAGE/bin/crakpool"
 install -m 0755 "$ROOT/scripts/crakpool-stats.py" "$STAGE/bin/crakpool-stats"
 install -m 0755 "$ROOT/scripts/crakpool-payout.py" "$STAGE/bin/crakpool-payout"
+install -m 0755 "$ROOT/scripts/crakpool-pay.py" "$STAGE/bin/crakpool-pay"
 install -m 0755 "$ROOT/scripts/crakminer-stratum.py" "$STAGE/bin/crakminer-stratum"
 install -m 0755 "$ROOT/scripts/install-package.sh" "$STAGE/install.sh"
 
