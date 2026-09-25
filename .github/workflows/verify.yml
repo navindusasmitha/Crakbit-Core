@@ -1,4 +1,4 @@
-name: Verify Crakbit migration locks
+name: Verify Crakbit Core
 
 on:
   push:
@@ -20,22 +20,22 @@ jobs:
         run: python3 scripts/verify_supply.py --schedule
       - name: Verify Bitcoin-compatible serialization
         run: python3 genesis/test_serialization.py
-      - name: Verify patch manifest syntax
+      - name: Verify Crakbit patch manifest
         run: python3 scripts/patch_upstream.py --list
       - name: Syntax-check shell entrypoints
         run: |
           bash -n scripts/bootstrap.sh
           bash -n install.sh
 
-  upstream-smoke:
+  source-smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch and verify WAM + yespower upstreams
+      - name: Fetch pinned base source and yespower
         run: ./scripts/bootstrap.sh
-      - name: Validate WAM-derived source layout
+      - name: Validate base-source layout
         run: python3 scripts/patch_upstream.py --check-tree
       - name: Stage Crakbit-owned overlay
         run: python3 scripts/patch_upstream.py --stage-overlay
-      - name: Show resolved WAM source SHA
-        run: cat .work/WAM_RESOLVED_SHA
+      - name: Show resolved base-source SHA
+        run: cat .work/BASE_RESOLVED_SHA

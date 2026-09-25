@@ -2,13 +2,11 @@
 
 ## Model
 
-Crakbit is a Bitcoin-style UTXO chain. The project uses WAM Coin's Bitcoin-fork integration pattern as an upstream engineering reference, while defining an independent Crakbit network and monetary policy.
+Crakbit is an independent Bitcoin-style UTXO chain with its own network identity and monetary policy.
 
 ## Hash separation
 
-Crakbit keeps Bitcoin's 80-byte block header and Bitcoin-style SHA256d block identifier. The proof-of-work value checked against `nBits` is a separate yespower hash over the serialized 80-byte header.
-
-This deliberately follows WAM's already-integrated pattern of keeping the block index/RPC identity hash Bitcoin-compatible while changing only the proof-of-work comparison path. Transaction IDs and signature hashing remain Bitcoin-derived.
+Crakbit keeps Bitcoin's 80-byte block header and Bitcoin-style SHA256d block identifier. The proof-of-work value checked against `nBits` is a separate yespower hash over the serialized 80-byte header. Transaction IDs and signature hashing remain Bitcoin-derived.
 
 ## Proof of Work
 
@@ -29,25 +27,23 @@ This setting targets low-resource CPUs. It does not make all CPUs equal and it d
 - Coinbase maturity: 100 blocks
 - 8 decimals
 
-The ideal geometric emission is 21,000,000 CRAK. The exact terminal amount will be slightly below the ceiling because late subsidies are integer base units.
+The ideal geometric emission is 21,000,000 CRAK. Integer base-unit halvings make the exact terminal issuance 20,999,999.72700000 CRAK.
 
 ## Difficulty
 
-Crakbit will retain the WAM codebase's DarkGravityWave v3 structure instead of introducing a second, unrelated retarget implementation during the same migration.
+Crakbit uses a DarkGravityWave v3 structure with a 24-block window and per-block retargeting. The target spacing is 60 seconds. All constants and test vectors must be reviewed for the 60-second target before testnet is considered stable.
 
-The target spacing changes to 60 seconds. DGW v3 recalculates each block from a 24-block window and clamps observed timespan changes. All constants and test vectors must be reviewed for the 60-second target before testnet.
+## Removed legacy rules
 
-## Removed WAM consensus rules
-
-Crakbit has no founder reserve, spendable genesis allocation, mandatory treasury output or RandomX epoch/key machinery. Those WAM-specific rules must be removed rather than merely configured to an unused address.
+Crakbit has no founder reserve, spendable genesis allocation, mandatory treasury output or legacy PoW epoch/key machinery. Inherited versions of those rules must be removed rather than merely configured off.
 
 ## Network identity
 
-WAM network magic, ports, address prefixes, DNS seeds, genesis blocks and chain checkpoints are forbidden in Crakbit builds. Testnet has a separate identity and mainnet remains unset until testnet gates pass.
+Legacy message magic, ports, address prefixes, DNS seeds, genesis blocks and chain checkpoints are forbidden in Crakbit builds. Testnet has a separate Crakbit identity and mainnet remains unset until testnet gates pass.
 
 ## Mainnet gates
 
-1. exact WAM upstream commit SHA recorded;
+1. exact base-source commit SHA recorded;
 2. all inherited licenses retained;
 3. yespower reference test vectors pass;
 4. Crakbit 80-byte-header PoW vectors pass;

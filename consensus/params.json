@@ -28,7 +28,7 @@
     "window_blocks": 24,
     "retarget": "every-block",
     "timespan_clamp": "1/3x..3x",
-    "status": "reuse-wam-implementation-then-test-at-60s"
+    "status": "retune-and-test-at-60s"
   },
   "network_separation": {
     "mainnet": {

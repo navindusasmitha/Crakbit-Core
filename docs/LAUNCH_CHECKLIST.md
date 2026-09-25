@@ -9,8 +9,8 @@ Mainnet stays disabled until every required item below is complete. The purpose 
 - [ ] `python3 scripts/verify_supply.py --schedule` prints terminal issuance `20,999,999.72700000 CRAK` and never exceeds 21M.
 - [ ] Premine is exactly zero.
 - [ ] Treasury/dev fee is exactly zero.
-- [ ] WAM founder reserve, vesting and mandatory treasury validation paths are absent, not merely disabled by runtime flags.
-- [ ] inherited WAM/Bitcoin/yespower copyright and license notices are preserved.
+- [ ] inherited founder reserve, vesting and mandatory treasury validation paths are absent, not merely disabled by runtime flags.
+- [ ] inherited third-party copyright and license notices are preserved.
 
 ## Phase B — serialization and consensus integration
 
@@ -24,7 +24,7 @@ Mainnet stays disabled until every required item below is complete. The purpose 
 
 ## Phase C — network identity
 
-- [ ] No WAM message magic, ports, HRP, address prefixes, genesis hashes, checkpoints or DNS seeds remain active.
+- [ ] No legacy message magic, ports, HRP, address prefixes, genesis hashes, checkpoints or DNS seeds remain active.
 - [ ] testnet message start is unique.
 - [ ] testnet P2P/RPC ports are unique.
 - [ ] testnet address prefixes and Bech32 HRP are verified.

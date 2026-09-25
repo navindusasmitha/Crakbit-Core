@@ -10,14 +10,11 @@ params = json.loads((ROOT / 'consensus' / 'params.json').read_text(encoding='utf
 
 sha40 = re.compile(r'^[0-9a-f]{40}$')
 errors = []
-warnings = []
 
-wam = lock['upstreams']['wam_coin']
-wam_sha = wam.get('commit_sha')
-if wam_sha is None:
-    warnings.append('WAM exact commit SHA not resolved yet; tag is migration-only until bootstrap records it')
-elif not sha40.fullmatch(wam_sha):
-    errors.append('wam_coin.commit_sha must be null or a 40-char lowercase git SHA')
+base = lock['upstreams']['base_source']
+base_sha = base.get('commit_sha', '')
+if not sha40.fullmatch(base_sha):
+    errors.append('base_source.commit_sha must be a 40-char lowercase git SHA')
 
 yes_sha = lock['upstreams']['yespower'].get('commit_sha', '')
 if not sha40.fullmatch(yes_sha):
@@ -55,27 +52,25 @@ if ideal_supply != money['intended_max_supply_coins']:
     errors.append(f'intended supply mismatch: geometric target is {ideal_supply:,}')
 
 if params['difficulty'].get('design') != 'DarkGravityWave-v3':
-    errors.append('difficulty design must be DarkGravityWave-v3 for the WAM-derived migration')
+    errors.append('difficulty design must be DarkGravityWave-v3')
 
 net = params['network_separation']['testnet']
-wam_forbidden = {
+forbidden_legacy = {
     'message_start_hex': '77616d21',
     'p2p_port': 19555,
     'rpc_port': 19554,
     'bech32_hrp': 'twam',
 }
-for key, forbidden in wam_forbidden.items():
+for key, forbidden in forbidden_legacy.items():
     if net.get(key) == forbidden:
-        errors.append(f'testnet {key} still matches WAM and must be unique')
+        errors.append(f'testnet {key} still matches a legacy upstream identity and must be unique')
 
 if lock.get('mainnet_enabled') or params.get('mainnet_enabled'):
-    errors.append('mainnet must remain disabled during migration/testnet stage')
+    errors.append('mainnet must remain disabled during testnet migration')
 
-for warning in warnings:
-    print(f'WARNING: {warning}', file=sys.stderr)
 if errors:
     for error in errors:
         print(f'ERROR: {error}', file=sys.stderr)
     raise SystemExit(1)
 
-print('Crakbit source/consensus migration lock: OK')
+print('Crakbit source/consensus lock: OK')

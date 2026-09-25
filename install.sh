@@ -8,8 +8,8 @@ usage() {
 Crakbit Core preflight installer
 
 Usage:
-  ./install.sh --prepare   Fetch pinned upstreams, run all safe preflight checks,
-                           validate the WAM-derived tree, and stage src/crakbit.
+  ./install.sh --prepare   Fetch pinned sources, run safe preflight checks,
+                           validate the base tree, and stage src/crakbit.
   ./install.sh --check     Run local verification only; no network fetch.
 
 A full daemon build is intentionally not exposed yet. It will be enabled only
@@ -34,7 +34,7 @@ case "${1:---prepare}" in
     python3 "$ROOT/scripts/patch_upstream.py" --check-tree
     python3 "$ROOT/scripts/patch_upstream.py" --stage-overlay
     echo
-    echo "Pinned WAM/Bitcoin + yespower sources are prepared in .work/."
+    echo "Pinned base source and yespower are prepared in .work/."
     echo "The Crakbit overlay is staged. Full consensus patch/build remains gated."
     ;;
   --check)

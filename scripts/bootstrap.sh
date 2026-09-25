@@ -12,19 +12,19 @@ done
 readarray -t CFG < <(python3 - "$LOCK" <<'PY'
 import json, sys
 p=json.load(open(sys.argv[1], encoding='utf-8'))
-w=p['upstreams']['wam_coin']
+b=p['upstreams']['base_source']
 y=p['upstreams']['yespower']
-print(w['repository'])
-print(w['ref'])
-print(w.get('commit_sha') or '')
+print(b['repository'])
+print(b['ref'])
+print(b.get('commit_sha') or '')
 print(y['repository'])
 print(y['commit_sha'])
 PY
 )
 
-WAM_REPO="${CFG[0]}"
-WAM_REF="${CFG[1]}"
-WAM_SHA="${CFG[2]}"
+BASE_REPO="${CFG[0]}"
+BASE_REF="${CFG[1]}"
+BASE_SHA="${CFG[2]}"
 YES_REPO="${CFG[3]}"
 YES_SHA="${CFG[4]}"
 
@@ -46,28 +46,25 @@ checkout_ref() {
   printf '%s\n' "$got"
 }
 
-WAM_GOT="$(checkout_ref "$WAM_REPO" "$WAM_REF" "$WAM_SHA" "$WORK/wam-upstream")"
+BASE_GOT="$(checkout_ref "$BASE_REPO" "$BASE_REF" "$BASE_SHA" "$WORK/base-upstream")"
 YES_GOT="$(checkout_ref "$YES_REPO" "$YES_SHA" "$YES_SHA" "$WORK/yespower")"
 
-for required in README.md COPYING scripts/patch_upstream.py src/wam; do
-  [[ -e "$WORK/wam-upstream/$required" ]] || {
-    echo "unexpected WAM source layout: missing $required" >&2
+for required in README.md COPYING scripts src genesis pool explorer; do
+  [[ -e "$WORK/base-upstream/$required" ]] || {
+    echo "unexpected base-source layout: missing $required" >&2
     exit 1
   }
 done
 
 rm -rf "$WORK/crakbit-source"
-cp -a "$WORK/wam-upstream" "$WORK/crakbit-source"
-printf '%s\n' "$WAM_GOT" > "$WORK/WAM_RESOLVED_SHA"
-printf 'Crakbit derived working tree prepared from WAM %s (%s)\n' "$WAM_REF" "$WAM_GOT" > "$WORK/crakbit-source/.crakbit-derived"
+cp -a "$WORK/base-upstream" "$WORK/crakbit-source"
+printf '%s\n' "$BASE_GOT" > "$WORK/BASE_RESOLVED_SHA"
+printf 'Crakbit working tree prepared from pinned base source %s (%s)\n' "$BASE_REF" "$BASE_GOT" > "$WORK/crakbit-source/.crakbit-origin"
 
 python3 "$ROOT/scripts/verify-lock.py"
 python3 "$ROOT/scripts/verify-address-prefixes.py"
 
-echo "WAM-derived Crakbit working tree prepared:"
-echo "  WAM:      $WAM_GOT"
+echo "Crakbit working tree prepared:"
+echo "  base:     $BASE_GOT"
 echo "  yespower: $YES_GOT"
 echo "  tree:     $WORK/crakbit-source"
-if [[ -z "$WAM_SHA" ]]; then
-  echo "IMPORTANT: SOURCE_LOCK.json still needs wam_coin.commit_sha=$WAM_GOT before a release/testnet build is considered reproducible."
-fi
