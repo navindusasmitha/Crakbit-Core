@@ -8,5 +8,6 @@ python3 scripts/materialize.py
 python3 scripts/finalize-genesis.py
 python3 scripts/apply-asert.py
 python3 scripts/apply-monetary.py
+python3 scripts/apply-node.py
 
-printf '%s\n' 'Crakbit materialized source is consensus-locked through CRAK-008 monetary rules.'
+printf '%s\n' 'Crakbit materialized source is consensus-locked through CRAK-009 node integration.'
