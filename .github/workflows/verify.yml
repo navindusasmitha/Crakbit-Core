@@ -1,4 +1,4 @@
-name: Verify Crakbit v0.1 locks
+name: Verify Crakbit v0.1
 
 on:
   push:
@@ -8,11 +8,51 @@ permissions:
   contents: read
 
 jobs:
-  verify:
+  verify-locks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Verify source and consensus lock
         run: python3 scripts/verify-lock.py
-      - name: Syntax-check bootstrap script
-        run: bash -n scripts/bootstrap.sh
+      - name: Syntax-check migration tools
+        run: |
+          bash -n scripts/bootstrap.sh
+          python3 -m py_compile scripts/materialize.py
+
+  yespower-build-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libevent-dev libboost-dev
+      - name: Fetch exact pinned upstreams
+        run: bash scripts/bootstrap.sh
+      - name: Materialize Bitcoin Core v31.1 plus yespower
+        run: python3 scripts/materialize.py
+      - name: Verify materialized identity
+        run: |
+          grep -Fx 'bitcoin_core_commit=9be056a8a72b624dae9623b2f7bded92c2a21c91' .work/materialized-source.txt
+          grep -Fx 'yespower_commit=1977c283bc43eed5a2c2579e02d6d996e49866b0' .work/materialized-source.txt
+          grep -Fx 'consensus_hash_changed=false' .work/materialized-source.txt
+          grep -F 'add_library(crakbit_yespower STATIC EXCLUDE_FROM_ALL' .work/crakbit/src/crypto/yespower/CMakeLists.txt
+          grep -F 'crakbit_yespower' .work/crakbit/src/CMakeLists.txt
+      - name: Configure minimal Bitcoin Core tree
+        run: |
+          cmake -S .work/crakbit -B .work/crakbit-build \
+            -DENABLE_WALLET=OFF \
+            -DENABLE_EXTERNAL_SIGNER=OFF \
+            -DENABLE_IPC=OFF \
+            -DWITH_ZMQ=OFF \
+            -DWITH_EMBEDDED_ASMAP=OFF \
+            -DBUILD_GUI=OFF \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_BENCH=OFF \
+            -DBUILD_DAEMON=OFF \
+            -DBUILD_CLI=OFF \
+            -DBUILD_TX=OFF \
+            -DBUILD_UTIL=OFF \
+            -DBUILD_BITCOIN_BIN=OFF
+      - name: Build Crakbit yespower target
+        run: cmake --build .work/crakbit-build --target crakbit_yespower --parallel 2
