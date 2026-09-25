@@ -32,15 +32,25 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Clone exact WAM release
-        run: git clone --branch v0.1.9 --single-branch https://gitlab.com/WAMCoin/wam-coin.git /tmp/wam
-      - name: Verify exact WAM SHA
+      - name: Clone and verify exact WAM release
         run: |
-          test "$(git -C /tmp/wam rev-parse HEAD)" = "9c58108d3b021eaacdcf6bc92eb76cf720f31b6d"
-      - name: Mirror WAM history to isolated branch
+          git clone --branch v0.1.9 --single-branch https://gitlab.com/WAMCoin/wam-coin.git /tmp/wam-source
+          test "$(git -C /tmp/wam-source rev-parse HEAD)" = "9c58108d3b021eaacdcf6bc92eb76cf720f31b6d"
+      - name: Create workflow-free source snapshot
+        run: |
+          rm -rf /tmp/wam-snapshot
+          cp -a /tmp/wam-source /tmp/wam-snapshot
+          rm -rf /tmp/wam-snapshot/.git /tmp/wam-snapshot/.github/workflows
+          printf '%s\n' '9c58108d3b021eaacdcf6bc92eb76cf720f31b6d' > /tmp/wam-snapshot/WAM_UPSTREAM_COMMIT
+          git -C /tmp/wam-snapshot init
+          git -C /tmp/wam-snapshot config user.name 'Crakbit Upstream Import'
+          git -C /tmp/wam-snapshot config user.email 'noreply@crakbit.invalid'
+          git -C /tmp/wam-snapshot add -A
+          git -C /tmp/wam-snapshot commit -m 'WAM v0.1.9 source snapshot (9c58108d)'
+      - name: Push isolated source snapshot branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git -C /tmp/wam remote remove origin
-          git -C /tmp/wam remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git -C /tmp/wam push --force origin HEAD:refs/heads/upstream/wam-v0.1.9
+          git -C /tmp/wam-snapshot branch -M upstream/wam-v0.1.9
+          git -C /tmp/wam-snapshot remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git -C /tmp/wam-snapshot push --force origin upstream/wam-v0.1.9
