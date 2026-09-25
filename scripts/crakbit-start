@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NETWORK="${1:-testnet4}"
+if [[ $# -gt 0 ]]; then
+  shift
+fi
+
+case "$NETWORK" in
+  testnet4) NETWORK_FLAG="-testnet4" ;;
+  regtest)  NETWORK_FLAG="-regtest" ;;
+  *)
+    echo "usage: crakbit-start [testnet4|regtest] [extra crakbitd args...]" >&2
+    exit 2
+    ;;
+esac
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -x "$SCRIPT_DIR/crakbitd" ]]; then
+  DAEMON="$SCRIPT_DIR/crakbitd"
+elif command -v crakbitd >/dev/null 2>&1; then
+  DAEMON="$(command -v crakbitd)"
+else
+  echo "crakbitd not found next to this script or in PATH" >&2
+  exit 1
+fi
+
+DATADIR="${CRAKBIT_DATADIR:-$HOME/.crakbit}"
+mkdir -p "$DATADIR"
+
+ARGS=(
+  "$NETWORK_FLAG"
+  "-datadir=$DATADIR"
+  "-daemonwait"
+  "-server=1"
+  "-listen=1"
+  "-rpcbind=127.0.0.1"
+  "-rpcallowip=127.0.0.1"
+)
+
+if [[ -n "${CRAKBIT_ADDNODE:-}" ]]; then
+  ARGS+=("-addnode=${CRAKBIT_ADDNODE}")
+fi
+
+exec "$DAEMON" "${ARGS[@]}" "$@"
