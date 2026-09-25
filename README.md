@@ -19,7 +19,7 @@ Crakbit Core is a Bitcoin-style UTXO Proof-of-Work blockchain project focused on
 - Regtest difficulty: **no retargeting** for deterministic local testing
 - Premine: **0**
 
-## Implemented consensus/network milestones
+## Implemented milestones
 
 - CRAK-004: pinned yespower build integration
 - CRAK-005: yespower block-header identity hash + deterministic vector
@@ -27,82 +27,79 @@ Crakbit Core is a Bitcoin-style UTXO Proof-of-Work blockchain project focused on
 - CRAK-007: integer-only ASERT testnet difficulty + frozen Python/C++ vectors
 - CRAK-008: 5 CRAK subsidy, 2,100,000-block halving, 100-block maturity, zero premine + compiled boundary vectors
 - CRAK-009: full `crakbitd` / `crakbit-cli` build, yespower CPU mining RPC, three-node sync, competing-fork reorg, and invalid-block rejection smoke
+- CRAK-010: wallet-enabled build, 1 CRAK send/receive confirmation, clean restart, explicit wallet reload, balance and transaction-history persistence smoke
+- CRAK-011: Linux package builder, installer, safe node launcher, single-thread CPU mining helper, checksums, bundled license material, and package install/start/mine smoke
 
-## CRAK-009 node smoke
+## Build a Linux testnet package
 
-The current CI builds the full daemon and CLI with wallet support disabled, starts three isolated Crakbit testnet nodes, mines through the existing Bitcoin Core `generatetodescriptor` nonce loop (which uses Crakbit's yespower `block.GetHash()`), synchronizes the nodes, creates competing forks, submits a deliberately mutated block, and reconnects the partition.
-
-The locked smoke requires:
-
-- three peers to establish real P2P connections;
-- CPU-mined blocks to propagate to all nodes;
-- a malformed block to be rejected (`bad-txnmrklroot` in the current vector);
-- a shorter branch to reorganize to the longer-work branch;
-- all three nodes to converge on the same final height/tip.
-
-Bitcoin testnet4 minimum-chain-work and assume-valid checkpoints are not inherited; both are zero for the fresh Crakbit testnet. Bitcoin mainnet, Bitcoin testnet3 and signet remain unavailable as user-selectable Crakbit networks.
-
-## Important status
-
-This repository is still a **v0.1 engineering/testnet project**. It is **not mainnet-ready** and does not claim production safety. The remaining major gates are wallet-enabled build/send/receive/restart coverage, independent public testnet nodes, longer-duration CPU mining/reorg operation, release packaging/reproducibility work, and external review.
-
-## Bootstrap pinned upstream sources
+On a Linux machine with the required build dependencies installed:
 
 ```bash
-./scripts/bootstrap.sh
+bash scripts/build-linux.sh
 ```
 
-This creates `.work/bitcoin` and `.work/yespower` at the exact commits recorded in `SOURCE_LOCK.json`.
+This fetches the exact pinned upstreams, materializes the Crakbit source tree, builds the wallet-enabled daemon/CLI, and writes a versioned package under `dist/`.
 
-Materialize the reviewed Crakbit consensus/node tree through CRAK-009:
+The package contains:
+
+```text
+bin/crakbitd
+bin/crakbit-cli
+bin/crakbit-start
+bin/crakbit-mine
+install.sh
+SHA256SUMS
+share/doc/crakbit-core/
+share/licenses/
+```
+
+The archive also gets a separate `.sha256` checksum file.
+
+## Install an extracted package
 
 ```bash
-bash scripts/materialize-locked.sh
+bash install.sh ~/.local
 ```
 
-Verify locked source/network/genesis/monetary configuration and independent ASERT vectors:
+Then ensure `~/.local/bin` is in your `PATH`.
+
+Start an isolated local regtest node:
+
+```bash
+CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakbit-start regtest
+```
+
+Create a wallet and mine one local CPU block:
+
+```bash
+crakbit-cli -regtest -datadir="$HOME/.crakbit-regtest" createwallet miner
+CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakbit-mine miner 1 regtest
+```
+
+Start the Crakbit testnet node:
+
+```bash
+crakbit-start testnet4
+```
+
+`crakbit-start` binds RPC to localhost. A public seed set is intentionally not shipped yet; an explicit peer can be supplied with `CRAKBIT_ADDNODE=host:port` once independent testnet nodes are available.
+
+`crakbit-mine` is intentionally a simple single-RPC-thread miner helper. It is useful for low-end CPU testing and consensus validation; a standalone multi-thread miner with explicit CPU controls remains separate work.
+
+## Verification
 
 ```bash
 python3 scripts/verify-lock.py
 python3 scripts/verify-asert-vectors.py
 ```
 
-CI additionally compiles and executes the yespower, block-header, genesis, ASERT, subsidy, full-node and three-node network smoke paths against the materialized Bitcoin Core tree.
+CI additionally compiles and executes the yespower, block-header, genesis, ASERT, subsidy, full-node, three-node network, wallet restart, and Linux package usability smoke paths.
 
-## Repository layout
+## Network status
 
-```text
-Crakbit-Core/
-├── consensus/params.json
-├── docs/
-│   ├── BUILD.md
-│   └── CONSENSUS.md
-├── patches/
-│   └── README.md
-├── scripts/
-│   ├── bootstrap.sh
-│   ├── materialize-locked.sh
-│   ├── apply-asert.py
-│   ├── apply-monetary.py
-│   ├── apply-node.py
-│   ├── verify-asert-vectors.py
-│   ├── check-asert-binary.py
-│   ├── check-subsidy-binary.py
-│   └── verify-lock.py
-├── src/crakbit/
-│   ├── asert.cpp
-│   ├── asert.h
-│   ├── subsidy.cpp
-│   └── subsidy.h
-├── tests/
-│   ├── asert_vectors.json
-│   ├── genesis_vectors.json
-│   ├── local_multinode_smoke.sh
-│   ├── subsidy_vectors.json
-│   └── yespower_vectors.json
-├── SOURCE_LOCK.json
-└── README.md
-```
+Bitcoin mainnet, Bitcoin testnet3 and signet remain unavailable as user-selectable Crakbit networks. The current usable development networks are Crakbit testnet4 and regtest.
+
+Bitcoin testnet4 minimum-chain-work and assume-valid checkpoints are not inherited; both are zero for the fresh Crakbit testnet. Crakbit testnet currently has no hard-coded Bitcoin DNS seeds.
 
 ## Monetary rounding
 
@@ -110,10 +107,14 @@ Crakbit keeps Bitcoin-style integer right-shift halvings. Starting from 500,000,
 
 The custom testnet and regtest genesis blocks have a **zero CRAK reward**, so they create no premine.
 
-## Safety rule
+## Important status
 
-No mainnet genesis block will be finalized until wallet tests, independent public testnet operation, sustained multi-node mining/reorg testing, reproducible release builds, and security review have passed in addition to the consensus/network gates already covered by CI.
+This repository is still a **v0.1 engineering/testnet project**. It is **not mainnet-ready** and does not claim production safety.
+
+The remaining major gates include independent public testnet nodes, longer-duration CPU mining/reorg operation, reproducible cross-platform release builds, ARM64 validation, dedicated miner work, and external security/code review.
+
+No mainnet genesis block will be finalized until those gates pass review in addition to the consensus/network gates already covered by CI.
 
 ## License
 
-Crakbit project files are MIT licensed. Upstream Bitcoin Core remains under its own MIT notices. yespower source must retain its upstream BSD-style notices when vendored or distributed. CRAK-007 ASERT is adapted from the MIT-licensed Bitcoin Cash/Bitcoin ABC ASERT reference design with Crakbit-specific wide-intermediate handling for its easy CPU-test target.
+Crakbit project files are MIT licensed. Upstream Bitcoin Core remains under its own MIT notices. yespower source retains its upstream BSD-style notices; the Linux package carries the exact vendored yespower source/header material used by the build so those notices remain with binary distributions. CRAK-007 ASERT is adapted from the MIT-licensed Bitcoin Cash/Bitcoin ABC ASERT reference design with Crakbit-specific wide-intermediate handling for its easy CPU-test target.
