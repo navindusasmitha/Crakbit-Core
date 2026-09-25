@@ -19,6 +19,7 @@ LOCK = ROOT / "SOURCE_LOCK.json"
 BTC = WORK / "bitcoin"
 YESPOWER = WORK / "yespower"
 OUT = WORK / "crakbit"
+VECTOR_PROBE = ROOT / "tests" / "yespower_vector.c"
 
 YESPOWER_FILES = (
     "yespower-opt.c",
@@ -71,6 +72,8 @@ def main() -> None:
 
     require_pinned(BTC, btc_lock["commit_sha"], "Bitcoin Core")
     require_pinned(YESPOWER, yes_lock["commit_sha"], "yespower")
+    if not VECTOR_PROBE.is_file():
+        raise SystemExit(f"missing Crakbit vector probe: {VECTOR_PROBE}")
 
     # bootstrap.sh intentionally uses a partial clone. A local clone of a
     # promisor/partial repository is not portable across Git versions, so use
@@ -99,6 +102,7 @@ def main() -> None:
         if not src.is_file():
             raise SystemExit(f"required yespower source is missing: {src}")
         shutil.copy2(src, vendor / name)
+    shutil.copy2(VECTOR_PROBE, vendor / "crakbit-vector.c")
 
     yespower_cmake = "\n".join(
         [
@@ -113,6 +117,10 @@ def main() -> None:
             "target_include_directories(crakbit_yespower PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})",
             "target_link_libraries(crakbit_yespower PRIVATE core_interface)",
             "set_target_properties(crakbit_yespower PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)",
+            "",
+            "add_executable(crakbit_yespower_vector EXCLUDE_FROM_ALL crakbit-vector.c)",
+            "target_link_libraries(crakbit_yespower_vector PRIVATE crakbit_yespower)",
+            "set_target_properties(crakbit_yespower_vector PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)",
             "",
         ]
     )
@@ -139,6 +147,7 @@ def main() -> None:
                 f"bitcoin_core_commit={btc_lock['commit_sha']}",
                 f"yespower_commit={yes_lock['commit_sha']}",
                 "yespower_target=crakbit_yespower",
+                "yespower_vector_input=000102...4f",
                 "consensus_hash_changed=false",
                 "mainnet_enabled=false",
                 "",
