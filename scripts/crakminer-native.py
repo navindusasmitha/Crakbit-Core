@@ -61,6 +61,17 @@ def push_data(data: bytes) -> bytes:
     raise ValueError("push_data too large")
 
 
+def bip34_height_prefix(height: int) -> bytes:
+    """Match Bitcoin Core's `CScript() << nHeight` byte-for-byte."""
+    if height < 0:
+        raise ValueError("negative block height")
+    if height == 0:
+        return b"\x00"  # OP_0
+    if 1 <= height <= 16:
+        return bytes([0x50 + height])  # OP_1 .. OP_16
+    return push_data(scriptnum(height))
+
+
 def merkle_root_internal(leaves: list[bytes]) -> bytes:
     if not leaves:
         raise ValueError("empty merkle tree")
@@ -92,7 +103,7 @@ def build_coinbase(template: dict, payout_script: bytes, extranonce: int) -> tup
     flags_hex = template.get("coinbaseaux", {}).get("flags", "")
     flags = bytes.fromhex(flags_hex) if flags_hex else b""
     extra = struct.pack("<Q", extranonce & 0xFFFFFFFFFFFFFFFF)
-    script_sig = push_data(scriptnum(height)) + flags + push_data(extra)
+    script_sig = bip34_height_prefix(height) + flags + push_data(extra)
     if not 2 <= len(script_sig) <= 100:
         raise ValueError(f"coinbase scriptSig length {len(script_sig)} outside 2..100")
 
