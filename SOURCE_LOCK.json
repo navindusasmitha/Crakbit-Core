@@ -7,10 +7,10 @@
     "wam_coin": {
       "repository": "https://gitlab.com/WAMCoin/wam-coin.git",
       "ref": "v0.1.9",
-      "commit_sha": null,
+      "commit_sha": "9c58108d3b021eaacdcf6bc92eb76cf720f31b6d",
       "commit_sha_required_before_release": true,
       "license": "MIT",
-      "notes": "Resolve and commit the exact tag target SHA after the first successful GitLab checkout."
+      "notes": "Resolved from the public GitLab v0.1.9 tag by GitHub Actions and hard-pinned for reproducibility."
     },
     "bitcoin_core": {
       "repository": "https://github.com/bitcoin/bitcoin.git",
