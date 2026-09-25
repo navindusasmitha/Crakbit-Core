@@ -49,12 +49,12 @@ def calculate_asert(ref_target: int, spacing: int, time_diff: int,
     frac = exponent - shifts * 65536
     assert 0 <= frac < 65536
 
-    factor = 65536 + (
+    factor = 65536 + ((
         195766423245049 * frac
         + 971821376 * frac * frac
         + 5127 * frac * frac * frac
         + (1 << 47)
-    ) >> 48
+    ) >> 48)
 
     value = ref_target * factor
     shifts -= 16
