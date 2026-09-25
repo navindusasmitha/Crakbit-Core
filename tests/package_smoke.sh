@@ -43,14 +43,15 @@ fi
   sha256sum -c SHA256SUMS
 )
 
-"$PKGDIR/bin/crakbitd" --version >/dev/null
-"$PKGDIR/bin/crakbit-cli" --version >/dev/null
 bash "$PKGDIR/install.sh" "$PREFIX" >/dev/null
 
 for bin in crakbitd crakbit-cli crakbit-start crakbit-mine; do
   test -x "$PREFIX/bin/$bin"
 done
 
+# Mainnet is intentionally disabled. Validate packaged binaries by exercising
+# the allowed regtest network end-to-end instead of invoking them without a
+# network selector and accidentally tripping the mainnet launch gate.
 CRAKBIT_DATADIR="$DATADIR" "$PREFIX/bin/crakbit-start" regtest -connect=0 >/dev/null
 "$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" createwallet ciwallet >/dev/null
 CRAKBIT_DATADIR="$DATADIR" "$PREFIX/bin/crakbit-mine" ciwallet 1 regtest 1000000 >/dev/null
