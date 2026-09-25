@@ -33,6 +33,7 @@ Crakbit Core is a Bitcoin-style UTXO Proof-of-Work blockchain project focused on
 - CRAK-013: native external yespower miner using `getblocktemplate` → native nonce scanning → `submitblock`
 - CRAK-014: Stratum V1 subset pool + external CPU workers, unique extranonces, share verification and block submission
 - CRAK-015: persistent SQLite share/block/credit accounting, proportional and PPLNS reward accounting, worker statistics/hashrate estimates, persisted per-worker difficulty and vardiff
+- CRAK-016: canonical-chain reward reconciliation, worker payout-address registration, 100-confirmation maturity gating, deterministic non-broadcast payout batches and reorg invalidation
 
 ## Build a Linux testnet package
 
@@ -52,6 +53,7 @@ bin/crakminer-native
 bin/crakminer-scan
 bin/crakpool
 bin/crakpool-stats
+bin/crakpool-payout
 bin/crakminer-stratum
 install.sh
 SHA256SUMS
@@ -65,7 +67,7 @@ Install an extracted package:
 bash install.sh ~/.local
 ```
 
-Python 3 handles template/RPC/Stratum/accounting orchestration. yespower hashing itself runs in the native `crakminer-scan` binary.
+Python 3 handles template/RPC/Stratum/accounting/reconciliation orchestration. yespower hashing itself runs in the native `crakminer-scan` binary.
 
 ## Node and native CPU mining
 
@@ -94,9 +96,9 @@ crakminer-native \
 
 `--cpu-limit` is an approximate per-worker duty cycle, not a kernel-enforced quota.
 
-## Pool mining — CRAK-014 / CRAK-015
+## Pool mining — CRAK-014 / CRAK-015 / CRAK-016
 
-CRAK-015 makes `crakpool` the persistent accounting/vardiff pool command. The CRAK-014 protocol engine remains packaged internally as `crakpool-base.py`.
+CRAK-015 makes `crakpool` the persistent accounting/vardiff pool command. The CRAK-014 protocol engine remains packaged internally as `crakpool-base.py`. CRAK-016 adds a separate `crakpool-payout` reconciliation/planning tool so ledger review is isolated from the live Stratum process.
 
 Start a localhost PPLNS pool:
 
@@ -191,11 +193,62 @@ Useful controls:
 --vardiff-retarget-seconds 90
 ```
 
+### CRAK-016 payout address + reconciliation
+
+Register a known worker payout address. The selected node validates that address for the requested network:
+
+```bash
+crakpool-payout \
+  --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" \
+  register \
+  --network testnet4 \
+  --worker pc1 \
+  --address <CRAK_ADDRESS>
+```
+
+Reconcile pool-found blocks against the current canonical chain:
+
+```bash
+crakpool-payout \
+  --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" \
+  reconcile \
+  --network testnet4
+```
+
+If a reorg removes a credited block, CRAK-016 marks that block non-canonical, moves its unpaid credits to `orphaned`, and invalidates any unbroadcast payout plan that depended on those credits.
+
+### CRAK-016 mature payout planning
+
+Create an auditable payout batch after canonical source blocks reach the maturity threshold:
+
+```bash
+crakpool-payout \
+  --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" \
+  plan \
+  --network testnet4 \
+  --wallet pool \
+  --maturity 100 \
+  --minimum-sats 100000 \
+  --max-outputs 100
+```
+
+When `--wallet` is supplied, the planner checks the wallet's trusted balance against the selected payout amount plus the configured fee reserve. Selected credits atomically move from `pending` to `planned`, so they cannot enter two active plans.
+
+Inspect or cancel an unbroadcast plan:
+
+```bash
+crakpool-payout --db <DB> status
+crakpool-payout --db <DB> show --batch <BATCH_ID>
+crakpool-payout --db <DB> cancel --batch <BATCH_ID>
+```
+
 ### Important payout boundary
 
-CRAK-015 records **pending accounting credits only**. It does not construct, sign, or broadcast automatic worker payout transactions. Block coinbase still pays the configured pool wallet/address. Automatic payouts require a separate reviewed wallet/payment milestone so accounting errors cannot directly move funds.
+CRAK-016 still does **not** construct, sign, or broadcast worker payout transactions. Block coinbase continues to pay the configured pool wallet/address. A CRAK-016 batch is an accounting/reconciliation plan, not proof of an on-chain payment.
 
-CRAK-015 is still a testnet engineering pool. Worker passwords are not production-grade authentication, TLS/rate limiting/restart reconciliation need further hardening, and broad third-party Stratum compatibility is not guaranteed.
+Transaction construction, fee selection, signing, broadcast, txid persistence, crash recovery, conflict/replacement handling and final `paid` credit transitions belong to a separate reviewed milestone so an accounting or reorg bug cannot directly move funds.
+
+The pool remains testnet engineering infrastructure. Worker passwords are not production-grade authentication, TLS/rate limiting/bounded verification work and broader third-party Stratum compatibility still need hardening.
 
 ## Verification
 
@@ -204,9 +257,10 @@ python3 scripts/verify-lock.py
 python3 scripts/verify-asert-vectors.py
 python3 tests/stratum_protocol_unit.py
 python3 tests/pool_accounting_unit.py
+python3 tests/payout_planner_unit.py
 ```
 
-CI covers consensus vectors, three-node/reorg behavior, wallet persistence, native mining, CRAK-014 two-worker Stratum mining, CRAK-015 accounting/vardiff vectors, SQLite restart persistence, reward-credit conservation, and installed-package pool/mining paths.
+CI covers consensus vectors, three-node/reorg behavior, wallet persistence, native mining, CRAK-014 two-worker Stratum mining, CRAK-015 accounting/vardiff and SQLite restart persistence, CRAK-016 maturity/reorg payout planning, reward-credit conservation, and installed-package pool/mining/planner paths.
 
 ## Network status
 
@@ -224,7 +278,7 @@ The custom testnet and regtest genesis blocks have a **zero CRAK reward**, so th
 
 This repository is still a **v0.1 engineering/testnet project**. It is **not mainnet-ready** and does not claim production safety.
 
-Remaining major gates include independent public testnet nodes, sustained mining/reorg operation, reproducible cross-platform builds, ARM64 runtime validation, payout/reconciliation hardening, public-pool security controls, broader miner interoperability, and external security/code review.
+Remaining major gates include independent public testnet nodes, sustained mining/reorg operation, reproducible cross-platform builds, ARM64 runtime validation, transaction payout execution hardening, public-pool security controls, broader miner interoperability, and external security/code review.
 
 No mainnet genesis block will be finalized until those gates pass review.
 
