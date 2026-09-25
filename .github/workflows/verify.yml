@@ -21,6 +21,7 @@ jobs:
           bash -n scripts/bootstrap.sh
           bash -n scripts/materialize-locked.sh
           bash -n scripts/build-linux.sh
+          bash -n scripts/build-native-miner.sh
           bash -n scripts/package-linux.sh
           bash -n scripts/install-package.sh
           bash -n scripts/crakbit-start
@@ -28,6 +29,7 @@ jobs:
           bash -n scripts/crakminer
           bash -n tests/local_multinode_smoke.sh
           bash -n tests/wallet_restart_smoke.sh
+          bash -n tests/native_miner_smoke.sh
           bash -n tests/package_smoke.sh
           python3 -m py_compile \
             scripts/materialize.py \
@@ -35,9 +37,11 @@ jobs:
             scripts/apply-asert.py \
             scripts/apply-monetary.py \
             scripts/apply-node.py \
+            scripts/crakminer-native.py \
             scripts/verify-asert-vectors.py \
             scripts/check-asert-binary.py \
-            scripts/check-subsidy-binary.py
+            scripts/check-subsidy-binary.py \
+            tests/native_scanner_vector.py
           python3 -m json.tool tests/yespower_vectors.json >/dev/null
           python3 -m json.tool tests/genesis_vectors.json >/dev/null
           python3 -m json.tool tests/asert_vectors.json >/dev/null
@@ -137,6 +141,10 @@ jobs:
             --parallel 2
           test -x .work/crakbit-build/bin/crakbitd
           test -x .work/crakbit-build/bin/crakbit-cli
+      - name: Build and verify CRAK-013 native scanner
+        run: |
+          bash scripts/build-native-miner.sh .work/crakbit-build/bin/crakminer-scan
+          python3 tests/native_scanner_vector.py .work/crakbit-build/bin/crakminer-scan
       - name: Verify deterministic yespower and block-header vectors
         run: |
           RAW_EXPECTED="$(python3 -c 'import json; print(json.load(open("tests/yespower_vectors.json"))["vectors"][0]["raw_hash_hex"])')"
@@ -169,5 +177,7 @@ jobs:
         run: bash tests/local_multinode_smoke.sh .work/crakbit-build
       - name: CRAK-010 wallet send receive and restart smoke
         run: bash tests/wallet_restart_smoke.sh .work/crakbit-build
-      - name: CRAK-011 package and CRAK-012 controlled miner smoke
+      - name: CRAK-013 native getblocktemplate miner smoke
+        run: bash tests/native_miner_smoke.sh .work/crakbit-build
+      - name: CRAK-011/012/013 package mining smoke
         run: bash tests/package_smoke.sh .work/crakbit-build
