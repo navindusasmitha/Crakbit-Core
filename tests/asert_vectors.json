@@ -1,0 +1,102 @@
+{
+  "profile": {
+    "algorithm": "ASERT",
+    "target_spacing_seconds": 60,
+    "half_life_seconds": 7200,
+    "pow_limit_bits": "1f0fffff",
+    "anchor_mode": "genesis_conceptual_parent_minus_one_spacing"
+  },
+  "vectors": [
+    {
+      "name": "ideal_first",
+      "ref_bits": "1e0fffff",
+      "height_diff": 0,
+      "time_diff": 60,
+      "expected_bits": "1e0fffff"
+    },
+    {
+      "name": "slow_one_half_life",
+      "ref_bits": "1e0fffff",
+      "height_diff": 0,
+      "time_diff": 7260,
+      "expected_bits": "1e1ffffe"
+    },
+    {
+      "name": "fast_one_half_life",
+      "ref_bits": "1e0fffff",
+      "height_diff": 0,
+      "time_diff": -7140,
+      "expected_bits": "1e07ffff"
+    },
+    {
+      "name": "slow_half_half_life",
+      "ref_bits": "1e0fffff",
+      "height_diff": 0,
+      "time_diff": 3660,
+      "expected_bits": "1e16a01e"
+    },
+    {
+      "name": "fast_half_half_life",
+      "ref_bits": "1e0fffff",
+      "height_diff": 0,
+      "time_diff": -3540,
+      "expected_bits": "1e0b500f"
+    },
+    {
+      "name": "ideal_height_120",
+      "ref_bits": "1e0fffff",
+      "height_diff": 119,
+      "time_diff": 7200,
+      "expected_bits": "1e0fffff"
+    },
+    {
+      "name": "slow_height_120_one_half_life",
+      "ref_bits": "1e0fffff",
+      "height_diff": 119,
+      "time_diff": 14400,
+      "expected_bits": "1e1ffffe"
+    },
+    {
+      "name": "fast_height_120_one_half_life",
+      "ref_bits": "1e0fffff",
+      "height_diff": 119,
+      "time_diff": 0,
+      "expected_bits": "1e07ffff"
+    },
+    {
+      "name": "pow_limit_clamp",
+      "ref_bits": "1f0fffff",
+      "height_diff": 0,
+      "time_diff": 7260,
+      "expected_bits": "1f0fffff"
+    },
+    {
+      "name": "extreme_positive_clamp",
+      "ref_bits": "1e0fffff",
+      "height_diff": 0,
+      "time_diff": 720060,
+      "expected_bits": "1f0fffff"
+    },
+    {
+      "name": "extreme_negative_floor",
+      "ref_bits": "01010000",
+      "height_diff": 0,
+      "time_diff": -719940,
+      "expected_bits": "01010000"
+    },
+    {
+      "name": "testnet_fast_second_block",
+      "ref_bits": "1f0fffff",
+      "height_diff": 1,
+      "time_diff": 90,
+      "expected_bits": "1f0ff437"
+    },
+    {
+      "name": "testnet_ideal_second_block",
+      "ref_bits": "1f0fffff",
+      "height_diff": 1,
+      "time_diff": 120,
+      "expected_bits": "1f0fffff"
+    }
+  ]
+}
