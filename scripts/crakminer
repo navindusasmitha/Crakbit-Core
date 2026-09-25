@@ -21,7 +21,7 @@ Options:
   --address <address>           Mine directly to this address
   --threads <n>                 Concurrent RPC mining workers (default: 1)
   --cpu-limit <1-100>           Approximate duty cycle per worker (default: 100)
-  --blocks <n>                  Stop after n accepted blocks; 0 = continuous
+  --blocks <n>                  Stop after n active-chain blocks; 0 = continuous
   --maxtries <n>                Nonces tried per RPC attempt (default: 250000)
   --datadir <path>              Crakbit data directory
   --rpcport <port>              Optional node RPC port override
@@ -31,7 +31,8 @@ Exactly one of --wallet or --address is required.
 
 The hashing work runs inside crakbitd through its yespower mining RPC. Multiple
 workers issue independent short mining requests so stale work is refreshed
-between attempts. --cpu-limit is a duty-cycle controller, not a hard OS quota.
+between attempts. A returned block is counted only after the node reports it on
+the active chain. --cpu-limit is a duty-cycle controller, not a hard OS quota.
 EOF
 }
 
@@ -101,14 +102,12 @@ if [[ -n "$RPCPORT" ]]; then
   RPC+=("-rpcport=$RPCPORT")
 fi
 
-# Prove RPC is reachable before launching workers.
 "${RPC[@]}" getblockcount >/dev/null
 
 if [[ -n "$WALLET" ]]; then
   ADDRESS="$("${RPC[@]}" "-rpcwallet=$WALLET" getnewaddress "" bech32)"
 fi
 
-# Validate the destination with the node before spending CPU time.
 VALID="$("${RPC[@]}" validateaddress "$ADDRESS")"
 if ! grep -Eq '"isvalid"[[:space:]]*:[[:space:]]*true' <<<"$VALID"; then
   echo "invalid mining address for $NETWORK: $ADDRESS" >&2
@@ -118,7 +117,7 @@ fi
 STATE_DIR="$(mktemp -d)"
 STATE_FILE="$STATE_DIR/state"
 LOCK_FILE="$STATE_DIR/lock"
-printf '0 0\n' > "$STATE_FILE"  # accepted in_flight
+printf '0 0\n' > "$STATE_FILE"
 STOP_FILE="$STATE_DIR/stop"
 PIDS=()
 PARENT_BASHPID="$BASHPID"
@@ -195,7 +194,7 @@ worker() {
       continue
     fi
 
-    local start_ns end_ns elapsed_ns result rc success hash accepted sleep_s
+    local start_ns end_ns elapsed_ns result rc success hash accepted sleep_s header confirmations
     start_ns="$(date +%s%N)"
     set +e
     result="$("${RPC[@]}" generatetoaddress 1 "$ADDRESS" "$MAXTRIES" 2>&1)"
@@ -205,16 +204,24 @@ worker() {
     elapsed_ns=$((end_ns - start_ns))
     success=0
     hash=""
+    confirmations=""
+
     if (( rc == 0 )); then
       hash="$(grep -Eo '[0-9a-fA-F]{64}' <<<"$result" | head -n 1 || true)"
       if [[ -n "$hash" ]]; then
-        success=1
+        header="$("${RPC[@]}" getblockheader "$hash" 2>/dev/null || true)"
+        confirmations="$(awk -F'[:,]' '/"confirmations"/ { gsub(/[[:space:]]/, "", $2); print $2; exit }' <<<"$header")"
+        if [[ "$confirmations" =~ ^[0-9]+$ ]] && (( confirmations > 0 )); then
+          success=1
+        fi
       fi
     fi
 
     accepted="$(finish_slot "$success")"
     if (( success == 1 )); then
-      printf 'crakminer worker=%s accepted=%s hash=%s\n' "$id" "$accepted" "$hash"
+      printf 'crakminer worker=%s accepted=%s confirmations=%s hash=%s\n' "$id" "$accepted" "$confirmations" "$hash"
+    elif [[ -n "$hash" ]]; then
+      printf 'crakminer worker=%s stale_or_side hash=%s\n' "$id" "$hash" >&2
     elif (( rc != 0 )); then
       printf 'crakminer worker=%s rejected_or_stale=%q\n' "$id" "$result" >&2
     fi
@@ -252,7 +259,7 @@ if (( status != 0 )); then
   exit "$status"
 fi
 if (( BLOCKS > 0 && ACCEPTED != BLOCKS )); then
-  echo "crakminer: expected $BLOCKS accepted block(s), got $ACCEPTED" >&2
+  echo "crakminer: expected $BLOCKS active-chain block(s), got $ACCEPTED" >&2
   exit 1
 fi
 
