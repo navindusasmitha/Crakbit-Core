@@ -26,10 +26,25 @@ Crakbit Core is a Bitcoin-style UTXO Proof-of-Work blockchain project focused on
 - CRAK-006: isolated Crakbit testnet/regtest identity + zero-reward custom genesis blocks
 - CRAK-007: integer-only ASERT testnet difficulty + frozen Python/C++ vectors
 - CRAK-008: 5 CRAK subsidy, 2,100,000-block halving, 100-block maturity, zero premine + compiled boundary vectors
+- CRAK-009: full `crakbitd` / `crakbit-cli` build, yespower CPU mining RPC, three-node sync, competing-fork reorg, and invalid-block rejection smoke
+
+## CRAK-009 node smoke
+
+The current CI builds the full daemon and CLI with wallet support disabled, starts three isolated Crakbit testnet nodes, mines through the existing Bitcoin Core `generatetodescriptor` nonce loop (which uses Crakbit's yespower `block.GetHash()`), synchronizes the nodes, creates competing forks, submits a deliberately mutated block, and reconnects the partition.
+
+The locked smoke requires:
+
+- three peers to establish real P2P connections;
+- CPU-mined blocks to propagate to all nodes;
+- a malformed block to be rejected (`bad-txnmrklroot` in the current vector);
+- a shorter branch to reorganize to the longer-work branch;
+- all three nodes to converge on the same final height/tip.
+
+Bitcoin testnet4 minimum-chain-work and assume-valid checkpoints are not inherited; both are zero for the fresh Crakbit testnet. Bitcoin mainnet, Bitcoin testnet3 and signet remain unavailable as user-selectable Crakbit networks.
 
 ## Important status
 
-This repository is still a **v0.1 engineering/testnet project**. It is **not mainnet-ready** and does not claim production safety. Mainnet, Bitcoin testnet3 compatibility, and signet remain disabled while full node/wallet builds, reorg and invalid-chain tests, CPU miner integration, multi-node mining, and sustained public testnet gates are completed.
+This repository is still a **v0.1 engineering/testnet project**. It is **not mainnet-ready** and does not claim production safety. The remaining major gates are wallet-enabled build/send/receive/restart coverage, independent public testnet nodes, longer-duration CPU mining/reorg operation, release packaging/reproducibility work, and external review.
 
 ## Bootstrap pinned upstream sources
 
@@ -39,7 +54,7 @@ This repository is still a **v0.1 engineering/testnet project**. It is **not mai
 
 This creates `.work/bitcoin` and `.work/yespower` at the exact commits recorded in `SOURCE_LOCK.json`.
 
-Materialize the reviewed Crakbit consensus tree through CRAK-008:
+Materialize the reviewed Crakbit consensus/node tree through CRAK-009:
 
 ```bash
 bash scripts/materialize-locked.sh
@@ -52,7 +67,7 @@ python3 scripts/verify-lock.py
 python3 scripts/verify-asert-vectors.py
 ```
 
-CI additionally compiles and executes the yespower, block-header, genesis, ASERT, and subsidy probes against the materialized Bitcoin Core tree.
+CI additionally compiles and executes the yespower, block-header, genesis, ASERT, subsidy, full-node and three-node network smoke paths against the materialized Bitcoin Core tree.
 
 ## Repository layout
 
@@ -69,6 +84,7 @@ Crakbit-Core/
 │   ├── materialize-locked.sh
 │   ├── apply-asert.py
 │   ├── apply-monetary.py
+│   ├── apply-node.py
 │   ├── verify-asert-vectors.py
 │   ├── check-asert-binary.py
 │   ├── check-subsidy-binary.py
@@ -81,6 +97,7 @@ Crakbit-Core/
 ├── tests/
 │   ├── asert_vectors.json
 │   ├── genesis_vectors.json
+│   ├── local_multinode_smoke.sh
 │   ├── subsidy_vectors.json
 │   └── yespower_vectors.json
 ├── SOURCE_LOCK.json
@@ -95,7 +112,7 @@ The custom testnet and regtest genesis blocks have a **zero CRAK reward**, so th
 
 ## Safety rule
 
-No mainnet genesis block will be finalized until deterministic builds, PoW/difficulty/monetary vectors, reorg and invalid-chain tests, wallet tests, and sustained multi-node public testnet mining have passed review.
+No mainnet genesis block will be finalized until wallet tests, independent public testnet operation, sustained multi-node mining/reorg testing, reproducible release builds, and security review have passed in addition to the consensus/network gates already covered by CI.
 
 ## License
 
