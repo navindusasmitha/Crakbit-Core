@@ -53,7 +53,7 @@ fi
 
 bash "$PKGDIR/install.sh" "$PREFIX" >/dev/null
 
-for bin in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakminer-stratum; do
+for bin in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-pay crakminer-stratum; do
   test -x "$PREFIX/bin/$bin"
 done
 test -f "$PREFIX/bin/crakpool-base.py"
@@ -176,9 +176,9 @@ kill "$POOL_PID" >/dev/null 2>&1 || true
 wait "$POOL_PID" >/dev/null 2>&1 || true
 POOL_PID=""
 
-# CRAK-016 must be usable from the installed package, must validate a real
-# regtest address through the packaged node, and must open/migrate the CRAK-015
-# ledger without enabling transaction broadcast.
+# CRAK-016 must be usable from the installed package, validate a real regtest
+# address through the packaged node, and migrate the CRAK-015 ledger without
+# enabling transaction broadcast.
 WORKER_ADDRESS="$("$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" -rpcwallet=ciwallet getnewaddress '' bech32)"
 "$PREFIX/bin/crakpool-payout" --db "$POOL_DB" register \
   --network regtest \
@@ -197,7 +197,18 @@ assert status["registered_workers"] == 1, status
 assert status["credits"]["pending"]["sats"] == 500_000_000, status
 PY
 
+# CRAK-017 package gate: opening status must create/read its payment schema
+# without preparing, signing, or broadcasting any transaction.
+"$PREFIX/bin/crakpool-pay" --db "$POOL_DB" status >"$TMP/package-payment-status.json"
+python3 - "$TMP/package-payment-status.json" <<'PY'
+import json, sys
+status = json.load(open(sys.argv[1], encoding="utf-8"))
+assert status["registered_workers"] == 1, status
+assert status["credits"]["pending"]["sats"] == 500_000_000, status
+assert status["transactions"] == {}, status
+PY
+
 "$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" stop >/dev/null
 sleep 1
 
-echo "CRAK-015/016 packaged pool smoke: OK height=$HEIGHT pending_sats=500000000 payout_tool=installed"
+echo "CRAK-015/016/017 packaged pool smoke: OK height=$HEIGHT pending_sats=500000000 payout_and_payment_tools=installed"
