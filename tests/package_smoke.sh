@@ -45,7 +45,7 @@ fi
 
 bash "$PKGDIR/install.sh" "$PREFIX" >/dev/null
 
-for bin in crakbitd crakbit-cli crakbit-start crakbit-mine; do
+for bin in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer; do
   test -x "$PREFIX/bin/$bin"
 done
 
@@ -62,7 +62,26 @@ if [[ "$HEIGHT" != "1" ]]; then
   exit 1
 fi
 
+echo "CRAK-011 package smoke: OK archive=$(basename "$ARCHIVE") height=$HEIGHT"
+
+# CRAK-012: prove the packaged controller can run multiple workers, apply a
+# duty-cycle limit, recover from any sibling/stale work, and stop only after two
+# blocks are confirmed on the active chain.
+CRAKBIT_DATADIR="$DATADIR" "$PREFIX/bin/crakminer" \
+  --network regtest \
+  --wallet ciwallet \
+  --threads 2 \
+  --cpu-limit 50 \
+  --blocks 2 \
+  --maxtries 10000 >/dev/null
+
+HEIGHT="$("$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" getblockcount)"
+if [[ "$HEIGHT" != "3" ]]; then
+  echo "CRAK-012: controlled miner expected active height 3, got $HEIGHT" >&2
+  exit 1
+fi
+
 "$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" stop >/dev/null
 sleep 1
 
-echo "CRAK-011 package smoke: OK archive=$(basename "$ARCHIVE") height=$HEIGHT"
+echo "CRAK-012 controlled CPU miner smoke: OK height=$HEIGHT"
