@@ -16,8 +16,16 @@ jobs:
         run: python3 scripts/verify-lock.py
       - name: Verify address-prefix reservations
         run: python3 scripts/verify-address-prefixes.py
-      - name: Syntax-check bootstrap script
-        run: bash -n scripts/bootstrap.sh
+      - name: Verify exact monetary schedule
+        run: python3 scripts/verify_supply.py --schedule
+      - name: Verify Bitcoin-compatible serialization
+        run: python3 genesis/test_serialization.py
+      - name: Verify patch manifest syntax
+        run: python3 scripts/patch_upstream.py --list
+      - name: Syntax-check shell entrypoints
+        run: |
+          bash -n scripts/bootstrap.sh
+          bash -n install.sh
 
   upstream-smoke:
     runs-on: ubuntu-latest
@@ -25,5 +33,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Fetch and verify WAM + yespower upstreams
         run: ./scripts/bootstrap.sh
+      - name: Validate WAM-derived source layout
+        run: python3 scripts/patch_upstream.py --check-tree
+      - name: Stage Crakbit-owned overlay
+        run: python3 scripts/patch_upstream.py --stage-overlay
       - name: Show resolved WAM source SHA
         run: cat .work/WAM_RESOLVED_SHA
