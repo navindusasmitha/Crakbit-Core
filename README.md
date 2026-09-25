@@ -28,7 +28,8 @@ Crakbit Core is a Bitcoin-style UTXO Proof-of-Work blockchain project focused on
 - CRAK-008: 5 CRAK subsidy, 2,100,000-block halving, 100-block maturity, zero premine + compiled boundary vectors
 - CRAK-009: full `crakbitd` / `crakbit-cli` build, yespower CPU mining RPC, three-node sync, competing-fork reorg, and invalid-block rejection smoke
 - CRAK-010: wallet-enabled build, 1 CRAK send/receive confirmation, clean restart, explicit wallet reload, balance and transaction-history persistence smoke
-- CRAK-011: Linux package builder, installer, safe node launcher, single-thread CPU mining helper, checksums, bundled license material, and package install/start/mine smoke
+- CRAK-011: Linux package builder, installer, safe node launcher, single-request CPU mining helper, checksums, bundled license material, and package install/start/mine smoke
+- CRAK-012: packaged `crakminer` RPC mining controller with configurable workers, finite/continuous mining, per-worker duty-cycle CPU limiting, stale/side-block detection, and active-chain quota tracking
 
 ## Build a Linux testnet package
 
@@ -47,6 +48,7 @@ bin/crakbitd
 bin/crakbit-cli
 bin/crakbit-start
 bin/crakbit-mine
+bin/crakminer
 install.sh
 SHA256SUMS
 share/doc/crakbit-core/
@@ -84,7 +86,25 @@ crakbit-start testnet4
 
 `crakbit-start` binds RPC to localhost. A public seed set is intentionally not shipped yet; an explicit peer can be supplied with `CRAKBIT_ADDNODE=host:port` once independent testnet nodes are available.
 
-`crakbit-mine` is intentionally a simple single-RPC-thread miner helper. It is useful for low-end CPU testing and consensus validation; a standalone multi-thread miner with explicit CPU controls remains separate work.
+## Controlled CPU mining
+
+`crakminer` is the CRAK-012 miner controller. Hashing still happens inside `crakbitd` through the same yespower mining RPC used by consensus tests; the controller adds short-work refresh, multiple workers, active-chain verification, and an approximate duty-cycle limit.
+
+Example: one low-end CPU worker at roughly 30% duty cycle:
+
+```bash
+crakminer --network testnet4 --wallet miner --threads 1 --cpu-limit 30
+```
+
+Example: four workers and stop after two active-chain blocks:
+
+```bash
+crakminer --network testnet4 --wallet miner --threads 4 --cpu-limit 75 --blocks 2
+```
+
+`--cpu-limit` is applied per worker and is a duty-cycle controller rather than an OS-enforced CPU quota. Multiple workers can occasionally solve sibling blocks from the same tip; those stale/side blocks are detected and are not counted toward `--blocks`.
+
+A future native miner can move template handling and nonce partitioning out of the node and add Stratum/pool support without changing Crakbit consensus.
 
 ## Verification
 
@@ -93,7 +113,7 @@ python3 scripts/verify-lock.py
 python3 scripts/verify-asert-vectors.py
 ```
 
-CI additionally compiles and executes the yespower, block-header, genesis, ASERT, subsidy, full-node, three-node network, wallet restart, and Linux package usability smoke paths.
+CI additionally compiles and executes the yespower, block-header, genesis, ASERT, subsidy, full-node, three-node network, wallet restart, Linux package usability, and controlled multi-worker miner smoke paths.
 
 ## Network status
 
@@ -111,7 +131,7 @@ The custom testnet and regtest genesis blocks have a **zero CRAK reward**, so th
 
 This repository is still a **v0.1 engineering/testnet project**. It is **not mainnet-ready** and does not claim production safety.
 
-The remaining major gates include independent public testnet nodes, longer-duration CPU mining/reorg operation, reproducible cross-platform release builds, ARM64 validation, dedicated miner work, and external security/code review.
+The remaining major gates include independent public testnet nodes, longer-duration CPU mining/reorg operation, reproducible cross-platform release builds, ARM64 runtime validation, a native template/nonce-partitioned miner with pool/Stratum support, and external security/code review.
 
 No mainnet genesis block will be finalized until those gates pass review in addition to the consensus/network gates already covered by CI.
 
