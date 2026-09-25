@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREFIX="${1:-$HOME/.local}"
 
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer; do
   if [[ ! -f "$ROOT/bin/$file" ]]; then
     echo "missing package file: bin/$file" >&2
     exit 1
@@ -16,6 +16,7 @@ install -m 0755 "$ROOT/bin/crakbitd" "$PREFIX/bin/crakbitd"
 install -m 0755 "$ROOT/bin/crakbit-cli" "$PREFIX/bin/crakbit-cli"
 install -m 0755 "$ROOT/bin/crakbit-start" "$PREFIX/bin/crakbit-start"
 install -m 0755 "$ROOT/bin/crakbit-mine" "$PREFIX/bin/crakbit-mine"
+install -m 0755 "$ROOT/bin/crakminer" "$PREFIX/bin/crakminer"
 
 if [[ -d "$ROOT/share" ]]; then
   install -d "$PREFIX/share/crakbit-core"
@@ -31,4 +32,7 @@ Start a local regtest node:
 
 Start the Crakbit testnet node:
   $PREFIX/bin/crakbit-start testnet4
+
+Controlled CPU mining example:
+  $PREFIX/bin/crakminer --network testnet4 --wallet miner --threads 1 --cpu-limit 50
 EOF
