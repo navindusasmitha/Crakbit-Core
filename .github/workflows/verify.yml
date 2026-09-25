@@ -51,5 +51,7 @@ jobs:
         run: python3 scripts/audit_monetary.py
       - name: Inventory legacy PoW hooks for CRAK-004 and CRAK-005
         run: python3 scripts/inventory_pow.py
+      - name: Snapshot consensus PoW anchors
+        run: python3 scripts/snapshot_pow_context.py
       - name: Show resolved base-source SHA
         run: cat .work/BASE_RESOLVED_SHA
