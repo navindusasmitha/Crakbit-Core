@@ -14,12 +14,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify source and consensus lock
         run: python3 scripts/verify-lock.py
-      - name: Syntax-check migration tools
+      - name: Syntax-check migration tools and vectors
         run: |
           bash -n scripts/bootstrap.sh
           python3 -m py_compile scripts/materialize.py
+          python3 -m json.tool tests/yespower_vectors.json >/dev/null
 
-  yespower-build-smoke:
+  yespower-consensus-smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,15 +30,21 @@ jobs:
           sudo apt-get install -y build-essential cmake pkg-config libevent-dev libboost-dev
       - name: Fetch exact pinned upstreams
         run: bash scripts/bootstrap.sh
-      - name: Materialize Bitcoin Core v31.1 plus yespower
+      - name: Materialize Bitcoin Core v31.1 plus Crakbit consensus patches
         run: python3 scripts/materialize.py
-      - name: Verify materialized identity
+      - name: Verify materialized identity and consensus patch
         run: |
           grep -Fx 'bitcoin_core_commit=9be056a8a72b624dae9623b2f7bded92c2a21c91' .work/materialized-source.txt
           grep -Fx 'yespower_commit=1977c283bc43eed5a2c2579e02d6d996e49866b0' .work/materialized-source.txt
-          grep -Fx 'consensus_hash_changed=false' .work/materialized-source.txt
+          grep -Fx 'block_header_serialized_bytes=80' .work/materialized-source.txt
+          grep -Fx 'block_identity_hash=yespower' .work/materialized-source.txt
+          grep -Fx 'consensus_hash_changed=true' .work/materialized-source.txt
           grep -F 'add_library(crakbit_yespower STATIC EXCLUDE_FROM_ALL' .work/crakbit/src/crypto/yespower/CMakeLists.txt
-          grep -F 'crakbit_yespower' .work/crakbit/src/CMakeLists.txt
+          grep -F 'yespower_tls(' .work/crakbit/src/primitives/block.cpp
+          if grep -Fq 'HashWriter{} << *this' .work/crakbit/src/primitives/block.cpp; then
+            echo 'unexpected SHA256d block-hash fallback remains' >&2
+            exit 1
+          fi
       - name: Configure minimal Bitcoin Core tree
         run: |
           cmake -S .work/crakbit -B .work/crakbit-build \
@@ -54,9 +61,18 @@ jobs:
             -DBUILD_TX=OFF \
             -DBUILD_UTIL=OFF \
             -DBUILD_BITCOIN_BIN=OFF
-      - name: Build Crakbit yespower target and vector probe
-        run: cmake --build .work/crakbit-build --target crakbit_yespower crakbit_yespower_vector --parallel 2
-      - name: Emit deterministic Crakbit yespower vector
+      - name: Build yespower and CRAK-005 consensus probes
         run: |
-          printf 'CRAKBIT_YESPOWER_VECTOR='
-          .work/crakbit-build/bin/crakbit_yespower_vector
+          cmake --build .work/crakbit-build \
+            --target crakbit_yespower crakbit_yespower_vector bitcoin_consensus crakbit_header_hash_vector \
+            --parallel 2
+      - name: Verify deterministic yespower and block-header vectors
+        run: |
+          RAW_EXPECTED="$(python3 -c 'import json; print(json.load(open("tests/yespower_vectors.json"))["vectors"][0]["raw_hash_hex"])')"
+          DISPLAY_EXPECTED="$(python3 -c 'import json; print(json.load(open("tests/yespower_vectors.json"))["vectors"][0]["uint256_display_hex"])')"
+          RAW_ACTUAL="$(.work/crakbit-build/bin/crakbit_yespower_vector)"
+          DISPLAY_ACTUAL="$(.work/crakbit-build/bin/crakbit_header_hash_vector)"
+          printf 'raw yespower: %s\n' "$RAW_ACTUAL"
+          printf 'uint256 hash: %s\n' "$DISPLAY_ACTUAL"
+          test "$RAW_ACTUAL" = "$RAW_EXPECTED"
+          test "$DISPLAY_ACTUAL" = "$DISPLAY_EXPECTED"
