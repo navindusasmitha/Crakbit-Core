@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREFIX="${1:-$HOME/.local}"
 
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan; do
   if [[ ! -f "$ROOT/bin/$file" ]]; then
     echo "missing package file: bin/$file" >&2
     exit 1
@@ -12,11 +12,9 @@ for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer; do
 done
 
 install -d "$PREFIX/bin"
-install -m 0755 "$ROOT/bin/crakbitd" "$PREFIX/bin/crakbitd"
-install -m 0755 "$ROOT/bin/crakbit-cli" "$PREFIX/bin/crakbit-cli"
-install -m 0755 "$ROOT/bin/crakbit-start" "$PREFIX/bin/crakbit-start"
-install -m 0755 "$ROOT/bin/crakbit-mine" "$PREFIX/bin/crakbit-mine"
-install -m 0755 "$ROOT/bin/crakminer" "$PREFIX/bin/crakminer"
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan; do
+  install -m 0755 "$ROOT/bin/$file" "$PREFIX/bin/$file"
+done
 
 if [[ -d "$ROOT/share" ]]; then
   install -d "$PREFIX/share/crakbit-core"
@@ -33,6 +31,9 @@ Start a local regtest node:
 Start the Crakbit testnet node:
   $PREFIX/bin/crakbit-start testnet4
 
-Controlled CPU mining example:
+CRAK-012 RPC-controller mining example:
   $PREFIX/bin/crakminer --network testnet4 --wallet miner --threads 1 --cpu-limit 50
+
+CRAK-013 native yespower mining example (requires Python 3 for template control):
+  $PREFIX/bin/crakminer-native --network testnet4 --wallet miner --threads 1 --cpu-limit 50
 EOF
