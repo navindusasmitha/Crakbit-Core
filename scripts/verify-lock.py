@@ -8,9 +8,11 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 lock = json.loads((ROOT / 'SOURCE_LOCK.json').read_text(encoding='utf-8'))
 params = json.loads((ROOT / 'consensus' / 'params.json').read_text(encoding='utf-8'))
 vectors = json.loads((ROOT / 'tests' / 'yespower_vectors.json').read_text(encoding='utf-8'))
+genesis_vectors = json.loads((ROOT / 'tests' / 'genesis_vectors.json').read_text(encoding='utf-8'))
 
 sha40 = re.compile(r'^[0-9a-f]{40}$')
 hex8 = re.compile(r'^[0-9a-f]{8}$')
+hex64 = re.compile(r'^[0-9a-f]{64}$')
 errors = []
 
 for name, entry in lock['upstreams'].items():
@@ -80,15 +82,23 @@ for network_name in required_networks:
     if network_name not in networks:
         errors.append(f'missing {network_name} network lock')
 
-if all(name in networks for name in required_networks):
-    testnet = networks['testnet4']
-    regtest = networks['regtest']
+frozen_genesis = genesis_vectors.get('networks', {})
+if genesis_vectors.get('pow_profile') != {
+    'algorithm': pow_lock['algorithm'],
+    'version': pow_lock['version'],
+    'N': pow_lock['N'],
+    'r': pow_lock['r'],
+    'personalization': pow_lock['personalization'],
+}:
+    errors.append('genesis vector PoW profile does not match SOURCE_LOCK')
 
+if all(name in networks for name in required_networks):
     magics = []
     p2p_ports = []
     rpc_ports = []
     hrps = []
-    for name, network in (('testnet4', testnet), ('regtest', regtest)):
+    for name in required_networks:
+        network = networks[name]
         magic = network.get('message_start_hex', '')
         if not hex8.fullmatch(magic):
             errors.append(f'{name}: message_start_hex must be exactly 4 lowercase hex bytes')
@@ -127,6 +137,22 @@ if all(name in networks for name in required_networks):
             errors.append(f'{name}: genesis version must remain 1 for v0.1')
         if not isinstance(genesis.get('timestamp'), str) or not genesis['timestamp'].startswith('Crakbit Core'):
             errors.append(f'{name}: genesis timestamp must be Crakbit-specific')
+        if not isinstance(genesis.get('nonce'), int):
+            errors.append(f'{name}: genesis nonce must be frozen')
+        if not hex64.fullmatch(genesis.get('hash', '')):
+            errors.append(f'{name}: genesis hash must be 32-byte lowercase hex')
+        if not hex64.fullmatch(genesis.get('merkle_root', '')):
+            errors.append(f'{name}: genesis merkle root must be 32-byte lowercase hex')
+
+        frozen = frozen_genesis.get(name)
+        if frozen is None:
+            errors.append(f'{name}: missing frozen genesis vector')
+        else:
+            for key in ('timestamp', 'time', 'bits', 'nonce', 'version', 'reward_coins', 'hash', 'merkle_root'):
+                if genesis.get(key) != frozen.get(key):
+                    errors.append(
+                        f'{name}: genesis {key} mismatch between consensus params and frozen vector'
+                    )
 
     if len(set(magics)) != len(magics):
         errors.append('testnet4/regtest message-start bytes must be unique')
@@ -147,4 +173,4 @@ if errors:
         print(f'ERROR: {error}', file=sys.stderr)
     raise SystemExit(1)
 
-print('Crakbit source/consensus/vector/network lock: OK')
+print('Crakbit source/consensus/vector/network/genesis lock: OK')
