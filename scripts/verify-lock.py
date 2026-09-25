@@ -16,6 +16,15 @@ base_sha = base.get('commit_sha', '')
 if not sha40.fullmatch(base_sha):
     errors.append('base_source.commit_sha must be a 40-char lowercase git SHA')
 
+bitcoin = lock['upstreams']['bitcoin_core']
+bitcoin_sha = bitcoin.get('commit_sha', '')
+if not sha40.fullmatch(bitcoin_sha):
+    errors.append('bitcoin_core.commit_sha must be a 40-char lowercase git SHA')
+if bitcoin.get('tag') != 'v28.1':
+    errors.append(f"bitcoin_core.tag must remain v28.1 during this migration, got {bitcoin.get('tag')!r}")
+if bitcoin_sha != '32efe850438ef22e2de39e562af557872a402c31':
+    errors.append('bitcoin_core.commit_sha does not match the verified v28.1 release commit')
+
 yes_sha = lock['upstreams']['yespower'].get('commit_sha', '')
 if not sha40.fullmatch(yes_sha):
     errors.append('yespower commit_sha is not a 40-char lowercase git SHA')

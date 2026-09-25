@@ -27,6 +27,7 @@ jobs:
       - name: Syntax-check shell entrypoints
         run: |
           bash -n scripts/bootstrap.sh
+          bash -n scripts/materialize_core.sh
           bash -n install.sh
 
   source-smoke:
@@ -34,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Fetch pinned base source and yespower
-        run: ./scripts/bootstrap.sh
+        run: bash ./scripts/bootstrap.sh
       - name: Inspect pinned Bitcoin upstream pin
         run: sed -n '1,220p' .work/crakbit-source/scripts/fetch-upstream.sh
       - name: Inspect pinned base materializer interface
@@ -55,7 +56,13 @@ jobs:
         run: python3 scripts/audit_monetary.py
       - name: Inventory legacy PoW hooks for CRAK-004 and CRAK-005
         run: python3 scripts/inventory_pow.py
-      - name: Snapshot consensus PoW anchors
+      - name: Snapshot consensus PoW anchors in source layer
         run: python3 scripts/snapshot_pow_context.py
-      - name: Show resolved base-source SHA
-        run: cat .work/BASE_RESOLVED_SHA
+      - name: Materialize pinned Bitcoin Core v28.1 tree
+        run: bash ./scripts/materialize_core.sh
+      - name: Snapshot final Core PoW anchors
+        run: python3 scripts/snapshot_materialized_pow.py --core .work/base-upstream/build/wam-core
+      - name: Show resolved source pins
+        run: |
+          cat .work/BASE_RESOLVED_SHA
+          cat .work/BITCOIN_CORE_RESOLVED_SHA

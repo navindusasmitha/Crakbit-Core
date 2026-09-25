@@ -14,6 +14,7 @@
     "bitcoin_core": {
       "repository": "https://github.com/bitcoin/bitcoin.git",
       "tag": "v28.1",
+      "commit_sha": "32efe850438ef22e2de39e562af557872a402c31",
       "inherited_via": "base_source"
     },
     "yespower": {
