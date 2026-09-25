@@ -63,9 +63,19 @@ Run local checks only:
 ./install.sh --check
 ```
 
+## Migration status
+
+Implemented and CI-audited in the disposable pinned source tree:
+
+- **CRAK-001:** zero premine / founder allocation economics
+- **CRAK-002:** zero treasury / dev-fee economics
+- **CRAK-003:** 5 CRAK initial subsidy, 2,100,000-block halvings, 21M ceiling, 100-block maturity
+
+The next consensus stage is **CRAK-004/005**: replace the inherited PoW path with pinned yespower while retaining SHA256d as the block identifier.
+
 ## Status
 
-This repository is **not mainnet-ready**. Full daemon builds stay gated until the Crakbit consensus transformations, yespower validation path, DGW3 tuning, network identity replacement, custom genesis and multi-node tests are implemented and verified.
+This repository is **not mainnet-ready**. Full daemon builds stay gated until yespower validation, DGW3 60-second tuning, network identity replacement, custom genesis, affected upstream tests and multi-node testnet operation are implemented and verified.
 
 See `docs/LAUNCH_CHECKLIST.md`.
 
