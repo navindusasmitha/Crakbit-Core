@@ -8,7 +8,10 @@
     "halving_interval_blocks": 2100000,
     "coinbase_maturity_blocks": 100,
     "premine_coins": 0,
-    "intended_max_supply_coins": 21000000
+    "intended_max_supply_coins": 21000000,
+    "integer_rounded_max_subsidy_sats": 2099999972700000,
+    "integer_rounded_max_subsidy_coins": "20999999.72700000",
+    "status": "implemented_testnet_v0.1"
   },
   "proof_of_work": {
     "algorithm": "yespower",
