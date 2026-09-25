@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -15,5 +19,6 @@ jobs:
       - name: Syntax check CRAK-015 pool tools
         run: |
           python3 -m py_compile scripts/crakpool.py scripts/crakpool-accounting.py scripts/crakpool-stats.py
+          bash -n tests/accounting_pool_smoke.sh
       - name: Run CRAK-015 accounting and vardiff vectors
         run: python3 tests/pool_accounting_unit.py
