@@ -24,7 +24,7 @@ CRAKBIT_BUILD_JOBS=4 bash scripts/build-linux.sh
 CRAKBIT_BUILD_DIR=/tmp/crakbit-build CRAKBIT_OUT_DIR=/tmp/crakbit-dist bash scripts/build-linux.sh
 ```
 
-The script fetches pinned upstreams, materializes Crakbit, configures a wallet-enabled daemon/CLI build, compiles `crakbitd` and `crakbit-cli`, then calls `scripts/package-linux.sh`.
+The script fetches pinned upstreams, materializes Crakbit, configures a wallet-enabled daemon/CLI build, compiles `crakbitd` and `crakbit-cli`, builds the CRAK-013 native yespower scanner, then calls `scripts/package-linux.sh`.
 
 Current package naming is:
 
@@ -77,6 +77,12 @@ cmake -S .work/crakbit -B .work/crakbit-build \
 cmake --build .work/crakbit-build --target bitcoind bitcoin-cli --parallel 2
 ```
 
+Build only the native yespower scanner after bootstrap:
+
+```bash
+bash scripts/build-native-miner.sh .work/crakbit-build/bin/crakminer-scan
+```
+
 Package an existing build:
 
 ```bash
@@ -85,7 +91,19 @@ bash scripts/package-linux.sh .work/crakbit-build dist
 
 ## Package contents and install
 
-The Linux package includes the daemon, CLI, node launcher, single-request mining helper, CRAK-012 `crakminer` controller, install script, internal file checksums, project docs, Crakbit license, Bitcoin Core COPYING file when present, and the exact vendored yespower source/header material carrying the upstream redistribution notices.
+The Linux package includes:
+
+```text
+crakbitd
+crakbit-cli
+crakbit-start
+crakbit-mine
+crakminer
+crakminer-native
+crakminer-scan
+```
+
+It also includes the installer, internal checksums, project docs, Crakbit license, Bitcoin Core COPYING file when present, and the exact vendored yespower source/header material carrying the upstream redistribution notices.
 
 After extracting:
 
@@ -103,11 +121,10 @@ Start regtest:
 CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakbit-start regtest
 ```
 
-Create a wallet and mine one block:
+Create a wallet:
 
 ```bash
 crakbit-cli -regtest -datadir="$HOME/.crakbit-regtest" createwallet miner
-CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakbit-mine miner 1 regtest
 ```
 
 Start Crakbit testnet4:
@@ -118,7 +135,7 @@ crakbit-start testnet4
 
 The launcher explicitly keeps RPC on `127.0.0.1`. Set `CRAKBIT_ADDNODE=host:port` to provide one explicit testnet peer; no Bitcoin seed is inherited.
 
-For controlled CPU mining:
+### CRAK-012 RPC controller
 
 ```bash
 CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakminer \
@@ -129,9 +146,22 @@ CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakminer \
   --blocks 2
 ```
 
-`crakminer` uses concurrent short mining RPC calls. `--cpu-limit` is an approximate duty cycle per worker, not a kernel-enforced quota. It verifies each returned block is on the active chain before counting it, so sibling/stale work does not satisfy a finite `--blocks` target.
+`crakminer` uses concurrent short mining RPC calls. Its finite mode is controlled by start/target active-chain height plus in-flight reservations, so two competing sibling solutions cannot satisfy the requested height increase early.
 
-The next miner architecture step is a native template/nonce-partitioned yespower miner with direct block submission and later Stratum support. That can reduce duplicate work between workers while leaving consensus unchanged.
+### CRAK-013 native yespower miner
+
+```bash
+CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakminer-native \
+  --network regtest \
+  --wallet miner \
+  --threads 2 \
+  --cpu-limit 50 \
+  --blocks 2
+```
+
+CRAK-013 no longer asks `crakbitd` to perform the hashing loop. `crakminer-native` obtains `getblocktemplate`, constructs the BIP34/SegWit coinbase and txid merkle root, then launches `crakminer-scan`. The native scanner partitions nonce work across C++ worker threads and runs yespower directly. Solved blocks are serialized and returned to the node through `submitblock` for full consensus validation.
+
+`--cpu-limit` is an approximate duty cycle per native worker, not a kernel-enforced quota. `--batch-hashes` controls how often the controller refreshes the template/extranonce. The controller requires Python 3; the hashing hot path does not run in Python.
 
 ## Verification
 
@@ -150,6 +180,11 @@ CI covers:
 - CRAK-009 three-node sync/mining/reorg/invalid-block rejection;
 - CRAK-010 wallet send/receive/restart persistence;
 - CRAK-011 package checksum, extraction, install, packaged regtest startup and single-request mining helper;
-- CRAK-012 packaged multi-worker CPU controller, duty-cycle option and active-chain block quota.
+- CRAK-012 multi-worker RPC controller and sibling-race-safe finite chain-height target;
+- CRAK-013 standalone native scanner genesis vector;
+- CRAK-013 real `getblocktemplate` → native yespower → `submitblock` regtest mining;
+- installed-package CRAK-011/012/013 mining paths.
 
-Passing these gates still does not make the project mainnet-ready. Independent public testnet operation, sustained mining/reorg testing, reproducible cross-platform builds, ARM64 runtime validation, a native miner/pool path and external review remain required.
+A separate fast native-miner workflow verifies the scanner build/vector without waiting for the full Bitcoin node compile.
+
+Passing these gates still does not make the project mainnet-ready. Independent public testnet operation, sustained mining/reorg testing, reproducible cross-platform builds, ARM64 runtime validation, Stratum/pool integration, and external review remain required.
