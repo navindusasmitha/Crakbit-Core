@@ -14,13 +14,21 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify source, consensus, vectors, network and genesis lock
         run: python3 scripts/verify-lock.py
+      - name: Verify independent CRAK-007 ASERT vectors
+        run: python3 scripts/verify-asert-vectors.py
       - name: Syntax-check migration tools and vectors
         run: |
           bash -n scripts/bootstrap.sh
           bash -n scripts/materialize-locked.sh
-          python3 -m py_compile scripts/materialize.py scripts/finalize-genesis.py
+          python3 -m py_compile \
+            scripts/materialize.py \
+            scripts/finalize-genesis.py \
+            scripts/apply-asert.py \
+            scripts/verify-asert-vectors.py \
+            scripts/check-asert-binary.py
           python3 -m json.tool tests/yespower_vectors.json >/dev/null
           python3 -m json.tool tests/genesis_vectors.json >/dev/null
+          python3 -m json.tool tests/asert_vectors.json >/dev/null
           python3 -m json.tool consensus/params.json >/dev/null
 
   yespower-network-smoke:
@@ -35,7 +43,7 @@ jobs:
         run: bash scripts/bootstrap.sh
       - name: Materialize locked Crakbit source tree
         run: bash scripts/materialize-locked.sh
-      - name: Verify materialized identity and network separation
+      - name: Verify materialized identity, network separation and ASERT
         run: |
           grep -Fx 'bitcoin_core_commit=9be056a8a72b624dae9623b2f7bded92c2a21c91' .work/materialized-source.txt
           grep -Fx 'yespower_commit=1977c283bc43eed5a2c2579e02d6d996e49866b0' .work/materialized-source.txt
@@ -49,9 +57,19 @@ jobs:
           grep -Fx 'genesis_vectors_locked=true' .work/materialized-source.txt
           grep -Fx 'testnet4_genesis=000913228cf3264838e841dfa1cb7a8d45c0b431004fbd72952cea3eed107406' .work/materialized-source.txt
           grep -Fx 'regtest_genesis=25c66306da130d34aeafdc40bdb18fe48cd67bd973a01287ff9cb49ab247f2f0' .work/materialized-source.txt
+          grep -Fx 'difficulty_algorithm=ASERT' .work/materialized-source.txt
+          grep -Fx 'difficulty_target_spacing_seconds=60' .work/materialized-source.txt
+          grep -Fx 'difficulty_half_life_seconds=7200' .work/materialized-source.txt
+          grep -Fx 'difficulty_anchor=genesis-conceptual-parent-minus-one-spacing' .work/materialized-source.txt
+          grep -Fx 'testnet_min_difficulty=false' .work/materialized-source.txt
+          grep -Fx 'regtest_no_retarget=true' .work/materialized-source.txt
           grep -F 'yespower_tls(' .work/crakbit/src/primitives/block.cpp
           grep -F 'bech32_hrp = "tcrak"' .work/crakbit/src/kernel/chainparams.cpp
           grep -F 'bech32_hrp = "rcrak"' .work/crakbit/src/kernel/chainparams.cpp
+          grep -F 'consensus.fPowUseASERT = true;' .work/crakbit/src/kernel/chainparams.cpp
+          grep -F 'consensus.nASERTHalfLife = 7200;' .work/crakbit/src/kernel/chainparams.cpp
+          grep -F 'crakbit::GetNextASERTWorkRequired' .work/crakbit/src/pow.cpp
+          grep -F 'template class base_uint<512>;' .work/crakbit/src/arith_uint256.cpp
           grep -F 'assert(consensus.hashGenesisBlock == uint256{' .work/crakbit/src/kernel/chainparams.cpp
           if grep -Fq 'HashWriter{} << *this' .work/crakbit/src/primitives/block.cpp; then
             echo 'unexpected SHA256d block-hash fallback remains' >&2
@@ -77,10 +95,10 @@ jobs:
             -DBUILD_TX=OFF \
             -DBUILD_UTIL=OFF \
             -DBUILD_BITCOIN_BIN=OFF
-      - name: Build yespower, consensus and CRAK-006 probes
+      - name: Build yespower, consensus and CRAK-007 probes
         run: |
           cmake --build .work/crakbit-build \
-            --target crakbit_yespower crakbit_yespower_vector bitcoin_consensus crakbit_header_hash_vector crakbit_genesis_probe \
+            --target crakbit_yespower crakbit_yespower_vector bitcoin_consensus crakbit_header_hash_vector crakbit_genesis_probe crakbit_asert_vector \
             --parallel 2
       - name: Verify deterministic yespower and block-header vectors
         run: |
@@ -106,3 +124,5 @@ jobs:
           REG_BITS="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["regtest"]["bits"])')"
           grep -Fx "testnet4 nonce=$TEST_NONCE hash=$TEST_HASH merkle=$TEST_MERKLE bits=$TEST_BITS" <<<"$OUTPUT"
           grep -Fx "regtest nonce=$REG_NONCE hash=$REG_HASH merkle=$REG_MERKLE bits=$REG_BITS" <<<"$OUTPUT"
+      - name: Verify CRAK-007 ASERT C++ vectors and chain route
+        run: python3 scripts/check-asert-binary.py .work/crakbit-build/bin/crakbit_asert_vector
