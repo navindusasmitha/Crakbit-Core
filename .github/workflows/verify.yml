@@ -69,7 +69,7 @@ jobs:
           grep -F 'consensus.fPowUseASERT = true;' .work/crakbit/src/kernel/chainparams.cpp
           grep -F 'consensus.nASERTHalfLife = 7200;' .work/crakbit/src/kernel/chainparams.cpp
           grep -F 'crakbit::GetNextASERTWorkRequired' .work/crakbit/src/pow.cpp
-          grep -F 'template class base_uint<512>;' .work/crakbit/src/arith_uint256.cpp
+          grep -F 'template base_uint<512>& base_uint<512>::operator<<=(unsigned int);' .work/crakbit/src/arith_uint256.cpp
           grep -F 'assert(consensus.hashGenesisBlock == uint256{' .work/crakbit/src/kernel/chainparams.cpp
           if grep -Fq 'HashWriter{} << *this' .work/crakbit/src/primitives/block.cpp; then
             echo 'unexpected SHA256d block-hash fallback remains' >&2
