@@ -27,7 +27,7 @@ for bin in crakbitd crakbit-cli; do
   fi
 done
 
-for helper in crakbit-start crakbit-mine install-package.sh; do
+for helper in crakbit-start crakbit-mine crakminer install-package.sh; do
   if [[ ! -f "$ROOT/scripts/$helper" ]]; then
     echo "missing helper: scripts/$helper" >&2
     exit 1
@@ -51,6 +51,7 @@ install -m 0755 "$BUILD_DIR/bin/crakbitd" "$STAGE/bin/crakbitd"
 install -m 0755 "$BUILD_DIR/bin/crakbit-cli" "$STAGE/bin/crakbit-cli"
 install -m 0755 "$ROOT/scripts/crakbit-start" "$STAGE/bin/crakbit-start"
 install -m 0755 "$ROOT/scripts/crakbit-mine" "$STAGE/bin/crakbit-mine"
+install -m 0755 "$ROOT/scripts/crakminer" "$STAGE/bin/crakminer"
 install -m 0755 "$ROOT/scripts/install-package.sh" "$STAGE/install.sh"
 
 cp "$ROOT/README.md" "$STAGE/share/doc/crakbit-core/README.md"
