@@ -22,6 +22,8 @@ jobs:
         run: python3 genesis/test_serialization.py
       - name: Verify Crakbit patch manifest
         run: python3 scripts/patch_upstream.py --list
+      - name: Syntax-check Python migration tools
+        run: python3 -m py_compile scripts/*.py genesis/*.py
       - name: Syntax-check shell entrypoints
         run: |
           bash -n scripts/bootstrap.sh
@@ -39,7 +41,9 @@ jobs:
         run: python3 scripts/patch_upstream.py --stage-overlay
       - name: Inventory inherited economics hooks
         run: python3 scripts/inventory_economics.py
-      - name: Inspect inherited consensus markers
-        run: python3 scripts/inspect_consensus_markers.py
+      - name: Apply CRAK-001 and CRAK-002
+        run: python3 scripts/apply_economics_patch.py
+      - name: Audit zero premine and zero treasury
+        run: python3 scripts/audit_economics.py
       - name: Show resolved base-source SHA
         run: cat .work/BASE_RESOLVED_SHA
