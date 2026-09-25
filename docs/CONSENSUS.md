@@ -61,6 +61,26 @@ Frozen ASERT vectors cover ideal schedule, faster/slower blocks, ±half-life mov
 
 Crakbit testnet/regtest have separate message-start bytes, P2P/RPC ports, address prefixes, Bech32 HRPs and custom zero-reward genesis blocks. Bitcoin mainnet, Bitcoin testnet3 compatibility and signet remain disabled in v0.1.
 
+A fresh Crakbit testnet must not inherit Bitcoin testnet4 trust shortcuts. `nMinimumChainWork` and `defaultAssumeValid` are zero until Crakbit has enough independent public testnet history to establish its own reviewed checkpoints. Bitcoin testnet4 AssumeUTXO and chain transaction history data are also removed from the materialized Crakbit testnet.
+
+## Full node / local network — CRAK-009
+
+The materialized tree builds the Bitcoin Core daemon/CLI targets as operator-facing `crakbitd` and `crakbit-cli` binaries. Wallet support is intentionally disabled in the CRAK-009 CI build so this milestone isolates node, P2P, consensus and mining behavior.
+
+CPU mining currently uses the upstream `generatetodescriptor` mining RPC. Its nonce loop calls `CheckProofOfWork(block.GetHash(), block.nBits, ...)`; because CRAK-005 replaced the block-header identity hash with yespower, this path mines the same yespower hash that consensus validates.
+
+The CRAK-009 local test performs the following with three independently running testnet nodes:
+
+1. establishes real P2P connections;
+2. mines two blocks and requires all three nodes to synchronize;
+3. partitions node 1 from its peers;
+4. mines a height-4 branch on node 1 and a competing height-6 branch on node 2;
+5. mutates a serialized block payload while leaving the header/PoW unchanged and requires rejection (`bad-txnmrklroot` in the frozen smoke scenario);
+6. reconnects node 1 and requires it to reorganize to node 2's longer-work branch;
+7. requires node 3 to converge on the same final height and tip.
+
+This is meaningful local engineering coverage for block propagation, invalid-block handling and reorganization. It is not a substitute for long-running public testnet diversity or adversarial security review.
+
 ## Mainnet gates
 
 Mainnet must remain disabled until all of the following pass:
@@ -71,9 +91,9 @@ Mainnet must remain disabled until all of the following pass:
 4. unique network magic, ports and address prefixes;
 5. ASERT deterministic vectors, overflow/underflow handling and timestamp-edge tests;
 6. Crakbit subsidy/halving/maturity consensus vectors;
-7. reorg and invalid-chain tests;
-8. wallet send/receive/restart tests;
-9. at least three independent nodes mining the same public testnet;
-10. sustained testnet operation before a separate mainnet genesis is created.
+7. local full-node P2P mining, malformed-block rejection and reorg smoke;
+8. wallet-enabled build plus send/receive/restart tests;
+9. at least three independently hosted nodes mining the same public testnet;
+10. sustained public testnet operation, release reproducibility and security review before a separate mainnet genesis is created.
 
-Gates 1-6 have testnet engineering coverage in the current branch. They are not, by themselves, a claim of mainnet readiness or an external security audit.
+Gates 1-7 have engineering coverage in the current branch. They are not, by themselves, a claim of mainnet readiness or an external security audit.
