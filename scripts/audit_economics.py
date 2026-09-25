@@ -37,6 +37,7 @@ def main() -> int:
     chainparams = (tree / "src/wam/chainparams.cpp").read_text(encoding="utf-8")
 
     require(params, r"WAM_GENESIS_PREMINE\s*=\s*0\s*;", "genesis premine constant is zero")
+    require(params, r"WAM_MINING_ALLOCATION\s*=\s*WAM_MAX_MONEY\s*;", "temporary no-premine allocation is coherent")
     require(params, r"WAM_DEVFEE_PERCENT\s*=\s*0\s*;", "dev-fee percent is zero")
     require(params, r"WAM_PREMINE_TRANCHE_AMOUNT\s*=\s*0\s*;", "premine tranche amount is zero")
 
@@ -46,7 +47,7 @@ def main() -> int:
     require(subsidy, r"CAmount\s+GetMinerSubsidy\s*\([^)]*\)\s*\{\s*return\s+nSubsidy\s*;\s*\}", "full subsidy goes to miner")
     require(subsidy, r"CAmount\s+GetLifetimeDevFee\s*\([^)]*\)\s*\{\s*return\s+0\s*;\s*\}", "lifetime dev fee zero")
     require(subsidy, r"CAmount\s+GetVestedPremine\s*\([^)]*\)\s*\{\s*return\s+0\s*;\s*\}", "vested premine zero")
-    require(subsidy, r"CAmount\s+total\s*=\s*0\s*;", "supply baseline starts at zero")
+    require(subsidy, r"CAmount\s+nSupply\s*=\s*0\s*;", "supply baseline starts at zero")
 
     require(devfee, r"CAmount\s+GetPaidDevFee\s*\([^)]*\)\s*\{\s*return\s+0\s*;\s*\}", "paid dev fee zero")
     require(devfee, r"bool\s+CheckDevFeeOutput\s*\([^)]*\)\s*\{\s*return\s+true\s*;\s*\}", "dev-fee validation is inert")
