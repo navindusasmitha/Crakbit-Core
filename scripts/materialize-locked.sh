@@ -6,5 +6,6 @@ cd "$ROOT"
 
 python3 scripts/materialize.py
 python3 scripts/finalize-genesis.py
+python3 scripts/apply-asert.py
 
-printf '%s\n' 'Crakbit materialized source is consensus-locked for CRAK-006.'
+printf '%s\n' 'Crakbit materialized source is consensus-locked through CRAK-007 ASERT.'
