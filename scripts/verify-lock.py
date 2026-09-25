@@ -10,11 +10,18 @@ params = json.loads((ROOT / 'consensus' / 'params.json').read_text(encoding='utf
 
 sha40 = re.compile(r'^[0-9a-f]{40}$')
 errors = []
+warnings = []
 
-for name, entry in lock['upstreams'].items():
-    sha = entry.get('commit_sha', '')
-    if not sha40.fullmatch(sha):
-        errors.append(f'{name}: commit_sha is not a 40-char lowercase git SHA')
+wam = lock['upstreams']['wam_coin']
+wam_sha = wam.get('commit_sha')
+if wam_sha is None:
+    warnings.append('WAM exact commit SHA not resolved yet; tag is migration-only until bootstrap records it')
+elif not sha40.fullmatch(wam_sha):
+    errors.append('wam_coin.commit_sha must be null or a 40-char lowercase git SHA')
+
+yes_sha = lock['upstreams']['yespower'].get('commit_sha', '')
+if not sha40.fullmatch(yes_sha):
+    errors.append('yespower commit_sha is not a 40-char lowercase git SHA')
 
 pow_lock = lock['pow']
 pow_params = params['proof_of_work']
@@ -23,32 +30,52 @@ for key in ('algorithm', 'version', 'N', 'r', 'personalization'):
         errors.append(f'PoW mismatch for {key}: SOURCE_LOCK={pow_lock[key]!r} params={pow_params[key]!r}')
 
 if pow_params['algorithm'] != 'yespower' or pow_params['version'] != 'YESPOWER_1_0':
-    errors.append('PoW must remain yespower YESPOWER_1_0 for v0.1')
+    errors.append('PoW must be yespower YESPOWER_1_0')
 if pow_params['N'] != 2048 or pow_params['r'] != 8:
-    errors.append('v0.1 PoW parameters must remain N=2048, r=8')
+    errors.append('PoW parameters must be N=2048, r=8')
 if pow_params['target_spacing_seconds'] != 60:
     errors.append('target block spacing must be 60 seconds')
+if pow_params.get('block_id_hash') != 'SHA256d' or pow_params.get('pow_hash') != 'yespower':
+    errors.append('Crakbit requires SHA256d block IDs with a separate yespower PoW hash')
 
 money = params['money']
-if money['initial_subsidy_coins'] != 5:
-    errors.append('initial subsidy must be 5 CRAK')
-if money['halving_interval_blocks'] != 2_100_000:
-    errors.append('halving interval must be 2,100,000 blocks')
-if money['premine_coins'] != 0:
-    errors.append('premine must be zero')
-if money['coinbase_maturity_blocks'] != 100:
-    errors.append('coinbase maturity must be 100 blocks')
+expected = {
+    'initial_subsidy_coins': 5,
+    'halving_interval_blocks': 2_100_000,
+    'premine_coins': 0,
+    'treasury_percent': 0,
+    'coinbase_maturity_blocks': 100,
+}
+for key, value in expected.items():
+    if money.get(key) != value:
+        errors.append(f'{key} must be {value!r}, got {money.get(key)!r}')
 
 ideal_supply = 2 * money['initial_subsidy_coins'] * money['halving_interval_blocks']
 if ideal_supply != money['intended_max_supply_coins']:
     errors.append(f'intended supply mismatch: geometric target is {ideal_supply:,}')
 
-if lock.get('mainnet_enabled') or params.get('mainnet_enabled'):
-    errors.append('mainnet must remain disabled in v0.1 engineering base')
+if params['difficulty'].get('design') != 'DarkGravityWave-v3':
+    errors.append('difficulty design must be DarkGravityWave-v3 for the WAM-derived migration')
 
+net = params['network_separation']['testnet']
+wam_forbidden = {
+    'message_start_hex': '77616d21',
+    'p2p_port': 19555,
+    'rpc_port': 19554,
+    'bech32_hrp': 'twam',
+}
+for key, forbidden in wam_forbidden.items():
+    if net.get(key) == forbidden:
+        errors.append(f'testnet {key} still matches WAM and must be unique')
+
+if lock.get('mainnet_enabled') or params.get('mainnet_enabled'):
+    errors.append('mainnet must remain disabled during migration/testnet stage')
+
+for warning in warnings:
+    print(f'WARNING: {warning}', file=sys.stderr)
 if errors:
     for error in errors:
         print(f'ERROR: {error}', file=sys.stderr)
     raise SystemExit(1)
 
-print('Crakbit source/consensus lock: OK')
+print('Crakbit source/consensus migration lock: OK')

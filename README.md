@@ -1,59 +1,73 @@
 # Crakbit Core
 
-Crakbit Core is a Bitcoin-style UTXO Proof-of-Work blockchain project focused on CPU mining.
+Crakbit Core is a Bitcoin-style UTXO Proof-of-Work blockchain focused on low-resource CPU mining.
 
-## v0.1 direction
+## Source strategy
 
-- Upstream base: **Bitcoin Core v31.1** (pinned commit)
-- PoW library: **Openwall yespower** (pinned commit)
-- PoW profile: **YESPOWER_1_0, N=2048, r=8**
+Crakbit now uses the **WAM Coin codebase as the architectural upstream** instead of rebuilding the same Bitcoin-fork plumbing from scratch. WAM already provides a patch-based Bitcoin Core fork layout, separate block-ID/PoW handling, per-block difficulty retargeting, miner/pool/explorer structure, and deployment tooling.
+
+Crakbit does **not** inherit WAM's monetary policy or network identity.
+
+Upstreams:
+
+- WAM Coin source: `https://gitlab.com/WAMCoin/wam-coin.git`, target release `v0.1.9`
+- WAM's inherited Bitcoin base: Bitcoin Core v28.1
+- PoW library: Openwall yespower, pinned separately
+
+## Crakbit consensus target
+
+- Name: **Crakbit**
+- Ticker: **CRAK**
+- Model: Bitcoin-style UTXO
+- PoW: **yespower 1.0**, `N=2048`, `r=8`
+- Block ID: Bitcoin-style **SHA256d** of the 80-byte header
+- PoW comparison hash: **yespower** over the same 80-byte header
+- Difficulty: **DarkGravityWave v3**, retarget every block
 - Target block interval: **60 seconds**
-- Initial block subsidy: **5 CRAK**
+- Initial subsidy: **5 CRAK**
 - Halving interval: **2,100,000 blocks**
 - Intended maximum issuance: **21,000,000 CRAK**
 - Coinbase maturity: **100 blocks**
-- Difficulty design: **ASERT-style**, 2 hour half-life (not yet merged into consensus code)
-- Premine: **0**
+- Premine/founder reserve: **0**
+- Consensus treasury/dev fee: **0**
+- Decimals: **8**
 
-## Important status
+The geometric emission target is `5 × 2,100,000 × 2 = 21,000,000 CRAK`, before final-unit truncation at late halvings.
 
-This repository is currently the clean **v0.1 engineering base**. It is **not mainnet-ready** and does not claim production safety yet. Mainnet remains disabled until the yespower integration, custom chain parameters, genesis block, difficulty algorithm, tests, and multi-node testnet gates are implemented and reviewed.
+## Network separation
 
-## Bootstrap pinned upstream sources
+Crakbit must never reuse WAM mainnet/testnet identity values. The engineering parameters reserve separate Crakbit message-start bytes, ports and address prefixes. Mainnet remains disabled and no mainnet genesis is committed.
+
+Current testnet identity target:
+
+- message start: `43 52 41 4b` (`CRAK`)
+- P2P: `17771`
+- RPC: `17772`
+- P2PKH version: `28` (stable `C...` addresses)
+- P2SH version: `87` (stable `c...` addresses)
+- Bech32 HRP: `crak`
+
+## Bootstrap the WAM-derived working tree
 
 ```bash
 ./scripts/bootstrap.sh
 ```
 
-This creates `.work/bitcoin` and `.work/yespower` at the exact commits recorded in `SOURCE_LOCK.json`.
+The script fetches the requested WAM release and the exact yespower commit, verifies the expected WAM repository layout, and creates `.work/crakbit-source` as the disposable migration working tree.
 
-Verify the locked consensus/source configuration:
+Then run:
 
 ```bash
 python3 scripts/verify-lock.py
+python3 scripts/verify-address-prefixes.py
 ```
 
-## Repository layout
+## Status
 
-```text
-Crakbit-Core/
-├── consensus/params.json
-├── docs/
-│   ├── BUILD.md
-│   └── CONSENSUS.md
-├── patches/
-│   └── README.md
-├── scripts/
-│   ├── bootstrap.sh
-│   └── verify-lock.py
-├── SOURCE_LOCK.json
-└── README.md
-```
+This repository is **not mainnet-ready**. The WAM-derived migration plan is committed, but the consensus patch must still be applied and compiled against the actual WAM source checkout before a Crakbit testnet genesis is mined.
 
-## Safety rule
-
-No mainnet genesis block will be finalized until a public testnet passes deterministic build, PoW test vectors, difficulty/reorg tests, wallet tests, and sustained multi-node mining tests.
+No mainnet launch is allowed until deterministic source pinning, yespower vectors, supply tests, DGW3 tests, genesis tests, wallet tests, reorg tests and sustained multi-node testnet operation pass.
 
 ## License
 
-Crakbit project files are MIT licensed. Upstream Bitcoin Core remains under its own MIT notices. yespower source must retain its upstream BSD-style notices when vendored or distributed.
+Crakbit project files are MIT licensed. WAM Coin and Bitcoin Core license/copyright notices must be retained for inherited code. Openwall yespower source must retain its upstream BSD-style notices when vendored or distributed.

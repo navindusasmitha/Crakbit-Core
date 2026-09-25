@@ -1,14 +1,21 @@
 {
-  "schema": 1,
+  "schema": 2,
   "project": "Crakbit Core",
-  "stage": "v0.1-engineering-base",
+  "stage": "wam-derived-migration",
   "mainnet_enabled": false,
   "upstreams": {
+    "wam_coin": {
+      "repository": "https://gitlab.com/WAMCoin/wam-coin.git",
+      "ref": "v0.1.9",
+      "commit_sha": null,
+      "commit_sha_required_before_release": true,
+      "license": "MIT",
+      "notes": "Resolve and commit the exact tag target SHA after the first successful GitLab checkout."
+    },
     "bitcoin_core": {
       "repository": "https://github.com/bitcoin/bitcoin.git",
-      "tag": "v31.1",
-      "tag_object_sha": "bfa6a4b79cd4c1562fd32857e3147763efae37fb",
-      "commit_sha": "9be056a8a72b624dae9623b2f7bded92c2a21c91"
+      "tag": "v28.1",
+      "inherited_via": "wam_coin"
     },
     "yespower": {
       "repository": "https://github.com/openwall/yespower.git",

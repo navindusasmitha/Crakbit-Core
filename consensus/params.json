@@ -1,5 +1,6 @@
 {
   "network_name": "crakbit-testnet-v0.1",
+  "coin_name": "Crakbit",
   "ticker": "CRAK",
   "mainnet_enabled": false,
   "money": {
@@ -8,6 +9,7 @@
     "halving_interval_blocks": 2100000,
     "coinbase_maturity_blocks": 100,
     "premine_coins": 0,
+    "treasury_percent": 0,
     "intended_max_supply_coins": 21000000
   },
   "proof_of_work": {
@@ -16,17 +18,36 @@
     "N": 2048,
     "r": 8,
     "personalization": "Crakbit-Core-v0.1",
-    "target_spacing_seconds": 60
+    "target_spacing_seconds": 60,
+    "header_bytes": 80,
+    "block_id_hash": "SHA256d",
+    "pow_hash": "yespower"
   },
   "difficulty": {
-    "design": "ASERT-style",
-    "half_life_seconds": 7200,
-    "status": "specified_not_implemented"
+    "design": "DarkGravityWave-v3",
+    "window_blocks": 24,
+    "retarget": "every-block",
+    "timespan_clamp": "1/3x..3x",
+    "status": "reuse-wam-implementation-then-test-at-60s"
   },
   "network_separation": {
-    "unique_message_start_required": true,
-    "unique_default_ports_required": true,
-    "unique_address_prefixes_required": true,
-    "custom_genesis_required": true
+    "mainnet": {
+      "enabled": false,
+      "message_start_hex": null,
+      "p2p_port": null,
+      "rpc_port": null,
+      "bech32_hrp": null,
+      "genesis": null
+    },
+    "testnet": {
+      "message_start_hex": "4352414b",
+      "p2p_port": 17771,
+      "rpc_port": 17772,
+      "pubkey_address_version": 28,
+      "script_address_version": 87,
+      "secret_key_version": 197,
+      "bech32_hrp": "crak",
+      "genesis": null
+    }
   }
 }

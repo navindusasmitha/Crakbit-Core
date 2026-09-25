@@ -2,51 +2,59 @@
 
 ## Model
 
-Crakbit is designed as a Bitcoin-style UTXO chain. The project intentionally reuses mature Bitcoin Core transaction, script, wallet, mempool, storage, and P2P architecture instead of implementing those systems from scratch.
+Crakbit is a Bitcoin-style UTXO chain. The project uses WAM Coin's Bitcoin-fork integration pattern as an upstream engineering reference, while defining an independent Crakbit network and monetary policy.
+
+## Hash separation
+
+Crakbit keeps Bitcoin's 80-byte block header and Bitcoin-style SHA256d block identifier. The proof-of-work value checked against `nBits` is a separate yespower hash over the serialized 80-byte header.
+
+This deliberately follows WAM's already-integrated pattern of keeping the block index/RPC identity hash Bitcoin-compatible while changing only the proof-of-work comparison path. Transaction IDs and signature hashing remain Bitcoin-derived.
 
 ## Proof of Work
-
-The target PoW is Openwall yespower using:
 
 - `YESPOWER_1_0`
 - `N = 2048`
 - `r = 8`
-- personalization string `Crakbit-Core-v0.1`
+- personalization: `Crakbit-Core-v0.1`
 
-The 2 MiB-class setting is chosen to keep mining practical on low-end CPUs while still making the function memory-aware. It does **not** make all CPUs equal and it does **not** guarantee permanent ASIC resistance.
+This setting targets low-resource CPUs. It does not make all CPUs equal and it does not guarantee permanent ASIC resistance.
 
-## Block and issuance targets
+## Emission
 
 - Target spacing: 60 seconds
 - Initial subsidy: 5 CRAK
 - Halving interval: 2,100,000 blocks
-- Premine: 0 CRAK
+- Premine: 0
+- Treasury/dev fee: 0
 - Coinbase maturity: 100 blocks
-- 8 decimal places
+- 8 decimals
 
-With an exact geometric halving schedule starting at 5 CRAK for 2,100,000 blocks, the intended issuance converges to 21,000,000 CRAK, subject to integer-unit rounding rules in the final implementation.
+The ideal geometric emission is 21,000,000 CRAK. The exact terminal amount will be slightly below the ceiling because late subsidies are integer base units.
 
 ## Difficulty
 
-The intended difficulty controller is ASERT-style with a 7,200 second half-life. This is a specification target only until test vectors are committed and the implementation is reviewed.
+Crakbit will retain the WAM codebase's DarkGravityWave v3 structure instead of introducing a second, unrelated retarget implementation during the same migration.
 
-## v0.1 implementation rule
+The target spacing changes to 60 seconds. DGW v3 recalculates each block from a 24-block window and clamps observed timespan changes. All constants and test vectors must be reviewed for the 60-second target before testnet.
 
-For the first integration, Crakbit will prefer the lower-risk architecture where the block-header identity hash is the same yespower hash used by PoW. A separate SHA256d block ID plus yespower PoW hash would require wider Bitcoin Core block-index changes and is deferred unless later benchmarks justify that complexity.
+## Removed WAM consensus rules
 
-Transaction IDs and signature hashing remain Bitcoin-derived and are not replaced with yespower.
+Crakbit has no founder reserve, spendable genesis allocation, mandatory treasury output or RandomX epoch/key machinery. Those WAM-specific rules must be removed rather than merely configured to an unused address.
+
+## Network identity
+
+WAM network magic, ports, address prefixes, DNS seeds, genesis blocks and chain checkpoints are forbidden in Crakbit builds. Testnet has a separate identity and mainnet remains unset until testnet gates pass.
 
 ## Mainnet gates
 
-Mainnet must remain disabled until all of the following pass:
-
-1. deterministic source pinning and reproducible builds;
-2. upstream yespower test vectors;
-3. Crakbit 80-byte block-header PoW vectors;
-4. custom genesis generation and fixed expected hash;
-5. unique network magic, ports and address prefixes;
-6. difficulty overflow/underflow and timestamp tests;
-7. reorg and invalid-chain tests;
-8. wallet send/receive/restart tests;
-9. at least three independent nodes mining the same public testnet;
-10. sustained testnet operation before a separate mainnet genesis is created.
+1. exact WAM upstream commit SHA recorded;
+2. all inherited licenses retained;
+3. yespower reference test vectors pass;
+4. Crakbit 80-byte-header PoW vectors pass;
+5. supply schedule test reaches no more than the hard cap;
+6. treasury/founder/premine code paths are absent from consensus validation;
+7. custom testnet genesis generated and fixed;
+8. DGW v3 60-second difficulty/reorg/timestamp tests pass;
+9. wallet send/receive/restart tests pass;
+10. at least three independent nodes sustain the same public testnet;
+11. only after those gates, create separate mainnet parameters and genesis.
