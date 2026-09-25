@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Materialize the pinned Bitcoin Core tree with Crakbit yespower build wiring.
+"""Materialize pinned Bitcoin Core with Crakbit yespower build wiring.
 
-This stage intentionally does not change consensus hashing yet. It proves that the
+This stage intentionally does not change consensus hashing yet. It proves that
 exact pinned yespower source can be vendored and built as part of Bitcoin Core
 before CRAK-005 changes CBlockHeader::GetHash().
 """
@@ -75,8 +75,8 @@ def main() -> None:
     if OUT.exists():
         shutil.rmtree(OUT)
 
-    # Local clone keeps a real .git directory so Bitcoin's build metadata can
-    # resolve the pinned upstream commit without re-downloading the network.
+    # Keep a real .git directory so Bitcoin build metadata can resolve the
+    # exact upstream identity without another network fetch.
     run("git", "clone", "--quiet", "--no-hardlinks", "--local", str(BTC), str(OUT))
     run("git", "checkout", "--quiet", "--detach", btc_lock["commit_sha"], cwd=OUT)
     if head(OUT) != btc_lock["commit_sha"]:
@@ -90,19 +90,23 @@ def main() -> None:
             raise SystemExit(f"required yespower source is missing: {src}")
         shutil.copy2(src, vendor / name)
 
-    (vendor / "CMakeLists.txt").write_text(
-        """# Crakbit Core: pinned Openwall yespower build target.\n"
-        "# Source commit is recorded in the repository SOURCE_LOCK.json.\n\n"
-        "add_library(crakbit_yespower STATIC EXCLUDE_FROM_ALL\n"
-        "  yespower-opt.c\n"
-        "  sha256.c\n"
-        ")\n\n"
-        "target_include_directories(crakbit_yespower PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})\n"
-        "target_link_libraries(crakbit_yespower PRIVATE core_interface)\n"
-        "set_target_properties(crakbit_yespower PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)\n"
-        """,
-        encoding="utf-8",
+    yespower_cmake = "\n".join(
+        [
+            "# Crakbit Core: pinned Openwall yespower build target.",
+            "# Source commit is recorded in the repository SOURCE_LOCK.json.",
+            "",
+            "add_library(crakbit_yespower STATIC EXCLUDE_FROM_ALL",
+            "  yespower-opt.c",
+            "  sha256.c",
+            ")",
+            "",
+            "target_include_directories(crakbit_yespower PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})",
+            "target_link_libraries(crakbit_yespower PRIVATE core_interface)",
+            "set_target_properties(crakbit_yespower PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)",
+            "",
+        ]
     )
+    (vendor / "CMakeLists.txt").write_text(yespower_cmake, encoding="utf-8")
 
     src_cmake = OUT / "src" / "CMakeLists.txt"
     replace_once(
