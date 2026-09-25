@@ -1,30 +1,25 @@
 {
   "schema": 1,
-  "wam_reference": {
-    "repository": "https://github.com/wam-coin-official/wam-coin.git",
-    "commit": "e65bc4d5767e76182bf7bc712a91a8532459498d",
-    "license": "MIT"
+  "project": "Crakbit Core",
+  "stage": "v0.1-engineering-base",
+  "mainnet_enabled": false,
+  "upstreams": {
+    "bitcoin_core": {
+      "repository": "https://github.com/bitcoin/bitcoin.git",
+      "tag": "v31.1",
+      "tag_object_sha": "bfa6a4b79cd4c1562fd32857e3147763efae37fb",
+      "commit_sha": "9be056a8a72b624dae9623b2f7bded92c2a21c91"
+    },
+    "yespower": {
+      "repository": "https://github.com/openwall/yespower.git",
+      "commit_sha": "1977c283bc43eed5a2c2579e02d6d996e49866b0"
+    }
   },
-  "bitcoin_core": {
-    "tag_inherited_from_wam_reference": "v28.1",
-    "lifecycle_note": "Bitcoin Core 28.x is EOL; Crakbit mainnet requires a maintained-base rebase or explicit independent review",
-    "mainnet_status": "upgrade_or_independent_security_review_required_before_crakbit_mainnet"
-  },
-  "randomx": {
-    "tag_inherited_from_wam_reference": "v1.2.1",
-    "crakbit_testnet_override": "v1.2.3",
-    "reason": "use current RandomX v1 maintenance release including ARM/RISC-V JIT correctness fixes from v1.2.2",
-    "mainnet_status": "pin_commit_and_reverify_vectors_before_crakbit_mainnet"
-  },
-  "crakbit": {
-    "network_stage": "testnet-v0.1",
-    "ticker": "CBIT",
-    "target_block_seconds": 120,
-    "initial_subsidy_cbit": 10,
-    "halving_interval_blocks": 1051200,
-    "premine_cbit": 0,
-    "treasury_percent": 5,
-    "treasury_start_height": 1,
-    "treasury_last_height": 400000
+  "pow": {
+    "algorithm": "yespower",
+    "version": "YESPOWER_1_0",
+    "N": 2048,
+    "r": 8,
+    "personalization": "Crakbit-Core-v0.1"
   }
 }

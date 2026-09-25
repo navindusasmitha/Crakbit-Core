@@ -1,21 +1,18 @@
-# Materialized/build outputs
-/build/
+# Build / materialized upstreams
+.work/
+build/
+out/
+cmake-build-*/
 
-# Local node data and credentials
-*.conf
-*.cookie
-*.pid
-
-# Node/npm
-node_modules/
-npm-debug.log*
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
 
 # Python
 __pycache__/
 *.pyc
 
-# IDE/OS
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
+# Logs
+*.log

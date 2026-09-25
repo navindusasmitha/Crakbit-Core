@@ -1,0 +1,32 @@
+{
+  "network_name": "crakbit-testnet-v0.1",
+  "ticker": "CRAK",
+  "mainnet_enabled": false,
+  "money": {
+    "decimals": 8,
+    "initial_subsidy_coins": 5,
+    "halving_interval_blocks": 2100000,
+    "coinbase_maturity_blocks": 100,
+    "premine_coins": 0,
+    "intended_max_supply_coins": 21000000
+  },
+  "proof_of_work": {
+    "algorithm": "yespower",
+    "version": "YESPOWER_1_0",
+    "N": 2048,
+    "r": 8,
+    "personalization": "Crakbit-Core-v0.1",
+    "target_spacing_seconds": 60
+  },
+  "difficulty": {
+    "design": "ASERT-style",
+    "half_life_seconds": 7200,
+    "status": "specified_not_implemented"
+  },
+  "network_separation": {
+    "unique_message_start_required": true,
+    "unique_default_ports_required": true,
+    "unique_address_prefixes_required": true,
+    "custom_genesis_required": true
+  }
+}
