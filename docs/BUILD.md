@@ -85,7 +85,7 @@ bash scripts/package-linux.sh .work/crakbit-build dist
 
 ## Package contents and install
 
-The Linux package includes the daemon, CLI, node launcher, CPU mining helper, install script, internal file checksums, project docs, Crakbit license, Bitcoin Core COPYING file when present, and the exact vendored yespower source/header material carrying the upstream redistribution notices.
+The Linux package includes the daemon, CLI, node launcher, single-request mining helper, CRAK-012 `crakminer` controller, install script, internal file checksums, project docs, Crakbit license, Bitcoin Core COPYING file when present, and the exact vendored yespower source/header material carrying the upstream redistribution notices.
 
 After extracting:
 
@@ -103,7 +103,7 @@ Start regtest:
 CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakbit-start regtest
 ```
 
-Create a wallet and mine:
+Create a wallet and mine one block:
 
 ```bash
 crakbit-cli -regtest -datadir="$HOME/.crakbit-regtest" createwallet miner
@@ -118,7 +118,20 @@ crakbit-start testnet4
 
 The launcher explicitly keeps RPC on `127.0.0.1`. Set `CRAKBIT_ADDNODE=host:port` to provide one explicit testnet peer; no Bitcoin seed is inherited.
 
-The current `crakbit-mine` helper uses the node's built-in yespower mining RPC in a single request/thread. Multi-thread standalone mining and explicit CPU-percentage limiting are not part of CRAK-011.
+For controlled CPU mining:
+
+```bash
+CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakminer \
+  --network regtest \
+  --wallet miner \
+  --threads 2 \
+  --cpu-limit 50 \
+  --blocks 2
+```
+
+`crakminer` uses concurrent short mining RPC calls. `--cpu-limit` is an approximate duty cycle per worker, not a kernel-enforced quota. It verifies each returned block is on the active chain before counting it, so sibling/stale work does not satisfy a finite `--blocks` target.
+
+The next miner architecture step is a native template/nonce-partitioned yespower miner with direct block submission and later Stratum support. That can reduce duplicate work between workers while leaving consensus unchanged.
 
 ## Verification
 
@@ -136,6 +149,7 @@ CI covers:
 - CRAK-008 subsidy boundaries, exact supply sum and maturity;
 - CRAK-009 three-node sync/mining/reorg/invalid-block rejection;
 - CRAK-010 wallet send/receive/restart persistence;
-- CRAK-011 package checksum, extraction, install, packaged regtest startup and packaged CPU mining helper.
+- CRAK-011 package checksum, extraction, install, packaged regtest startup and single-request mining helper;
+- CRAK-012 packaged multi-worker CPU controller, duty-cycle option and active-chain block quota.
 
-Passing these gates still does not make the project mainnet-ready. Independent public testnet operation, sustained mining/reorg testing, reproducible cross-platform builds, ARM64 validation and external review remain required.
+Passing these gates still does not make the project mainnet-ready. Independent public testnet operation, sustained mining/reorg testing, reproducible cross-platform builds, ARM64 runtime validation, a native miner/pool path and external review remain required.
