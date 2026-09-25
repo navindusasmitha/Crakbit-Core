@@ -18,3 +18,12 @@ jobs:
         run: python3 scripts/verify-address-prefixes.py
       - name: Syntax-check bootstrap script
         run: bash -n scripts/bootstrap.sh
+
+  upstream-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and verify WAM + yespower upstreams
+        run: ./scripts/bootstrap.sh
+      - name: Show resolved WAM source SHA
+        run: cat .work/WAM_RESOLVED_SHA
