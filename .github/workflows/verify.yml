@@ -54,5 +54,9 @@ jobs:
             -DBUILD_TX=OFF \
             -DBUILD_UTIL=OFF \
             -DBUILD_BITCOIN_BIN=OFF
-      - name: Build Crakbit yespower target
-        run: cmake --build .work/crakbit-build --target crakbit_yespower --parallel 2
+      - name: Build Crakbit yespower target and vector probe
+        run: cmake --build .work/crakbit-build --target crakbit_yespower crakbit_yespower_vector --parallel 2
+      - name: Emit deterministic Crakbit yespower vector
+        run: |
+          printf 'CRAKBIT_YESPOWER_VECTOR='
+          .work/crakbit-build/bin/crakbit_yespower_vector
