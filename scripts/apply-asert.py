@@ -59,15 +59,23 @@ def main() -> None:
     shutil.copy2(ASERT_PROBE, dest / "asert-vector.cpp")
 
     # Crakbit's easy CPU-test powLimit does not satisfy the reference ASERT
-    # implementation's 32-leading-zero headroom assumption. Instantiate the
-    # existing Bitcoin base_uint template at 512 bits for exact intermediates.
+    # implementation's 32-leading-zero headroom assumption. Instantiate only
+    # the base_uint<512> operations needed for exact ASERT intermediates. A full
+    # class instantiation would also instantiate GetHex(), whose base_blob<512>
+    # formatter is intentionally not part of Bitcoin Core's linked surface.
     arith_cpp = TREE / "src" / "arith_uint256.cpp"
     replace_once(
         arith_cpp,
         "// Explicit instantiations for base_uint<256>\ntemplate class base_uint<256>;",
-        "// Explicit instantiations used by Bitcoin and Crakbit ASERT.\n"
-        "template class base_uint<256>;\n"
-        "template class base_uint<512>;",
+        "// Explicit instantiations for base_uint<256>\n"
+        "template class base_uint<256>;\n\n"
+        "// CRAK-007: exact 512-bit intermediate operations for ASERT.\n"
+        "template base_uint<512>& base_uint<512>::operator<<=(unsigned int);\n"
+        "template base_uint<512>& base_uint<512>::operator>>=(unsigned int);\n"
+        "template base_uint<512>& base_uint<512>::operator*=(uint32_t);\n"
+        "template int base_uint<512>::CompareTo(const base_uint<512>&) const;\n"
+        "template bool base_uint<512>::EqualTo(uint64_t) const;\n"
+        "template unsigned int base_uint<512>::bits() const;",
     )
 
     consensus_h = TREE / "src" / "consensus" / "params.h"
