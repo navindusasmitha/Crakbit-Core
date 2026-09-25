@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify source, consensus, vectors, network and genesis lock
+      - name: Verify source, consensus, vectors, network, genesis and monetary lock
         run: python3 scripts/verify-lock.py
       - name: Verify independent CRAK-007 ASERT vectors
         run: python3 scripts/verify-asert-vectors.py
@@ -24,11 +24,14 @@ jobs:
             scripts/materialize.py \
             scripts/finalize-genesis.py \
             scripts/apply-asert.py \
+            scripts/apply-monetary.py \
             scripts/verify-asert-vectors.py \
-            scripts/check-asert-binary.py
+            scripts/check-asert-binary.py \
+            scripts/check-subsidy-binary.py
           python3 -m json.tool tests/yespower_vectors.json >/dev/null
           python3 -m json.tool tests/genesis_vectors.json >/dev/null
           python3 -m json.tool tests/asert_vectors.json >/dev/null
+          python3 -m json.tool tests/subsidy_vectors.json >/dev/null
           python3 -m json.tool consensus/params.json >/dev/null
 
   yespower-network-smoke:
@@ -43,7 +46,7 @@ jobs:
         run: bash scripts/bootstrap.sh
       - name: Materialize locked Crakbit source tree
         run: bash scripts/materialize-locked.sh
-      - name: Verify materialized identity, network separation and ASERT
+      - name: Verify materialized identity, network separation, ASERT and monetary rules
         run: |
           grep -Fx 'bitcoin_core_commit=9be056a8a72b624dae9623b2f7bded92c2a21c91' .work/materialized-source.txt
           grep -Fx 'yespower_commit=1977c283bc43eed5a2c2579e02d6d996e49866b0' .work/materialized-source.txt
@@ -63,12 +66,20 @@ jobs:
           grep -Fx 'difficulty_anchor=genesis-conceptual-parent-minus-one-spacing' .work/materialized-source.txt
           grep -Fx 'testnet_min_difficulty=false' .work/materialized-source.txt
           grep -Fx 'regtest_no_retarget=true' .work/materialized-source.txt
+          grep -Fx 'initial_subsidy_sats=500000000' .work/materialized-source.txt
+          grep -Fx 'halving_interval_blocks=2100000' .work/materialized-source.txt
+          grep -Fx 'coinbase_maturity_blocks=100' .work/materialized-source.txt
+          grep -Fx 'premine_sats=0' .work/materialized-source.txt
+          grep -Fx 'integer_rounded_max_subsidy_sats=2099999972700000' .work/materialized-source.txt
           grep -F 'yespower_tls(' .work/crakbit/src/primitives/block.cpp
           grep -F 'bech32_hrp = "tcrak"' .work/crakbit/src/kernel/chainparams.cpp
           grep -F 'bech32_hrp = "rcrak"' .work/crakbit/src/kernel/chainparams.cpp
           grep -F 'consensus.fPowUseASERT = true;' .work/crakbit/src/kernel/chainparams.cpp
           grep -F 'consensus.nASERTHalfLife = 7200;' .work/crakbit/src/kernel/chainparams.cpp
+          grep -F 'consensus.nSubsidyHalvingInterval = 2100000;' .work/crakbit/src/kernel/chainparams.cpp
           grep -F 'crakbit::GetNextASERTWorkRequired' .work/crakbit/src/pow.cpp
+          grep -F 'crakbit::CalculateBlockSubsidy' .work/crakbit/src/validation.cpp
+          grep -F 'static const int COINBASE_MATURITY = 100;' .work/crakbit/src/consensus/consensus.h
           grep -F 'template base_uint<512>& base_uint<512>::operator<<=(unsigned int);' .work/crakbit/src/arith_uint256.cpp
           grep -F 'assert(consensus.hashGenesisBlock == uint256{' .work/crakbit/src/kernel/chainparams.cpp
           if grep -Fq 'HashWriter{} << *this' .work/crakbit/src/primitives/block.cpp; then
@@ -77,6 +88,10 @@ jobs:
           fi
           if grep -Fq 'seed.testnet4.bitcoin' .work/crakbit/src/kernel/chainparams.cpp; then
             echo 'Bitcoin testnet seed leaked into Crakbit testnet' >&2
+            exit 1
+          fi
+          if grep -Fq 'CAmount nSubsidy = 50 * COIN;' .work/crakbit/src/validation.cpp; then
+            echo 'Bitcoin 50 BTC subsidy formula leaked into Crakbit consensus' >&2
             exit 1
           fi
       - name: Configure minimal Crakbit source tree
@@ -95,10 +110,10 @@ jobs:
             -DBUILD_TX=OFF \
             -DBUILD_UTIL=OFF \
             -DBUILD_BITCOIN_BIN=OFF
-      - name: Build yespower, consensus and CRAK-007 probes
+      - name: Build yespower, consensus and CRAK-008 probes
         run: |
           cmake --build .work/crakbit-build \
-            --target crakbit_yespower crakbit_yespower_vector bitcoin_consensus crakbit_header_hash_vector crakbit_genesis_probe crakbit_asert_vector \
+            --target crakbit_yespower crakbit_yespower_vector bitcoin_consensus crakbit_header_hash_vector crakbit_genesis_probe crakbit_asert_vector crakbit_subsidy_vector \
             --parallel 2
       - name: Verify deterministic yespower and block-header vectors
         run: |
@@ -126,3 +141,5 @@ jobs:
           grep -Fx "regtest nonce=$REG_NONCE hash=$REG_HASH merkle=$REG_MERKLE bits=$REG_BITS" <<<"$OUTPUT"
       - name: Verify CRAK-007 ASERT C++ vectors and chain route
         run: python3 scripts/check-asert-binary.py .work/crakbit-build/bin/crakbit_asert_vector
+      - name: Verify CRAK-008 subsidy C++ vectors and maturity
+        run: python3 scripts/check-subsidy-binary.py .work/crakbit-build/bin/crakbit_subsidy_vector
