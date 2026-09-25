@@ -4,7 +4,7 @@
 
 Install Git, Python 3, CMake, a C/C++ toolchain, pkg-config, libevent, Boost and SQLite development headers.
 
-For the Ubuntu CI path the project installs:
+Ubuntu CI installs:
 
 ```bash
 sudo apt-get update
@@ -24,39 +24,32 @@ CRAKBIT_BUILD_JOBS=4 bash scripts/build-linux.sh
 CRAKBIT_BUILD_DIR=/tmp/crakbit-build CRAKBIT_OUT_DIR=/tmp/crakbit-dist bash scripts/build-linux.sh
 ```
 
-The script fetches pinned upstreams, materializes Crakbit, configures a wallet-enabled daemon/CLI build, compiles `crakbitd` and `crakbit-cli`, builds the native yespower scanner, then calls `scripts/package-linux.sh`.
+The script fetches pinned upstreams, materializes Crakbit, builds the wallet-enabled daemon/CLI and native yespower scanner, then writes the Linux package under `dist/`.
 
-Current package naming is:
+Current package naming:
 
 ```text
 crakbit-core-0.1.0-testnet-linux-x86_64.tar.gz
 crakbit-core-0.1.0-testnet-linux-x86_64.tar.gz.sha256
 ```
 
-On an ARM64 Linux builder the same packager maps the architecture to `arm64`, but ARM64 compilation/runtime validation is still a separate gate.
+ARM64 is mapped by the packager, but ARM64 compile/runtime validation remains a release gate.
 
 ## Manual pinned-source workflow
 
-Fetch upstreams:
-
 ```bash
 bash scripts/bootstrap.sh
-```
-
-The script creates:
-
-- `.work/bitcoin` at the exact Bitcoin Core v31.1 commit locked in `SOURCE_LOCK.json`;
-- `.work/yespower` at the exact Openwall yespower commit locked in `SOURCE_LOCK.json`.
-
-Materialize Crakbit consensus/node source:
-
-```bash
 bash scripts/materialize-locked.sh
 ```
 
-The resulting tree is `.work/crakbit`. `.work/materialized-source.txt` records the locked upstream commits and active Crakbit consensus profile.
+The bootstrap pins:
 
-Configure/build the daemon and CLI manually:
+- Bitcoin Core v31.1 at the exact commit in `SOURCE_LOCK.json`;
+- Openwall yespower at the exact commit in `SOURCE_LOCK.json`.
+
+Materialized source is written to `.work/crakbit` and `.work/materialized-source.txt` records the active source/consensus locks.
+
+Configure/build manually:
 
 ```bash
 cmake -S .work/crakbit -B .work/crakbit-build \
@@ -77,7 +70,7 @@ cmake -S .work/crakbit -B .work/crakbit-build \
 cmake --build .work/crakbit-build --target bitcoind bitcoin-cli --parallel 2
 ```
 
-Build only the native yespower scanner after bootstrap:
+Build only the native yespower scanner:
 
 ```bash
 bash scripts/build-native-miner.sh .work/crakbit-build/bin/crakminer-scan
@@ -89,9 +82,9 @@ Package an existing build:
 bash scripts/package-linux.sh .work/crakbit-build dist
 ```
 
-## Package contents and install
+## Installed commands
 
-The Linux package includes:
+The CRAK-015 Linux package contains:
 
 ```text
 crakbitd
@@ -102,55 +95,28 @@ crakminer
 crakminer-native
 crakminer-scan
 crakpool
+crakpool-stats
 crakminer-stratum
 ```
 
-It also includes the installer, internal checksums, project docs, Crakbit license, Bitcoin Core COPYING file when present, and the exact vendored yespower source/header material carrying the upstream redistribution notices.
+`crakpool-base.py` is installed beside them as the internal CRAK-014 Stratum protocol module used by the CRAK-015 accounting wrapper.
 
-After extracting:
+Install:
 
 ```bash
 bash install.sh ~/.local
 ```
 
-The installer copies binaries to `~/.local/bin` and documentation/license material to `~/.local/share/crakbit-core`.
+## Node / miner helpers
 
-## Node/miner helpers
-
-Start regtest:
+Start regtest and create a wallet:
 
 ```bash
 CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakbit-start regtest
-```
-
-Create a wallet:
-
-```bash
 crakbit-cli -regtest -datadir="$HOME/.crakbit-regtest" createwallet miner
 ```
 
-Start Crakbit testnet4:
-
-```bash
-crakbit-start testnet4
-```
-
-The launcher explicitly keeps RPC on `127.0.0.1`. Set `CRAKBIT_ADDNODE=host:port` to provide one explicit testnet peer; no Bitcoin seed is inherited.
-
-### CRAK-012 RPC controller
-
-```bash
-CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakminer \
-  --network regtest \
-  --wallet miner \
-  --threads 2 \
-  --cpu-limit 50 \
-  --blocks 2
-```
-
-`crakminer` uses concurrent short mining RPC calls. Its finite mode is controlled by start/target active-chain height plus in-flight reservations, so two competing sibling solutions cannot satisfy the requested height increase early.
-
-### CRAK-013 native yespower miner
+Native CRAK-013 mining:
 
 ```bash
 CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakminer-native \
@@ -161,11 +127,9 @@ CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakminer-native \
   --blocks 2
 ```
 
-CRAK-013 no longer asks `crakbitd` to perform the hashing loop. `crakminer-native` obtains `getblocktemplate`, constructs the BIP34/SegWit coinbase and txid merkle root, then launches `crakminer-scan`. The native scanner partitions nonce work across C++ worker threads and runs yespower directly. Solved blocks are serialized and returned to the node through `submitblock` for full consensus validation.
+## CRAK-015 accounting / vardiff pool
 
-### CRAK-014 Stratum pool and worker
-
-Start a pool against a locally reachable Crakbit node/wallet:
+Start an accounting pool:
 
 ```bash
 CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakpool \
@@ -173,10 +137,13 @@ CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakpool \
   --wallet miner \
   --listen 127.0.0.1 \
   --port 3333 \
-  --share-difficulty 0.000000001
+  --share-difficulty 0.000000001 \
+  --payout-mode pplns \
+  --pplns-shares 1000 \
+  --pool-fee-bps 0
 ```
 
-Connect an external worker:
+Connect an external CPU worker:
 
 ```bash
 crakminer-stratum \
@@ -186,37 +153,81 @@ crakminer-stratum \
   --cpu-limit 50
 ```
 
-For testnet/LAN use, change `--listen` to a reachable server interface and point workers at that server address. Do not expose the node RPC port; only the Stratum TCP port needs to be reachable by miners.
+For LAN/testnet deployment, expose only the Stratum TCP port. Keep `crakbitd` RPC bound to private/local interfaces.
 
-The CRAK-014 server implements a limited Stratum V1-compatible JSON-lines surface for subscription, authorization, difficulty, job notification and share submission. Pool payout is one configured address. Persistent share accounting, automated payouts, vardiff and production public-pool hardening are not part of CRAK-014.
+### Ledger
 
-See `docs/POOL.md` for details.
+Default ledger path:
+
+```text
+<datadir>/crakpool-<network>.sqlite3
+```
+
+Override with:
+
+```bash
+--db /path/to/pool.sqlite3
+```
+
+The SQLite database uses WAL mode and persists workers, accepted/rejected share counters, accepted-share difficulty/hash, found blocks, accounting fees and per-worker pending credits.
+
+Stats:
+
+```bash
+crakpool-stats --db /path/to/pool.sqlite3 --window 600
+crakpool-stats --db /path/to/pool.sqlite3 --json
+```
+
+Reward accounting:
+
+- `--payout-mode proportional`: difficulty-weighted accepted shares since the previous found block;
+- `--payout-mode pplns`: difficulty-weighted last `--pplns-shares` accepted shares;
+- `--pool-fee-bps 100`: account for a 1% pool fee; default is zero.
+
+The deterministic largest-remainder allocator conserves every distributable satoshi.
+
+### Vardiff
+
+Vardiff is enabled by default and persists per-worker difficulty. Default target is one accepted share every 15 seconds, with 90-second retarget spacing, hysteresis and a maximum single-step change of 4x up / 0.25x down.
+
+Controls:
+
+```text
+--no-vardiff
+--vardiff-min <difficulty>
+--vardiff-max <difficulty>
+--vardiff-target-seconds <seconds>
+--vardiff-retarget-seconds <seconds>
+```
+
+### Payment safety boundary
+
+CRAK-015 does **not** send worker payments. Credits remain `pending` ledger entries while the complete coinbase is paid to the configured pool wallet/address. Creating/signing/broadcasting payment transactions is deliberately a separate milestone requiring reconciliation and wallet-safety review.
 
 ## Verification
+
+Fast checks:
 
 ```bash
 python3 scripts/verify-lock.py
 python3 scripts/verify-asert-vectors.py
 python3 tests/stratum_protocol_unit.py
+python3 tests/pool_accounting_unit.py
 ```
 
-CI covers:
+Full CI additionally covers:
 
-- pinned yespower output;
-- canonical 80-byte block-header hash;
-- frozen Crakbit genesis blocks;
-- CRAK-007 ASERT vectors and chain routing;
-- CRAK-008 subsidy boundaries, exact supply sum and maturity;
-- CRAK-009 three-node sync/mining/reorg/invalid-block rejection;
-- CRAK-010 wallet send/receive/restart persistence;
-- CRAK-011 package checksum, extraction, install, packaged regtest startup and single-request mining helper;
-- CRAK-012 multi-worker RPC controller and sibling-race-safe finite chain-height target;
-- CRAK-013 standalone native scanner genesis vector;
-- CRAK-013 real `getblocktemplate` → native yespower → `submitblock` regtest mining;
-- CRAK-014 BIP34/difficulty/merkle protocol unit vectors;
-- CRAK-014 two external Stratum worker sessions across refreshed pool jobs;
-- installed-package CRAK-011/012/013/014 mining and pool paths.
+- pinned yespower + canonical header vectors;
+- custom genesis and ASERT/subsidy gates;
+- three-node sync/reorg/invalid block rejection;
+- wallet restart persistence;
+- native yespower mining;
+- CRAK-014 two-worker Stratum mining;
+- CRAK-015 SQLite accounting across a pool-process restart;
+- proportional/PPLNS reward allocation and satoshi conservation;
+- worker hashrate/stat reporting;
+- installed-package CRAK-015 pool + ledger stats path.
 
-Separate fast native-miner and Stratum workflows verify their local vectors without waiting for the full Bitcoin node compile.
+Separate fast workflows verify the native miner, Stratum protocol and accounting/vardiff logic without waiting for the full Bitcoin node build.
 
-Passing these gates still does not make the project mainnet-ready. Independent public testnet operation, sustained mining/reorg testing, reproducible cross-platform builds, ARM64 runtime validation, hardened persistent pool payouts/accounting, third-party miner interoperability and external review remain required.
+Passing these gates still does not make the project mainnet-ready. Independent public testnet operation, sustained mining/reorg tests, reproducible cross-platform builds, ARM64 runtime validation, payout/reconciliation hardening, production pool authentication/TLS/rate limiting, third-party miner interoperability and external review remain required.
