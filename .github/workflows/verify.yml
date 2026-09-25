@@ -25,6 +25,7 @@ jobs:
           bash -n scripts/install-package.sh
           bash -n scripts/crakbit-start
           bash -n scripts/crakbit-mine
+          bash -n scripts/crakminer
           bash -n tests/local_multinode_smoke.sh
           bash -n tests/wallet_restart_smoke.sh
           bash -n tests/package_smoke.sh
@@ -168,5 +169,5 @@ jobs:
         run: bash tests/local_multinode_smoke.sh .work/crakbit-build
       - name: CRAK-010 wallet send receive and restart smoke
         run: bash tests/wallet_restart_smoke.sh .work/crakbit-build
-      - name: CRAK-011 Linux package install start and mine smoke
+      - name: CRAK-011 package and CRAK-012 controlled miner smoke
         run: bash tests/package_smoke.sh .work/crakbit-build
