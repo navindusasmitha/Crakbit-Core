@@ -8,8 +8,8 @@ usage() {
 Crakbit Core preflight installer
 
 Usage:
-  ./install.sh --prepare   Fetch pinned sources, stage Crakbit, apply CRAK-001/002,
-                           and audit zero-premine/zero-treasury economics.
+  ./install.sh --prepare   Fetch pinned sources, stage Crakbit, apply CRAK-001/002/003,
+                           and audit zero-premine/zero-treasury plus monetary policy.
   ./install.sh --check     Run local verification only; no network fetch.
 
 A full daemon build is intentionally not exposed yet. It will be enabled only
@@ -34,9 +34,12 @@ case "${1:---prepare}" in
     python3 "$ROOT/scripts/patch_upstream.py" --stage-overlay
     python3 "$ROOT/scripts/apply_economics_patch.py"
     python3 "$ROOT/scripts/audit_economics.py"
+    python3 "$ROOT/scripts/apply_monetary_patch.py"
+    python3 "$ROOT/scripts/audit_monetary.py"
     echo
     echo "Pinned base source and yespower are prepared in .work/."
     echo "CRAK-001/002 applied: premine=0, treasury/dev-fee=0."
+    echo "CRAK-003 applied: 5 CRAK subsidy, 2,100,000-block halvings, 21M ceiling."
     echo "PoW, difficulty, network identity, genesis and full daemon build remain gated."
     ;;
   --check)
