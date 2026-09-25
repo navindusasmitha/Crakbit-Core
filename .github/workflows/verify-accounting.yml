@@ -1,0 +1,19 @@
+name: Verify Crakbit Pool Accounting
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  accounting-vardiff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check CRAK-015 pool tools
+        run: |
+          python3 -m py_compile scripts/crakpool.py scripts/crakpool-accounting.py scripts/crakpool-stats.py
+      - name: Run CRAK-015 accounting and vardiff vectors
+        run: python3 tests/pool_accounting_unit.py
