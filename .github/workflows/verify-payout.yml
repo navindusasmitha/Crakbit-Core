@@ -1,0 +1,22 @@
+name: Verify Crakbit Payout Planner
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  payout-planner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check CRAK-016 payout tools
+        run: python3 -m py_compile scripts/crakpool.py scripts/crakpool-accounting.py scripts/crakpool-payout.py tests/payout_planner_unit.py
+      - name: Run CRAK-016 reconciliation and payout vectors
+        run: python3 tests/payout_planner_unit.py
