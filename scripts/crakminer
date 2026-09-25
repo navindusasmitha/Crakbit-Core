@@ -82,7 +82,7 @@ if [[ -n "$WALLET" && -n "$ADDRESS" ]] || [[ -z "$WALLET" && -z "$ADDRESS" ]]; t
   exit 2
 fi
 
-for cmd in flock date awk grep; do
+for cmd in flock date awk grep seq sleep; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "missing required command: $cmd" >&2; exit 1; }
 done
 
@@ -121,18 +121,21 @@ LOCK_FILE="$STATE_DIR/lock"
 printf '0 0\n' > "$STATE_FILE"  # accepted in_flight
 STOP_FILE="$STATE_DIR/stop"
 PIDS=()
+PARENT_BASHPID="$BASHPID"
 
 cleanup() {
+  [[ "$BASHPID" == "$PARENT_BASHPID" ]] || return 0
   touch "$STOP_FILE" 2>/dev/null || true
-  for pid in "${PIDS[@]:-}"; do
+  for pid in "${PIDS[@]}"; do
     kill "$pid" >/dev/null 2>&1 || true
   done
-  for pid in "${PIDS[@]:-}"; do
+  for pid in "${PIDS[@]}"; do
     wait "$pid" >/dev/null 2>&1 || true
   done
   rm -rf "$STATE_DIR"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT TERM
 
 read_state() {
   read -r ACCEPTED IN_FLIGHT < "$STATE_FILE"
@@ -180,6 +183,7 @@ finish_slot() {
 }
 
 worker() {
+  trap - EXIT INT TERM
   local id="$1"
   while [[ ! -e "$STOP_FILE" ]]; do
     local reservation_rc=0
