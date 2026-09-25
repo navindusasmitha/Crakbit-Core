@@ -72,6 +72,33 @@ def main() -> None:
 """,
     )
 
+    # Bitcoin Core's SetupServerArgs() normally constructs every supported
+    # chain parameter object up front merely to obtain per-network defaults.
+    # Crakbit intentionally makes MAIN/testnet3/signet unavailable through
+    # CreateChainParams(), so those eager constructions would throw before
+    # command-line -testnet4/-regtest selection can happen. Use Crakbit
+    # testnet4 params as inert defaults for the disabled networks. This does
+    # not enable those chains; the user-selection CreateChainParams() cases
+    # remain hard-disabled by CRAK-006.
+    init_cpp = TREE / "src" / "init.cpp"
+    replace_once(
+        init_cpp,
+        """    const auto defaultChainParams = CreateChainParams(argsman, ChainType::MAIN);
+    const auto testnetChainParams = CreateChainParams(argsman, ChainType::TESTNET);
+    const auto testnet4ChainParams = CreateChainParams(argsman, ChainType::TESTNET4);
+    const auto signetChainParams = CreateChainParams(argsman, ChainType::SIGNET);
+    const auto regtestChainParams = CreateChainParams(argsman, ChainType::REGTEST);
+""",
+        """    // CRAK-009: MAIN/testnet3/signet are disabled selections, but
+    // SetupServerArgs still needs harmless network defaults for help/arg setup.
+    const auto defaultChainParams = CreateChainParams(argsman, ChainType::TESTNET4);
+    const auto testnetChainParams = CreateChainParams(argsman, ChainType::TESTNET4);
+    const auto testnet4ChainParams = CreateChainParams(argsman, ChainType::TESTNET4);
+    const auto signetChainParams = CreateChainParams(argsman, ChainType::TESTNET4);
+    const auto regtestChainParams = CreateChainParams(argsman, ChainType::REGTEST);
+""",
+    )
+
     # The upstream mining RPC already increments the 32-bit nonce and calls
     # CBlock::GetHash()/CheckProofOfWork(). CRAK-005 makes GetHash() yespower,
     # so this is the consensus-correct single-thread CPU mining path.
@@ -96,6 +123,7 @@ def main() -> None:
         "cli_binary=crakbit-cli\n"
         "cpu_mining_rpc=generatetodescriptor\n"
         "cpu_mining_hash=yespower-block-header\n"
+        "disabled_chain_arg_defaults=testnet4-alias\n"
         "node_smoke_nodes=3\n"
         "reorg_smoke_required=true\n"
         "invalid_block_smoke_required=true\n"
