@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREFIX="${1:-$HOME/.local}"
 
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-base.py crakminer-stratum; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-pay crakpool-base.py crakminer-stratum; do
   if [[ ! -f "$ROOT/bin/$file" ]]; then
     echo "missing package file: bin/$file" >&2
     exit 1
@@ -12,7 +12,7 @@ for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-
 done
 
 install -d "$PREFIX/bin"
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakminer-stratum; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-pay crakminer-stratum; do
   install -m 0755 "$ROOT/bin/$file" "$PREFIX/bin/$file"
 done
 install -m 0644 "$ROOT/bin/crakpool-base.py" "$PREFIX/bin/crakpool-base.py"
@@ -44,9 +44,18 @@ CRAK-014/015 worker example:
 Inspect the pool ledger:
   $PREFIX/bin/crakpool-stats --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\"
 
-CRAK-016 register a worker payout address (validated by the selected node):
+CRAK-016 register a worker payout address:
   $PREFIX/bin/crakpool-payout --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" register --network testnet4 --worker worker1 --address <CRAK_ADDRESS>
 
 CRAK-016 reconcile and create a non-broadcast payout plan:
   $PREFIX/bin/crakpool-payout --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" plan --network testnet4 --wallet pool --minimum-sats 100000
+
+CRAK-017 prepare a signed transaction without broadcasting:
+  $PREFIX/bin/crakpool-pay --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" prepare --network testnet4 --batch <BATCH_ID> --wallet pool --fee-rate 1.0
+
+CRAK-017 explicitly broadcast a reviewed prepared transaction:
+  $PREFIX/bin/crakpool-pay --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" broadcast --network testnet4 --batch <BATCH_ID>
+
+CRAK-017 recover/confirm persisted payouts:
+  $PREFIX/bin/crakpool-pay --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" sync --network testnet4
 EOF
