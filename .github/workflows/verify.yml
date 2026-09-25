@@ -39,5 +39,7 @@ jobs:
         run: python3 scripts/patch_upstream.py --stage-overlay
       - name: Inventory inherited economics hooks
         run: python3 scripts/inventory_economics.py
+      - name: Inspect inherited consensus markers
+        run: python3 scripts/inspect_consensus_markers.py
       - name: Show resolved base-source SHA
         run: cat .work/BASE_RESOLVED_SHA
