@@ -19,9 +19,12 @@
     "target_spacing_seconds": 60
   },
   "difficulty": {
-    "design": "ASERT-style",
+    "design": "ASERT",
     "half_life_seconds": 7200,
-    "status": "specified_not_implemented"
+    "anchor": "genesis_conceptual_parent_minus_one_spacing",
+    "testnet_enabled": true,
+    "regtest_no_retarget": true,
+    "status": "implemented_testnet_v0.1"
   },
   "networks": {
     "testnet4": {
