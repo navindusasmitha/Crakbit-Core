@@ -37,6 +37,17 @@ cli() {
   "$CLI" -testnet4 -datadir="${DATADIR[$id]}" -rpcport="${RPC[$id]}" "$@"
 }
 
+dump_node() {
+  local id="$1"
+  echo "--- node $id diagnostics ---" >&2
+  cli "$id" getblockchaininfo >&2 || true
+  cli "$id" getpeerinfo >&2 || true
+  echo "--- node $id launcher log ---" >&2
+  tail -n 120 "${DATADIR[$id]}/node.log" >&2 || true
+  echo "--- node $id debug.log ---" >&2
+  tail -n 200 "${DATADIR[$id]}/testnet4/debug.log" >&2 || true
+}
+
 wait_rpc() {
   local id="$1"
   for _ in $(seq 1 120); do
@@ -45,13 +56,13 @@ wait_rpc() {
     fi
     if ! kill -0 "${PID[$id]}" >/dev/null 2>&1; then
       echo "node $id exited during startup" >&2
-      cat "${DATADIR[$id]}/node.log" >&2 || true
+      dump_node "$id"
       return 1
     fi
     sleep 1
   done
   echo "node $id RPC did not become ready" >&2
-  cat "${DATADIR[$id]}/node.log" >&2 || true
+  dump_node "$id"
   return 1
 }
 
@@ -77,6 +88,21 @@ start_node() {
   wait_rpc "$id"
 }
 
+wait_connections() {
+  local id="$1" expected_min="$2"
+  for _ in $(seq 1 60); do
+    local count
+    count="$(cli "$id" getconnectioncount 2>/dev/null || echo 0)"
+    if [[ "$count" =~ ^[0-9]+$ ]] && (( count >= expected_min )); then
+      return 0
+    fi
+    sleep 1
+  done
+  echo "node $id did not establish $expected_min peer connection(s)" >&2
+  dump_node "$id"
+  return 1
+}
+
 wait_height() {
   local id="$1" expected="$2"
   for _ in $(seq 1 120); do
@@ -86,6 +112,8 @@ wait_height() {
     sleep 1
   done
   echo "node $id did not reach height $expected (actual=$(cli "$id" getblockcount 2>/dev/null || echo unavailable))" >&2
+  dump_node 1
+  dump_node "$id"
   return 1
 }
 
@@ -101,6 +129,8 @@ wait_same_tip() {
     sleep 1
   done
   echo "nodes $left and $right failed to converge to the same tip" >&2
+  dump_node "$left"
+  dump_node "$right"
   return 1
 }
 
@@ -117,9 +147,15 @@ done
 
 echo "CRAK-009: three Crakbit testnet nodes started"
 
-# Establish a shared chain on all three nodes.
+# Establish actual peer connections before mining so propagation failures are
+# distinguished from connection-establishment failures.
 cli 1 addnode "127.0.0.1:${P2P[2]}" onetry >/dev/null
 cli 1 addnode "127.0.0.1:${P2P[3]}" onetry >/dev/null
+wait_connections 1 2
+wait_connections 2 1
+wait_connections 3 1
+echo "CRAK-009: initial peer graph connected"
+
 mine 1 2
 wait_height 2 2
 wait_height 3 2
@@ -142,9 +178,9 @@ B_TIP="$(cli 2 getbestblockhash)"
 [[ "$(cli 2 getblockcount)" == "6" ]] || { echo "node 2 fork height mismatch" >&2; exit 1; }
 echo "CRAK-009: competing forks created A=4 B=6"
 
-# Invalid-block smoke: keep the valid yespower header but mutate the final byte
-# of the serialized coinbase transaction. The block remains parseable while its
-# transaction merkle root no longer matches the committed header.
+# Invalid-block smoke: mutate a byte after the 80-byte header. The header/PoW
+# stays unchanged while block payload validity changes, so acceptance would be
+# a serious validation bug.
 RAW_BLOCK="$(cli 1 getblock "$A_TIP" 0)"
 BAD_BLOCK="$(python3 - "$RAW_BLOCK" <<'PY'
 import sys
@@ -157,13 +193,15 @@ PY
 )"
 INVALID_RESULT="$(cli 2 submitblock "$BAD_BLOCK" 2>/dev/null || true)"
 if [[ -z "$INVALID_RESULT" || "$INVALID_RESULT" == "null" ]]; then
-  echo "mutated block was unexpectedly accepted" >&2
+  echo "mutated block was unexpectedly accepted (or RPC returned no rejection reason)" >&2
+  dump_node 2
   exit 1
 fi
 echo "CRAK-009: invalid block rejected result=$INVALID_RESULT"
 
 # Reconnect node 1 to the longer branch and require an actual reorg.
 cli 1 addnode "127.0.0.1:${P2P[2]}" onetry >/dev/null
+wait_connections 1 1
 wait_height 1 6
 wait_same_tip 1 2
 POST_REORG_TIP="$(cli 1 getbestblockhash)"
@@ -172,6 +210,7 @@ echo "CRAK-009: node 1 reorged to longer-work branch tip=$POST_REORG_TIP"
 
 # Bring the third node onto the final chain as an independent synchronization gate.
 cli 3 addnode "127.0.0.1:${P2P[2]}" onetry >/dev/null
+wait_connections 3 1
 wait_height 3 6
 wait_same_tip 2 3
 FINAL_TIP="$(cli 3 getbestblockhash)"
