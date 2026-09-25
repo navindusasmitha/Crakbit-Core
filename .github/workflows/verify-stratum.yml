@@ -1,0 +1,20 @@
+name: Verify Crakbit Stratum
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  stratum-protocol:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check pool and worker
+        run: |
+          python3 -m py_compile scripts/crakpool.py scripts/crakminer-stratum.py tests/stratum_protocol_unit.py
+          bash -n tests/stratum_pool_smoke.sh
+      - name: Run CRAK-014 protocol vectors
+        run: python3 tests/stratum_protocol_unit.py
