@@ -40,11 +40,11 @@
         "timestamp": "Crakbit Core testnet 25/Sep/2026 CPU-first yespower launch",
         "time": 1790294400,
         "bits": "0x1f0fffff",
-        "nonce": null,
+        "nonce": 1986,
         "version": 1,
         "reward_coins": 0,
-        "hash": null,
-        "merkle_root": null
+        "hash": "000913228cf3264838e841dfa1cb7a8d45c0b431004fbd72952cea3eed107406",
+        "merkle_root": "3985c37165bb0a8b3b963894bf6e078f63df43d033ba9621b46aa71ed72d37ab"
       }
     },
     "regtest": {
@@ -63,11 +63,11 @@
         "timestamp": "Crakbit Core regtest 25/Sep/2026 deterministic local chain",
         "time": 1790294460,
         "bits": "0x207fffff",
-        "nonce": null,
+        "nonce": 6,
         "version": 1,
         "reward_coins": 0,
-        "hash": null,
-        "merkle_root": null
+        "hash": "25c66306da130d34aeafdc40bdb18fe48cd67bd973a01287ff9cb49ab247f2f0",
+        "merkle_root": "09c295e8f0bb50ca9dd122da3a3f8f42f77aa66d8892bd495bd7cdfdf045ff04"
       }
     }
   },
