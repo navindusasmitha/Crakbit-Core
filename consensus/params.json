@@ -23,6 +23,54 @@
     "half_life_seconds": 7200,
     "status": "specified_not_implemented"
   },
+  "networks": {
+    "testnet4": {
+      "message_start_hex": "713281fe",
+      "p2p_port": 19131,
+      "rpc_port": 19130,
+      "bech32_hrp": "tcrak",
+      "base58": {
+        "pubkey_address": 28,
+        "script_address": 88,
+        "secret_key": 156,
+        "ext_public_key_hex": "e64a2503",
+        "ext_secret_key_hex": "95d33ce8"
+      },
+      "genesis": {
+        "timestamp": "Crakbit Core testnet 25/Sep/2026 CPU-first yespower launch",
+        "time": 1790294400,
+        "bits": "0x1f0fffff",
+        "nonce": null,
+        "version": 1,
+        "reward_coins": 0,
+        "hash": null,
+        "merkle_root": null
+      }
+    },
+    "regtest": {
+      "message_start_hex": "d874d0df",
+      "p2p_port": 19141,
+      "rpc_port": 19140,
+      "bech32_hrp": "rcrak",
+      "base58": {
+        "pubkey_address": 29,
+        "script_address": 89,
+        "secret_key": 157,
+        "ext_public_key_hex": "ea0663b1",
+        "ext_secret_key_hex": "78e65d99"
+      },
+      "genesis": {
+        "timestamp": "Crakbit Core regtest 25/Sep/2026 deterministic local chain",
+        "time": 1790294460,
+        "bits": "0x207fffff",
+        "nonce": null,
+        "version": 1,
+        "reward_coins": 0,
+        "hash": null,
+        "merkle_root": null
+      }
+    }
+  },
   "network_separation": {
     "unique_message_start_required": true,
     "unique_default_ports_required": true,
