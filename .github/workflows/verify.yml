@@ -20,8 +20,14 @@ jobs:
         run: |
           bash -n scripts/bootstrap.sh
           bash -n scripts/materialize-locked.sh
+          bash -n scripts/build-linux.sh
+          bash -n scripts/package-linux.sh
+          bash -n scripts/install-package.sh
+          bash -n scripts/crakbit-start
+          bash -n scripts/crakbit-mine
           bash -n tests/local_multinode_smoke.sh
           bash -n tests/wallet_restart_smoke.sh
+          bash -n tests/package_smoke.sh
           python3 -m py_compile \
             scripts/materialize.py \
             scripts/finalize-genesis.py \
@@ -162,3 +168,5 @@ jobs:
         run: bash tests/local_multinode_smoke.sh .work/crakbit-build
       - name: CRAK-010 wallet send receive and restart smoke
         run: bash tests/wallet_restart_smoke.sh .work/crakbit-build
+      - name: CRAK-011 Linux package install start and mine smoke
+        run: bash tests/package_smoke.sh .work/crakbit-build
