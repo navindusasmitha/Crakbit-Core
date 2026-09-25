@@ -42,6 +42,20 @@ def difficulty_target(value: str | float) -> int:
     return min(max(int(Decimal(DIFF1_TARGET) / difficulty), 1), MAX_TARGET)
 
 
+def compact_target(bits: int) -> int:
+    exponent = bits >> 24
+    mantissa = bits & 0x007FFFFF
+    if bits & 0x00800000:
+        raise ValueError("negative compact target")
+    if exponent <= 3:
+        target = mantissa >> (8 * (3 - exponent))
+    else:
+        target = mantissa << (8 * (exponent - 3))
+    if target <= 0 or target > MAX_TARGET:
+        raise ValueError("compact target outside uint256 range")
+    return target
+
+
 def resolve_scanner(explicit: str | None) -> str:
     if explicit:
         return explicit
@@ -95,7 +109,6 @@ class Stratum:
         self.share_difficulty: float = 1.0
         self.job: Job | None = None
         self.generation = 0
-        self.blocks = 0
         self.closed = False
         self.reader_error: Exception | None = None
         self.thread = threading.Thread(target=self._reader_loop, name="crak-stratum-reader", daemon=True)
@@ -107,9 +120,11 @@ class Stratum:
             self.sock.shutdown(socket.SHUT_RDWR)
         except OSError:
             pass
-        self.reader.close()
-        self.writer.close()
-        self.sock.close()
+        try:
+            self.reader.close()
+            self.writer.close()
+        finally:
+            self.sock.close()
 
     def _send(self, payload: dict[str, Any]) -> None:
         line = json.dumps(payload, separators=(",", ":"))
@@ -170,11 +185,6 @@ class Stratum:
                         self.job = job
                         self.generation += 1
                         self.cv.notify_all()
-                elif method == "mining.crakbit_block" and len(params) >= 2:
-                    with self.cv:
-                        self.blocks += 1
-                        self.cv.notify_all()
-                    print(f"crakminer-stratum BLOCK hash={params[0]} height={params[1]}", flush=True)
         except Exception as exc:
             if not self.closed:
                 self.reader_error = exc
@@ -250,7 +260,7 @@ def main() -> int:
     parser.add_argument("--cpu-limit", type=int, default=100)
     parser.add_argument("--batch-hashes", type=int, default=250000)
     parser.add_argument("--shares", type=int, default=0, help="stop after accepted shares; 0 = unlimited")
-    parser.add_argument("--blocks", type=int, default=0, help="stop after pool reports blocks; 0 = unlimited")
+    parser.add_argument("--blocks", type=int, default=0, help="stop after accepted network-target blocks; 0 = unlimited")
     parser.add_argument("--scanner")
     args = parser.parse_args()
 
@@ -273,6 +283,7 @@ def main() -> int:
     scanner = resolve_scanner(args.scanner)
     client = Stratum(host, port, args.worker, args.password)
     accepted = 0
+    blocks = 0
     extranonce_counter = 0
     total_hashes = 0
     started_all = time.monotonic()
@@ -287,11 +298,11 @@ def main() -> int:
         while True:
             if args.shares and accepted >= args.shares:
                 break
-            with client.cv:
-                if args.blocks and client.blocks >= args.blocks:
-                    break
+            if args.blocks and blocks >= args.blocks:
+                break
             job, generation, difficulty = client.snapshot_job()
             target = difficulty_target(difficulty)
+            network_target = compact_target(job.bits)
             extranonce_counter = (extranonce_counter + 1) % (1 << (8 * client.extranonce2_size))
             extranonce2 = extranonce_counter.to_bytes(client.extranonce2_size, "big")
             header = build_header(job, client.extranonce1, extranonce2)
@@ -322,6 +333,9 @@ def main() -> int:
                 print(f"crakminer-stratum share-rejected job={job.job_id}", file=sys.stderr, flush=True)
                 continue
             accepted += 1
+            if int(block_hash, 16) <= network_target:
+                blocks += 1
+                print(f"crakminer-stratum BLOCK blocks={blocks} hash={block_hash} height-job={job.job_id}", flush=True)
             rate = attempts / elapsed
             print(
                 f"crakminer-stratum accepted={accepted} job={job.job_id} nonce={nonce} "
@@ -331,7 +345,7 @@ def main() -> int:
 
         elapsed_all = max(time.monotonic() - started_all, 1e-9)
         print(
-            f"crakminer-stratum complete accepted={accepted} blocks={client.blocks} "
+            f"crakminer-stratum complete accepted={accepted} blocks={blocks} "
             f"hashes={total_hashes} avg_rate={total_hashes / elapsed_all:.2f} H/s",
             flush=True,
         )
