@@ -53,7 +53,7 @@ fi
 
 bash "$PKGDIR/install.sh" "$PREFIX" >/dev/null
 
-for bin in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakminer-stratum; do
+for bin in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakminer-stratum; do
   test -x "$PREFIX/bin/$bin"
 done
 test -f "$PREFIX/bin/crakpool-base.py"
@@ -176,7 +176,28 @@ kill "$POOL_PID" >/dev/null 2>&1 || true
 wait "$POOL_PID" >/dev/null 2>&1 || true
 POOL_PID=""
 
+# CRAK-016 must be usable from the installed package, must validate a real
+# regtest address through the packaged node, and must open/migrate the CRAK-015
+# ledger without enabling transaction broadcast.
+WORKER_ADDRESS="$("$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" -rpcwallet=ciwallet getnewaddress '' bech32)"
+"$PREFIX/bin/crakpool-payout" --db "$POOL_DB" register \
+  --network regtest \
+  --datadir "$DATADIR" \
+  --worker package.worker \
+  --address "$WORKER_ADDRESS" \
+  >"$TMP/package-register.json"
+"$PREFIX/bin/crakpool-payout" --db "$POOL_DB" status >"$TMP/package-payout-status.json"
+python3 - "$TMP/package-register.json" "$TMP/package-payout-status.json" <<'PY'
+import json, sys
+registered = json.load(open(sys.argv[1], encoding="utf-8"))
+status = json.load(open(sys.argv[2], encoding="utf-8"))
+assert registered["registered"] is True, registered
+assert registered["worker"] == "package.worker", registered
+assert status["registered_workers"] == 1, status
+assert status["credits"]["pending"]["sats"] == 500_000_000, status
+PY
+
 "$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" stop >/dev/null
 sleep 1
 
-echo "CRAK-015 packaged accounting Stratum smoke: OK height=$HEIGHT pending_sats=500000000"
+echo "CRAK-015/016 packaged pool smoke: OK height=$HEIGHT pending_sats=500000000 payout_tool=installed"
