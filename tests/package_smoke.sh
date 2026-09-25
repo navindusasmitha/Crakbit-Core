@@ -45,7 +45,7 @@ fi
 
 bash "$PKGDIR/install.sh" "$PREFIX" >/dev/null
 
-for bin in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer; do
+for bin in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan; do
   test -x "$PREFIX/bin/$bin"
 done
 
@@ -64,7 +64,7 @@ fi
 
 echo "CRAK-011 package smoke: OK archive=$(basename "$ARCHIVE") height=$HEIGHT"
 
-# CRAK-012: prove the packaged controller can run multiple workers, apply a
+# CRAK-012: prove the packaged RPC controller can run multiple workers, apply a
 # duty-cycle limit, recover from any sibling/stale work, and stop only after two
 # blocks are confirmed on the active chain.
 CRAKBIT_DATADIR="$DATADIR" "$PREFIX/bin/crakminer" \
@@ -81,7 +81,25 @@ if [[ "$HEIGHT" != "3" ]]; then
   exit 1
 fi
 
+echo "CRAK-012 controlled CPU miner smoke: OK height=$HEIGHT"
+
+# CRAK-013: packaged native path must fetch a template, build coinbase/merkle,
+# hash the 80-byte header outside crakbitd, and submit the completed block.
+CRAKBIT_DATADIR="$DATADIR" "$PREFIX/bin/crakminer-native" \
+  --network regtest \
+  --wallet ciwallet \
+  --threads 2 \
+  --cpu-limit 50 \
+  --blocks 1 \
+  --batch-hashes 64 >/dev/null
+
+HEIGHT="$("$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" getblockcount)"
+if [[ "$HEIGHT" != "4" ]]; then
+  echo "CRAK-013: native packaged miner expected active height 4, got $HEIGHT" >&2
+  exit 1
+fi
+
 "$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" stop >/dev/null
 sleep 1
 
-echo "CRAK-012 controlled CPU miner smoke: OK height=$HEIGHT"
+echo "CRAK-013 packaged native miner smoke: OK height=$HEIGHT"
