@@ -49,5 +49,7 @@ jobs:
         run: python3 scripts/apply_monetary_patch.py
       - name: Audit CRAK-003 monetary policy
         run: python3 scripts/audit_monetary.py
+      - name: Inventory legacy PoW hooks for CRAK-004 and CRAK-005
+        run: python3 scripts/inventory_pow.py
       - name: Show resolved base-source SHA
         run: cat .work/BASE_RESOLVED_SHA
