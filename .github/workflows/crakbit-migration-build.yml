@@ -1,0 +1,56 @@
+name: Crakbit migration build
+
+on:
+  push:
+    branches:
+      - crakbit/wam-v0.1.9-migration
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-node:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            build-essential libtool autotools-dev automake pkg-config bsdmainutils \
+            cmake git ca-certificates python3 \
+            libevent-dev libboost-dev libssl-dev libsqlite3-dev
+
+      - name: Materialize Crakbit source and yespower
+        run: bash scripts/fetch-crakbit.sh
+
+      - name: Verify migration transform
+        run: python3 scripts/crakbitize.py --tree build/wam-core --check
+
+      - name: Configure Bitcoin Core v28.1 derivative
+        working-directory: build/wam-core
+        run: |
+          ./autogen.sh
+          ./configure \
+            --without-gui \
+            --disable-zmq \
+            --disable-tests \
+            --disable-bench \
+            --disable-tests-fuzz-binary \
+            --with-incompatible-bdb \
+            CPPFLAGS="-I${GITHUB_WORKSPACE}/build/yespower" \
+            LIBS="${GITHUB_WORKSPACE}/build/yespower/libyespower.a -lpthread"
+
+      - name: Compile node
+        working-directory: build/wam-core
+        run: make -j2
+
+      - name: Show built node identity
+        working-directory: build/wam-core
+        run: |
+          ./src/wamd --version
+          test -f .crakbit-migrated
+          test -f .crakbit-source-lock
