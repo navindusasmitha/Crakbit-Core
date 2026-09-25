@@ -12,15 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify source and consensus lock
+      - name: Verify source, consensus, vectors and network lock
         run: python3 scripts/verify-lock.py
       - name: Syntax-check migration tools and vectors
         run: |
           bash -n scripts/bootstrap.sh
           python3 -m py_compile scripts/materialize.py
           python3 -m json.tool tests/yespower_vectors.json >/dev/null
+          python3 -m json.tool consensus/params.json >/dev/null
 
-  yespower-consensus-smoke:
+  yespower-network-smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,22 +31,31 @@ jobs:
           sudo apt-get install -y build-essential cmake pkg-config libevent-dev libboost-dev
       - name: Fetch exact pinned upstreams
         run: bash scripts/bootstrap.sh
-      - name: Materialize Bitcoin Core v31.1 plus Crakbit consensus patches
+      - name: Materialize Bitcoin Core v31.1 plus Crakbit consensus/network patches
         run: python3 scripts/materialize.py
-      - name: Verify materialized identity and consensus patch
+      - name: Verify materialized identity and network separation
         run: |
           grep -Fx 'bitcoin_core_commit=9be056a8a72b624dae9623b2f7bded92c2a21c91' .work/materialized-source.txt
           grep -Fx 'yespower_commit=1977c283bc43eed5a2c2579e02d6d996e49866b0' .work/materialized-source.txt
           grep -Fx 'block_header_serialized_bytes=80' .work/materialized-source.txt
           grep -Fx 'block_identity_hash=yespower' .work/materialized-source.txt
-          grep -Fx 'consensus_hash_changed=true' .work/materialized-source.txt
-          grep -F 'add_library(crakbit_yespower STATIC EXCLUDE_FROM_ALL' .work/crakbit/src/crypto/yespower/CMakeLists.txt
+          grep -Fx 'testnet4_magic=713281fe' .work/materialized-source.txt
+          grep -Fx 'regtest_magic=d874d0df' .work/materialized-source.txt
+          grep -Fx 'bitcoin_mainnet_enabled=false' .work/materialized-source.txt
+          grep -Fx 'bitcoin_testnet3_enabled=false' .work/materialized-source.txt
+          grep -Fx 'signet_enabled=false' .work/materialized-source.txt
           grep -F 'yespower_tls(' .work/crakbit/src/primitives/block.cpp
+          grep -F 'bech32_hrp = "tcrak"' .work/crakbit/src/kernel/chainparams.cpp
+          grep -F 'bech32_hrp = "rcrak"' .work/crakbit/src/kernel/chainparams.cpp
           if grep -Fq 'HashWriter{} << *this' .work/crakbit/src/primitives/block.cpp; then
             echo 'unexpected SHA256d block-hash fallback remains' >&2
             exit 1
           fi
-      - name: Configure minimal Bitcoin Core tree
+          if grep -Fq 'seed.testnet4.bitcoin' .work/crakbit/src/kernel/chainparams.cpp; then
+            echo 'Bitcoin testnet seed leaked into Crakbit testnet' >&2
+            exit 1
+          fi
+      - name: Configure minimal Crakbit source tree
         run: |
           cmake -S .work/crakbit -B .work/crakbit-build \
             -DENABLE_WALLET=OFF \
@@ -61,10 +71,10 @@ jobs:
             -DBUILD_TX=OFF \
             -DBUILD_UTIL=OFF \
             -DBUILD_BITCOIN_BIN=OFF
-      - name: Build yespower and CRAK-005 consensus probes
+      - name: Build yespower, consensus and CRAK-006 probes
         run: |
           cmake --build .work/crakbit-build \
-            --target crakbit_yespower crakbit_yespower_vector bitcoin_consensus crakbit_header_hash_vector \
+            --target crakbit_yespower crakbit_yespower_vector bitcoin_consensus crakbit_header_hash_vector crakbit_genesis_probe \
             --parallel 2
       - name: Verify deterministic yespower and block-header vectors
         run: |
@@ -76,3 +86,5 @@ jobs:
           printf 'uint256 hash: %s\n' "$DISPLAY_ACTUAL"
           test "$RAW_ACTUAL" = "$RAW_EXPECTED"
           test "$DISPLAY_ACTUAL" = "$DISPLAY_EXPECTED"
+      - name: Mine deterministic CRAK-006 genesis candidates
+        run: .work/crakbit-build/bin/crakbit_genesis_probe
