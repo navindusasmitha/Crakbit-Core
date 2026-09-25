@@ -18,16 +18,24 @@ The block-header identity hash is also the yespower PoW hash. Transaction IDs an
 
 The roughly 2 MiB-class setting is intended to keep mining practical on low-end CPUs while making the function memory-aware. It does **not** make all CPUs equal and it does **not** guarantee permanent ASIC resistance.
 
-## Block and issuance targets
+## Monetary consensus — CRAK-008
 
-- Target spacing: 60 seconds
-- Initial subsidy target: 5 CRAK
-- Halving interval target: 2,100,000 blocks
-- Premine: 0 CRAK
-- Coinbase maturity: 100 blocks
-- 8 decimal places
+Crakbit testnet/regtest monetary rules are materialized into the pinned Bitcoin Core tree as follows:
 
-The target geometric issuance converges to 21,000,000 CRAK subject to integer-unit rounding. Monetary constants must be separately patched and tested in the materialized Bitcoin Core consensus code before the monetary milestone is considered complete.
+- target spacing: 60 seconds
+- initial subsidy: 5 CRAK (500,000,000 satoshis)
+- halving interval: 2,100,000 blocks
+- premine: 0 CRAK
+- coinbase maturity: 100 blocks
+- decimals: 8
+
+`validation.cpp::GetBlockSubsidy()` delegates to the Crakbit subsidy helper and uses the network's `nSubsidyHalvingInterval`. The old Bitcoin 50 BTC subsidy formula is rejected by CI if it reappears in the materialized validation path.
+
+Crakbit keeps Bitcoin-style integer right-shift halvings. The nominal geometric cap is 21,000,000 CRAK, but integer satoshi truncation makes the exact subsidy total **2,099,999,972,700,000 satoshis = 20,999,999.72700000 CRAK**. The final non-zero era begins at height 58,800,000 with a 1-satoshi subsidy; subsidy becomes zero at height 60,900,000.
+
+The custom testnet and regtest genesis blocks are constructed with a zero reward. This keeps genesis issuance at zero and preserves the no-premine rule even though the generic subsidy formula at height zero would otherwise return the first-era subsidy.
+
+Frozen subsidy vectors cover genesis-formula behavior, both sides of early halving boundaries, deep halving eras, the final 1-satoshi era, the first zero-subsidy height, the 64-shift guard, exact total subsidy, and 100-block coinbase maturity. CI compiles and executes those vectors against the materialized C++ helper.
 
 ## Difficulty — CRAK-007
 
@@ -62,8 +70,10 @@ Mainnet must remain disabled until all of the following pass:
 3. custom genesis generation and fixed expected hashes;
 4. unique network magic, ports and address prefixes;
 5. ASERT deterministic vectors, overflow/underflow handling and timestamp-edge tests;
-6. actual Crakbit monetary subsidy/halving consensus tests;
+6. Crakbit subsidy/halving/maturity consensus vectors;
 7. reorg and invalid-chain tests;
 8. wallet send/receive/restart tests;
 9. at least three independent nodes mining the same public testnet;
 10. sustained testnet operation before a separate mainnet genesis is created.
+
+Gates 1-6 have testnet engineering coverage in the current branch. They are not, by themselves, a claim of mainnet readiness or an external security audit.
