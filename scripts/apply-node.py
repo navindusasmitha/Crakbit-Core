@@ -99,6 +99,22 @@ def main() -> None:
 """,
     )
 
+    # Bitcoin testnet4's minimum-chain-work and assume-valid checkpoints refer
+    # to a completely different chain. Keeping them prevents a fresh Crakbit
+    # peer from treating the short local testnet as having sufficient work for
+    # headers/block synchronization. Zero both for the new chain; they can be
+    # introduced later only from observed Crakbit testnet history.
+    chainparams = TREE / "src" / "kernel" / "chainparams.cpp"
+    replace_once(
+        chainparams,
+        """        consensus.nMinimumChainWork = uint256{"0000000000000000000000000000000000000000000009a0fe15d0177d086304"};
+        consensus.defaultAssumeValid = uint256{"0000000002368b1e4ee27e2e85676ae6f9f9e69579b29093e9a82c170bf7cf8a"}; // 123613
+""",
+        """        consensus.nMinimumChainWork = uint256{}; // CRAK-009: no inherited Bitcoin chainwork checkpoint.
+        consensus.defaultAssumeValid = uint256{}; // CRAK-009: no inherited Bitcoin assume-valid block.
+""",
+    )
+
     # The upstream mining RPC already increments the 32-bit nonce and calls
     # CBlock::GetHash()/CheckProofOfWork(). CRAK-005 makes GetHash() yespower,
     # so this is the consensus-correct single-thread CPU mining path.
@@ -124,6 +140,8 @@ def main() -> None:
         "cpu_mining_rpc=generatetodescriptor\n"
         "cpu_mining_hash=yespower-block-header\n"
         "disabled_chain_arg_defaults=testnet4-alias\n"
+        "testnet_minimum_chain_work=0\n"
+        "testnet_assume_valid=0\n"
         "node_smoke_nodes=3\n"
         "reorg_smoke_required=true\n"
         "invalid_block_smoke_required=true\n"
