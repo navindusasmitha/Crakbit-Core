@@ -35,6 +35,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Fetch pinned base source and yespower
         run: ./scripts/bootstrap.sh
+      - name: Inspect pinned base materializer interface
+        run: python3 .work/crakbit-source/scripts/patch_upstream.py --help
       - name: Validate base-source layout
         run: python3 scripts/patch_upstream.py --check-tree
       - name: Stage Crakbit-owned overlay
