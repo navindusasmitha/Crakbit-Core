@@ -5,7 +5,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -27,3 +27,20 @@ jobs:
         run: ./scripts/bootstrap.sh
       - name: Show resolved WAM source SHA
         run: cat .work/WAM_RESOLVED_SHA
+
+  import-wam-upstream:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone exact WAM release
+        run: git clone --branch v0.1.9 --single-branch https://gitlab.com/WAMCoin/wam-coin.git /tmp/wam
+      - name: Verify exact WAM SHA
+        run: |
+          test "$(git -C /tmp/wam rev-parse HEAD)" = "9c58108d3b021eaacdcf6bc92eb76cf720f31b6d"
+      - name: Mirror WAM history to isolated branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git -C /tmp/wam remote remove origin
+          git -C /tmp/wam remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git -C /tmp/wam push --force origin HEAD:refs/heads/upstream/wam-v0.1.9
