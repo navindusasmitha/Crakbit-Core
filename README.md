@@ -27,12 +27,13 @@ Upstreams:
 - Initial subsidy: **5 CRAK**
 - Halving interval: **2,100,000 blocks**
 - Intended maximum issuance: **21,000,000 CRAK**
+- Exact v0.1 terminal issuance after integer halvings: **20,999,999.72700000 CRAK**
 - Coinbase maturity: **100 blocks**
 - Premine/founder reserve: **0**
 - Consensus treasury/dev fee: **0**
 - Decimals: **8**
 
-The geometric emission target is `5 × 2,100,000 × 2 = 21,000,000 CRAK`, before final-unit truncation at late halvings.
+The geometric emission target is `5 × 2,100,000 × 2 = 21,000,000 CRAK`; integer base-unit halvings make the exact terminal issuance slightly lower.
 
 ## Network separation
 
@@ -47,26 +48,41 @@ Current testnet identity target:
 - P2SH version: `87` (stable `c...` addresses)
 - Bech32 HRP: `crak`
 
-## Bootstrap the WAM-derived working tree
+## WAM-style auditable layout
 
-```bash
-./scripts/bootstrap.sh
-```
+Crakbit keeps coin-owned rules isolated under `src/crakbit/` and uses a patch manifest instead of silently editing a copied Bitcoin/WAM tree. The launch checklist and independent verifiers are designed to catch monetary, serialization and network-identity mistakes before a genesis block is treated as final.
 
-The script fetches the requested WAM release and the exact yespower commit, verifies the expected WAM repository layout, and creates `.work/crakbit-source` as the disposable migration working tree.
-
-Then run:
+Useful checks:
 
 ```bash
 python3 scripts/verify-lock.py
 python3 scripts/verify-address-prefixes.py
+python3 scripts/verify_supply.py --schedule
+python3 genesis/test_serialization.py
+python3 scripts/patch_upstream.py --list
 ```
+
+## Prepare the WAM-derived working tree
+
+```bash
+./install.sh --prepare
+```
+
+This fetches the pinned WAM release and yespower commit, verifies the source locks, validates the expected WAM repository layout, runs the supply/serialization checks, and stages `src/crakbit/` into the disposable `.work/crakbit-source` tree.
+
+You can run only the local checks with:
+
+```bash
+./install.sh --check
+```
+
+A full daemon build is intentionally not exposed yet. It will only be enabled when the anchored Crakbit transformations that remove WAM founder/treasury rules, install yespower validation, retune DGW3 and replace all network identity values are implemented and tested.
 
 ## Status
 
-This repository is **not mainnet-ready**. The WAM-derived migration plan is committed, but the consensus patch must still be applied and compiled against the actual WAM source checkout before a Crakbit testnet genesis is mined.
+This repository is **not mainnet-ready**. The WAM-derived migration plan and preflight guardrails are committed, but the consensus patch must still be applied and compiled against the actual WAM source checkout before a Crakbit testnet genesis is mined.
 
-No mainnet launch is allowed until deterministic source pinning, yespower vectors, supply tests, DGW3 tests, genesis tests, wallet tests, reorg tests and sustained multi-node testnet operation pass.
+No mainnet launch is allowed until deterministic source pinning, yespower vectors, supply tests, DGW3 tests, genesis tests, wallet tests, reorg tests and sustained multi-node testnet operation pass. See `docs/LAUNCH_CHECKLIST.md`.
 
 ## License
 
