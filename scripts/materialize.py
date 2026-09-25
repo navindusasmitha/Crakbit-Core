@@ -72,13 +72,23 @@ def main() -> None:
     require_pinned(BTC, btc_lock["commit_sha"], "Bitcoin Core")
     require_pinned(YESPOWER, yes_lock["commit_sha"], "yespower")
 
+    # bootstrap.sh intentionally uses a partial clone. A local clone of a
+    # promisor/partial repository is not portable across Git versions, so use
+    # a detached worktree instead. It keeps exact source identity and avoids a
+    # second network fetch.
     if OUT.exists():
         shutil.rmtree(OUT)
-
-    # Keep a real .git directory so Bitcoin build metadata can resolve the
-    # exact upstream identity without another network fetch.
-    run("git", "clone", "--quiet", "--no-hardlinks", "--local", str(BTC), str(OUT))
-    run("git", "checkout", "--quiet", "--detach", btc_lock["commit_sha"], cwd=OUT)
+    run("git", "worktree", "prune", cwd=BTC)
+    run(
+        "git",
+        "worktree",
+        "add",
+        "--force",
+        "--detach",
+        str(OUT),
+        btc_lock["commit_sha"],
+        cwd=BTC,
+    )
     if head(OUT) != btc_lock["commit_sha"]:
         raise SystemExit("materialized Bitcoin Core HEAD does not match SOURCE_LOCK.json")
 
