@@ -1,0 +1,187 @@
+'use strict';
+// Copyright (c) 2026 The WAM Coin developers
+// Distributed under the MIT software license, see COPYING.
+//
+// ---------------------------------------------------------------------------
+// Variable difficulty.
+//
+// RandomX hashrates span four orders of magnitude -- a phone at 200 H/s and a
+// 64-core server at 30 kH/s may be on the same pool. A fixed share difficulty
+// would either drown the pool in shares from the big machine or give the small
+// one a share every twenty minutes (and a wildly noisy payout).
+//
+// The controller targets one share every `targetTime` seconds per connection,
+// measured over a sliding window, and only acts when the observed rate has
+// drifted outside a tolerance band. Retargeting on every share would chase
+// Poisson noise forever.
+// ---------------------------------------------------------------------------
+
+// The fewest shares the hardest-working miner should produce per block. PPLNS
+// divides a reward by share count; one share per block is a measurement with a
+// single sample, which cannot distinguish two miners from one.
+const SHARES_PER_BLOCK = 16;
+
+class VarDiff {
+    /**
+     * @param {object} cfg
+     *   targetTime      seconds between shares to aim for (default 15)
+     *   retargetTime    seconds between adjustments      (default 90)
+     *   variancePercent tolerance band around targetTime (default 30)
+     *   minDiff/maxDiff clamps
+     */
+    constructor(cfg = {}) {
+        this.targetTime = cfg.targetTime || 15;
+        this.retargetTime = cfg.retargetTime || 90;
+        this.variance = (cfg.variancePercent || 30) / 100;
+        this.minDiff = cfg.minDiff || 0.05;
+        this.maxDiff = cfg.maxDiff || 2000000;
+        this.maxJump = cfg.maxJump || 4;   // never move more than 4x at once
+
+        this.bufferSize = Math.max(4, Math.round(this.retargetTime / this.targetTime * 4));
+        this.tMin = this.targetTime * (1 - this.variance);
+        this.tMax = this.targetTime * (1 + this.variance);
+
+        // Filled in by setNetworkDifficulty(). Until the pool has spoken to a
+        // daemon the configured bounds stand on their own.
+        this.networkDiff = null;
+    }
+
+    /**
+     * Tell the controller how hard a block currently is.
+     *
+     * minDiff and maxDiff are absolute numbers chosen for a mature chain. On a
+     * young one they are nonsense: this pool shipped minDiff 100 against a
+     * testnet whose difficulty was 0.000244, making the easiest share the pool
+     * would ever hand out four hundred thousand times harder than a block.
+     *
+     * The miner then finds blocks -- those are accepted whatever the share
+     * target says -- and submits no shares at all. Everything still looks
+     * healthy: blocks arrive, payouts happen, the dashboard fills in. With one
+     * miner nobody notices, because PPLNS splitting one block between one
+     * participant is correct however you compute it. With two it silently
+     * stops being a pool and becomes solo mining with extra steps, paying
+     * whoever got lucky and nothing to the miner who contributed half the work.
+     */
+    setNetworkDifficulty(d) {
+        this.networkDiff = (typeof d === 'number' && isFinite(d) && d > 0) ? d : null;
+    }
+
+    /**
+     * A share is a *fraction* of a block, not a synonym for one.
+     *
+     * Capping at the network difficulty is not enough: at exactly that value a
+     * miner submits one share per block, and PPLNS -- which apportions a
+     * reward by share count -- has a single data point to divide. The measure
+     * only means something if the largest participant produces a number of
+     * shares per block, so no share may cost more than a sixteenth of one.
+     *
+     * On a mature chain networkDiff/16 is far above any sane maxDiff, so the
+     * configured value governs and nothing here changes behaviour.
+     */
+    _maxAllowed() {
+        return this.networkDiff === null
+            ? this.maxDiff
+            : Math.min(this.maxDiff, this.networkDiff / SHARES_PER_BLOCK);
+    }
+
+    /**
+     * The floor is a floor. It used to "follow the chain down by the same
+     * rule" as the ceiling, and on a young chain that collapsed the band to a
+     * single value: with minDiff 100 configured and a network difficulty of
+     * 0.0755, _minAllowed and _maxAllowed both returned 0.0047 and vardiff
+     * could not move a miner at all. Eighteen miners sat on byte-identical
+     * difficulty for eight hours on the first day of mainnet, and a share at
+     * networkDiff/16 costs a 200 H/s machine about twenty-eight hours of work.
+     * From that miner's seat a pool is indistinguishable from solo mining,
+     * which is exactly what one of them said in the chat.
+     *
+     * So the floor is the configured minDiff, lowered only when the ceiling
+     * itself is lower -- a floor above the ceiling is not a floor. The
+     * absolute limit is there so a misconfigured 0 cannot ask for a share
+     * every hash.
+     */
+    _minAllowed() {
+        const floor = Math.max(this.minDiff, 1e-9);
+        if (this.networkDiff === null) return floor;
+        return Math.min(floor, Math.max(this.networkDiff / SHARES_PER_BLOCK, 1e-9));
+    }
+
+    /** Per-connection state. */
+    createState(startDiff) {
+        const now = Date.now() / 1000;
+        return {
+            difficulty: this._clamp(startDiff),
+            lastShare: now,
+            lastRetarget: now - this.retargetTime / 2,  // stagger the first retarget
+            timeBuffer: []
+        };
+    }
+
+    /**
+     * Feed a share timestamp in. Returns the new difficulty if it changed,
+     * otherwise null.
+     */
+    onShare(state) {
+        const now = Date.now() / 1000;
+        const sinceLast = now - state.lastShare;
+        state.lastShare = now;
+
+        state.timeBuffer.push(sinceLast);
+        if (state.timeBuffer.length > this.bufferSize) state.timeBuffer.shift();
+
+        if (now - state.lastRetarget < this.retargetTime) return null;
+        if (state.timeBuffer.length < 4) return null;   // not enough evidence yet
+
+        state.lastRetarget = now;
+
+        const avg = state.timeBuffer.reduce((a, b) => a + b, 0) / state.timeBuffer.length;
+        if (avg <= 0) return null;
+        if (avg >= this.tMin && avg <= this.tMax) return null;   // inside the band
+
+        // Shares arriving twice as fast as wanted -> difficulty should double.
+        let factor = avg / this.targetTime;
+        factor = Math.max(1 / this.maxJump, Math.min(this.maxJump, factor));
+
+        const next = this._clamp(state.difficulty / factor);
+        if (Math.abs(next - state.difficulty) / state.difficulty < 0.05) return null;
+
+        state.difficulty = next;
+        state.timeBuffer.length = 0;   // old samples describe the old difficulty
+        return next;
+    }
+
+    /**
+     * A connection that has gone quiet for far longer than the target is
+     * probably over-difficultied (or the miner shrank). Called on a timer so
+     * that a stalled worker recovers without needing to submit first.
+     */
+    onIdle(state) {
+        const now = Date.now() / 1000;
+        const idle = now - state.lastShare;
+        if (idle < this.targetTime * 8) return null;
+
+        const next = this._clamp(state.difficulty / 2);
+        if (next === state.difficulty) return null;
+
+        state.difficulty = next;
+        state.lastRetarget = now;
+        state.timeBuffer.length = 0;
+        return next;
+    }
+
+    _clamp(d) {
+        const lo = this._minAllowed();
+        const hi = Math.max(lo, this._maxAllowed());
+        d = Math.min(hi, Math.max(lo, d));
+        // Round to 6 decimals so the wire value is stable and share accounting
+        // is reproducible. That rounding sets the smallest difficulty this
+        // pool can express: 0.000001. Anything below half of it would round to
+        // ZERO -- a target every hash satisfies, a miner flooding the pool,
+        // and a division by zero in the share weighting. So the rounding
+        // floor is enforced here rather than trusted to configuration.
+        const rounded = Math.round(d * 1000000) / 1000000;
+        return rounded > 0 ? rounded : 0.000001;
+    }
+}
+
+module.exports = VarDiff;

@@ -1,0 +1,134 @@
+#!/bin/bash
+# ===========================================================================
+#  wam-facts.sh -- the only thing the reporting key is allowed to run
+# ===========================================================================
+#
+#  Installed at /usr/local/bin/wam-facts on every host and named as a forced
+#  command in the reporting key's authorized_keys line:
+#
+#      restrict,command="/usr/local/bin/wam-facts" ssh-ed25519 AAAA... report
+#
+#  With that in place the key cannot open a shell, cannot forward a port,
+#  cannot run anything else, and cannot be talked into it -- ssh ignores
+#  whatever command the client asks for and runs this instead. If the
+#  machine that holds the key is ever taken, what the attacker gains here is
+#  the ability to read a status line they could mostly infer anyway.
+#
+#  It prints facts. It changes nothing, reads no key material, and touches
+#  no wallet.
+# ===========================================================================
+
+set -uo pipefail
+
+# THIS FILE IS INSTALLED ALONE, so it may not source anything.
+#
+# It used to begin `. "$SCRIPTS_DIR/lib/python.sh"`, resolved next to itself.
+# deploy.sh installs the single file to /usr/local/bin/wam-facts and no lib/
+# directory goes with it, so on every host that line printed
+#
+#     /usr/local/bin/wam-facts: line 26: /usr/local/bin/lib/python.sh:
+#     No such file or directory
+#
+# and $PY was never set. The section that reports declared maintenance is the
+# only user of it, so a planned-work notice silently never appeared in any
+# report. Found on 18 September while authorising the report key on the third
+# host. The probe is inline now, and this file depends on nothing it is not
+# installed with.
+PY=""
+for _c in python3 python py; do
+    if command -v "$_c" >/dev/null 2>&1 \
+       && "$_c" -c 'import sys' >/dev/null 2>&1; then PY="$_c"; break; fi
+done
+
+CLI=/opt/wam-current-bin/wam-cli
+
+# MAINNET. These three lines said -testnet, written in August when testnet was
+# the only chain, and never revisited. Mainnet opened on 15 September; for
+# three days the daily report and the operations panel both showed the height,
+# tip and peer count of the TEST chain -- 9964 while mainnet stood at 2446 --
+# and nothing in either display said which chain it meant.
+#
+# The flags are spelled out rather than left bare: bare wam-cli reads
+# /root/.wam, whose wam.conf says testnet=1, so an empty flag is not "the
+# default chain", it is the test chain.
+MAIN="-chain=main -conf=/root/.wam-mainnet/wam.conf -datadir=/root/.wam-mainnet"
+
+echo "###h";  $CLI $MAIN getblockcount 2>/dev/null
+echo "###t";  $CLI $MAIN getbestblockhash 2>/dev/null
+echo "###p";  $CLI $MAIN getconnectioncount 2>/dev/null
+echo "###m";  free -m | awk '/Mem:/{print $7, $2}'
+echo "###s";  free -m | awk '/Swap:/{print $2, $3}'
+# tr -dc strips the trailing newline along with the "G", so the next
+# section marker lands on the same line and the reader sees "185###u".
+# The echo puts the line ending back.
+echo "###d";  df -BG --output=avail / | tail -1 | tr -dc 0-9; echo
+echo "###u";  cut -d. -f1 /proc/uptime
+echo "###l";  cut -d' ' -f1 /proc/loadavg
+echo "###g";  git -C /opt/wam rev-parse --short HEAD 2>/dev/null
+echo "###b";  ls -t /root/backups/*.gpg 2>/dev/null | head -1 | xargs -r stat -c %Y
+echo "###a";  ls /var/lib/wam-reorg/ALARM-* 2>/dev/null | wc -l
+echo "###v";  [ -f /etc/update-motd.d/98-wam-version ] && echo behind || echo current
+echo "###x"
+# The backup timers are DISCOVERED, not named.
+#
+# This list said `wam-backup.timer`, and on 7 September the backup became a
+# template with one instance per network, so that unit was disabled in favour
+# of wam-backup@testnet.timer. The panel went red with
+#
+#     wam-backup.timer - inactive
+#
+# on both hosts, about a backup that had run successfully at 03:27 that
+# morning. check_backups.py had the same fault and was fixed the same day;
+# this file was the second copy of the question and nobody had asked it here.
+#
+# Writing the new name in would only move the fault to 15 September, when
+# wam-backup@mainnet.timer is enabled and this list would not know it exists.
+# So whatever backup timers the machine has are what gets reported. The
+# template itself -- wam-backup@.timer -- is not an instance and cannot be
+# active, so it is excluded or it would report as a permanent failure.
+BACKUP_TIMERS="$(systemctl list-units --type=timer --all --no-legend 'wam-backup*' 2>/dev/null \
+    | awk '{print $1}' | grep -v '^wam-backup@\.timer$' | tr '\n' ' ')"
+[ -n "$BACKUP_TIMERS" ] || BACKUP_TIMERS="wam-backup.timer"
+
+for u in wamd wam-electrumx@testnet wam-pool wam-dashboard wam-announce \
+         wam-miner $BACKUP_TIMERS wam-reorg-watch@testnet.timer \
+         wam-version-watch.timer wamd-mainnet wam-electrumx@mainnet; do
+    # is-active prints "inactive" and exits non-zero, so capture first and
+    # decide after -- the obvious `|| echo unknown` yields both words.
+    a=$(systemctl is-active "$u" 2>/dev/null); [ -n "$a" ] || a=unknown
+    e=$(systemctl is-enabled "$u" 2>/dev/null); [ -n "$e" ] || e=-
+    printf '%s %s %s\n' "$u" "$a" "$e"
+done
+# Units in the failed state. Nothing in this project read this until three
+# services had failed silently: wam-backup nightly from 23 August, and
+# wam-reorg-watch on both machines from 03:11 and 03:47 UTC on 1 September.
+# Every panel showed the TIMER, and a timer stays active however often the
+# service under it fails. OnFailure= now sends an alarm the moment it
+# happens; this is the second answer, for a host that was down when it did.
+# The leading bullet is there or not depending on the systemd version and
+# whether it thinks it has a terminal, so strip anything before the name
+# rather than trusting a column number.
+echo "###f"; systemctl list-units --state=failed --plain --no-legend --no-pager 2>/dev/null \
+    | sed 's/^[^A-Za-z0-9]*//' | awk '{print $1}' | head -20
+# Alarms this host raised but could not send, because it holds no bot token
+# and must not: whoever took this machine could otherwise post to the public
+# announcement channel. The host that does hold the token reads them here
+# and forwards them.
+# Planned work, if any was declared. It silences nothing -- see
+# scripts/wam-maint.sh -- but the morning report should say so plainly rather
+# than let a person wonder later whether an alarm was us.
+echo "###maint"
+if [ -f /var/lib/wam-login-watch/maintenance.json ]; then
+    "$PY" - <<'PY' 2>/dev/null
+import json, time
+try:
+    m = json.load(open("/var/lib/wam-login-watch/maintenance.json"))
+    left = int(float(m.get("until", 0)) - time.time())
+    if left > 0:
+        print("%d %s" % (left, m.get("reason", "?")))
+except Exception:
+    pass
+PY
+fi
+echo "###alarm"; [ -f /var/lib/wam-login-watch/pending.txt ] && cat /var/lib/wam-login-watch/pending.txt
+echo "###end"

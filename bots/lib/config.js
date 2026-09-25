@@ -1,0 +1,119 @@
+'use strict';
+// Copyright (c) 2026 The WAM Coin developers
+// Distributed under the MIT software license, see COPYING.
+//
+// ===========================================================================
+//  config.js -- read and validate the announcement config, once
+// ===========================================================================
+//
+//  This lived inside announce.js until say.js needed it too. It is here
+//  rather than copied because of what it contains: the refusal to start
+//  against a world-readable credentials file, raised by an external reviewer
+//  on 2026-08-09.
+//
+//  A second copy of a credential check is a credential check that will
+//  eventually disagree with the first one, and the copy that is wrong is the
+//  one nobody looks at. Three separate faults today came from exactly that
+//  shape -- two places holding the same fact, edited by different hands.
+// ===========================================================================
+
+const fs = require('fs');
+const path = require('path');
+
+function loadConfig(file) {
+    if (!fs.existsSync(file)) {
+        throw new Error(`config not found: ${file}\nRun bots/setup.sh to create one.`);
+    }
+
+    // This file holds channel credentials -- a Telegram token, a Discord
+    // webhook, or both. Each is a password for a public channel. setup.sh
+    // writes it 0600, but a config copied by hand, restored from a backup, or
+    // dropped in by an editor arrives with whatever umask was in force, usually
+    // world-readable.
+    //
+    // Refusing to start is deliberate. A warning printed at boot is read once
+    // and then scrolls away for months. Raised by an external reviewer,
+    // 2026-08-09.
+    if (process.platform !== 'win32') {
+        const mode = fs.statSync(file).mode & 0o777;
+        if (mode & 0o077) {
+            throw new Error(
+                `${file} is mode ${mode.toString(8).padStart(3, '0')}: readable by ` +
+                'other users on this machine.\n' +
+                'It contains the credentials for your announcement channels.\n' +
+                `Fix it with:  chmod 600 ${file}`);
+        }
+    }
+
+    const cfg = JSON.parse(fs.readFileSync(file, 'utf8'));
+
+    if (!cfg.node) throw new Error("config is missing 'node'");
+
+    // At least one channel, and no placeholders. A bot that starts having been
+    // configured with nowhere to post looks healthy in systemd and is silent
+    // for weeks before anyone notices.
+    const hasTelegram = !!(cfg.telegram && cfg.telegram.token);
+    const hasDiscord = !!(cfg.discord && cfg.discord.webhookUrl);
+    if (!hasTelegram && !hasDiscord) {
+        throw new Error('config names no channel: add telegram.token, discord.webhookUrl, or both');
+    }
+    for (const [where, value] of [['telegram.token', hasTelegram && cfg.telegram.token],
+                                  ['discord.webhookUrl', hasDiscord && cfg.discord.webhookUrl]]) {
+        if (value && String(value).includes('CHANGE_ME')) {
+            throw new Error(`refusing to start with a placeholder ${where}`);
+        }
+    }
+    if (hasTelegram && !cfg.telegram.chatId) throw new Error('config.telegram.chatId is required');
+
+    // ?? not ||, so that a deliberate 0 survives. With || a configured
+    // heartbeatHours of 0 silently becomes 24, and the operator is left
+    // wondering why the setting does nothing.
+    cfg.pollSeconds       = cfg.pollSeconds       ?? 60;
+    cfg.heartbeatHours    = cfg.heartbeatHours    ?? 24;
+
+    // The UTC hour the daily post goes out. Fixed, not an interval, because an
+    // interval drifts: every restart pushes the post later by however long the
+    // bot was down and it never comes back. By 2 September 2026 it had drifted
+    // to 04:53 UTC -- before dawn in Libya -- so the channel read as silent to
+    // the founder and to everyone else in it for a whole day while the bot was
+    // working perfectly.
+    //
+    // 12:00 UTC is early afternoon in Libya, evening in Singapore, morning in
+    // the Americas: awake in most of the places anyone reading this is.
+    cfg.heartbeatHourUtc  = cfg.heartbeatHourUtc  ?? 12;
+
+    cfg.stallMinutes      = cfg.stallMinutes      ?? 60;
+    cfg.githubRepo        = cfg.githubRepo        ?? null;
+    cfg.stateFile         = cfg.stateFile         ?? path.join(path.dirname(file), 'announce-state.json');
+    cfg.milestoneHeights  = cfg.milestoneHeights  ?? [1, 100, 1000, 10000, 50000,
+                                                      100000, 200000, 400000, 500000,
+                                                      1000000, 2000000, 5000000, 6600000];
+    return cfg;
+}
+
+// Where the config lives, defined once because it was defined twice.
+//
+// announce.js fell back to '/etc/wam/announce.json', which is where the file
+// actually is on both servers. say.js fell back to
+// path.join(__dirname, 'announce.json') -- a file that has never existed.
+//
+// So the launch-night command in docs/LAUNCH_DAY.md step 21,
+//
+//     node bots/say.js --file posts/launch.txt --expect main
+//
+// failed on the host with "config not found", and it failed BEFORE reaching
+// the --expect check, so the guard that exists to stop the announcement going
+// out on the wrong chain never ran. Found on 7 September by rehearsing Phase F
+// -- which is the same reason Phase F exists: a dry run on 29 August produced
+// the launch announcement headed "TESTNET".
+//
+// Two siblings reading one file had two answers for where it is. Now there is
+// one answer and both ask for it.
+const DEFAULT_CONFIG = '/etc/wam/announce.json';
+
+/** The config path a command should use: flag, then environment, then default. */
+function resolveConfig(argConfig) {
+    return argConfig || process.env.WAM_ANNOUNCE_CONFIG || DEFAULT_CONFIG;
+}
+
+module.exports = { loadConfig, resolveConfig, DEFAULT_CONFIG };

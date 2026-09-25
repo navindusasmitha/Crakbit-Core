@@ -1,0 +1,361 @@
+#!/bin/bash
+# Copyright (c) 2026 The WAM Coin developers
+# Distributed under the MIT software license, see COPYING.
+#
+# ===========================================================================
+#  package_platform.sh -- make a release archive from binaries already built
+# ===========================================================================
+#
+#      bash scripts/package_platform.sh --platform windows --version v0.1.8 \
+#          --from ~/Downloads/wam-windows-x86_64
+#
+#      bash scripts/package_platform.sh --platform macos-arm64 --version v0.1.8 \
+#          --from out/macos-arm64
+#
+#  WHY THIS IS NOT package_release.sh
+#
+#  package_release.sh compiles. It fetches upstream, applies the WAM changes,
+#  builds RandomX for a portable baseline, links, strips, and then packages --
+#  and every one of those steps is Linux-specific. Teaching it a second
+#  platform would mean teaching it to cross-compile, which build_windows.sh
+#  already does, and editing the script that produces the launch release
+#  during the week the launch release is frozen.
+#
+#  So this one does not build anything. It takes a directory of finished
+#  binaries -- from build_windows.sh, build_macos.sh, or the artifact the
+#  platform-build workflow uploads -- and produces an archive laid out exactly
+#  like the Linux one, so a reader who has seen one knows where to look.
+#
+#  WHY THERE WAS NO WINDOWS RELEASE UNTIL NOW
+#
+#  Not the build. The build has worked since 7 September, is exercised in CI
+#  on every platform-build run, and on 10 September a stranger ran a node
+#  under WSL and reported the same block hash at height 7738 as ours. What was
+#  missing was thirty lines that put those binaries in a tarball.
+#
+#  The founder said this on 12 September, three days out, and he was right:
+#  RandomX was chosen so an ordinary computer can mine, most ordinary
+#  computers run Windows, and a chain that ships Linux-only on its first day
+#  contradicts its own reason for existing. Somebody who arrives on day one,
+#  finds nothing he can run, and leaves does not come back to check later.
+#
+#  WHAT IT REFUSES TO DO
+#
+#  It does not sign. The key is offline on a USB stick and signing happens on
+#  the machine that holds it, by a person -- scripts/sign_release.sh. This
+#  prints the SHA256 lines to be added to SHA256SUMS and stops there.
+#
+#  It also refuses a binary whose file format does not match the platform
+#  being claimed. A tarball named -windows- holding ELF executables is worse
+#  than no tarball: it fails on the target machine with an error about a
+#  format nobody reading it expects.
+# ===========================================================================
+
+set -uo pipefail
+
+REPO="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-$0}")/.." && pwd)"
+cd "$REPO" || exit 2
+
+GRN=$'\033[32m'; RED=$'\033[31m'; YLW=$'\033[33m'; BLD=$'\033[1m'; OFF=$'\033[0m'
+ok()   { printf '  %sok%s    %s\n' "$GRN" "$OFF" "$*"; }
+bad()  { printf '  %sFAIL%s  %s\n' "$RED" "$OFF" "$*"; }
+warn() { printf '  %s!!%s    %s\n' "$YLW" "$OFF" "$*"; }
+die()  { printf '\n  %sSTOPPED%s  %s\n\n' "$RED" "$OFF" "$*" >&2; exit 1; }
+
+PLATFORM=""; VERSION=""; FROM=""
+OUT="${OUT:-$REPO/out/release}"
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --platform) PLATFORM="${2:-}"; shift 2 ;;
+        --version)  VERSION="${2:-}";  shift 2 ;;
+        --from)     FROM="${2:-}";     shift 2 ;;
+        *) printf 'unknown argument: %s\n' "$1" >&2; exit 2 ;;
+    esac
+done
+
+[ -n "$PLATFORM" ] && [ -n "$VERSION" ] && [ -n "$FROM" ] || {
+    printf 'usage: %s --platform windows|macos-arm64|macos-x86_64 --version vX.Y.Z --from DIR\n' \
+        "${0##*/}" >&2; exit 2; }
+[ -d "$FROM" ] || die "no such directory: $FROM"
+
+# PRETTY is the platform as it appears in a sentence a stranger reads. The
+# first version of RELEASE.txt interpolated $PLATFORM directly and told people
+# their binary had been tested "on a windows runner", which reads like a typo
+# in the one file whose whole job is to be believed.
+case "$PLATFORM" in
+    windows)      TRIPLET="x86_64-w64-mingw32"; WANT="PE32+";  ARCHIVE="zip"
+                  STRIP="x86_64-w64-mingw32-strip"; PRETTY="Windows"
+                  HOW="cross-compiled on Linux by the platform-build workflow"
+                  MINER_HOW="cross-compiled on Linux, which cannot run it, so
+--self-test was run on a Windows machine afterwards" ;;
+    macos-arm64)  TRIPLET="arm64-apple-darwin"; WANT="Mach-O"; ARCHIVE="tar.gz"
+                  STRIP="strip"; PRETTY="macOS (Apple Silicon)"
+                  HOW="compiled natively on a macOS runner by the
+platform-build workflow, not cross-compiled from anything"
+                  MINER_HOW="compiled on that same machine, so it ran its
+own --self-test there, during the build" ;;
+    macos-x86_64) TRIPLET="x86_64-apple-darwin"; WANT="Mach-O"; ARCHIVE="tar.gz"
+                  STRIP="strip"; PRETTY="macOS (Intel)"
+                  HOW="compiled natively on a macOS runner by the
+platform-build workflow, not cross-compiled from anything"
+                  MINER_HOW="compiled on that same machine, so it ran its
+own --self-test there, during the build" ;;
+    *) die "platform must be windows, macos-arm64 or macos-x86_64 (got '$PLATFORM')" ;;
+esac
+case "$VERSION" in v*) ;; *) VERSION="v$VERSION" ;; esac
+
+echo
+echo "=================================================================="
+echo " ${BLD}packaging WAM Coin $VERSION for $TRIPLET${OFF}"
+echo "=================================================================="
+echo "  from: $FROM"
+echo
+
+# ---------------------------------------------------------------------------
+#  Is this actually that platform?
+# ---------------------------------------------------------------------------
+#
+# `file` is asked, not the directory name. On 7 September a build script was
+# handed a native RandomX archive for a cross-compile and produced something
+# that linked and could not run; the lesson written down then was that flags
+# describe intent and the file describes the file.
+command -v file >/dev/null 2>&1 || die "the 'file' command is required to check the binaries"
+
+echo "${BLD}1. what these files actually are${OFF}"
+found=0; wrong=0
+while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    case "${f##*/}" in *.log|*.txt|*.md) continue ;; esac
+    fmt="$(file -bL "$f")"
+    case "$fmt" in
+        *"$WANT"*) ok "$(printf '%-16s %s' "${f##*/}" "${fmt:0:52}")"; found=$((found+1)) ;;
+        *) bad "$(printf '%-16s %s' "${f##*/}" "${fmt:0:52}")"; wrong=$((wrong+1)) ;;
+    esac
+done <<EOF
+$(find "$FROM" -maxdepth 2 -type f | sort)
+EOF
+
+[ "$wrong" -eq 0 ] || die "$wrong file(s) are not $WANT. Nothing was packaged."
+[ "$found" -gt 0 ] || die "no executables found under $FROM"
+ok "$found file(s), all $WANT"
+
+# ---------------------------------------------------------------------------
+#  Does the binary agree with the name on the box?
+# ---------------------------------------------------------------------------
+#
+#  On 12 September this script packaged wam-coin-v0.1.8-x86_64-w64-mingw32.zip
+#  from binaries that answer
+#
+#      WAM Coin version v0.1.7
+#
+#  because --version is a string typed into a form and nothing compared it to
+#  anything. The archive was correct in every other respect: right format,
+#  stripped, consensus-gated, self-tested. And a user who downloaded v0.1.8 and
+#  ran `wamd -version` would have been told he had v0.1.7, which in a project
+#  where the answer to "am I on the version that changed a consensus rule?" is
+#  that command is not a cosmetic disagreement.
+#
+#  sign_release.sh catches the same class of error from the other end -- it
+#  refuses to sign a list of v0.1.8 file names from a v0.1.7 checkout -- and
+#  that guard did its job here. This one moves the stop earlier, to before the
+#  archive exists, and states the cause instead of the symptom.
+#
+#  Read out of the file, not run. A PE cannot be executed on the Linux runner
+#  that cross-compiled it, and `-version` would be the wrong question anyway:
+#  the same rule has to hold for both platforms, and grep does.
+echo
+echo "${BLD}1b. the version in the binaries${OFF}"
+
+# patch_upstream.py is the authority: it is what the build stamps into the
+# binaries, and what sign_release.sh consults. Asked first, because if this
+# disagrees then every binary will too and the cause is one line in one file.
+WANT_VER="$(sed -n 's/^WAM_CLIENT_VERSION *= *"\([0-9.]*\)".*/\1/p' \
+            "$REPO/scripts/patch_upstream.py" 2>/dev/null | head -1)"
+CLAIM="${VERSION#v}"
+
+if [ -z "$WANT_VER" ]; then
+    warn "could not read WAM_CLIENT_VERSION from scripts/patch_upstream.py"
+elif [ "$WANT_VER" != "$CLAIM" ]; then
+    die "this checkout builds v$WANT_VER, and you asked for $VERSION.
+
+          scripts/patch_upstream.py : $WANT_VER
+          --version                 : $CLAIM
+
+          The archive name is not the version. Move the version first --
+          docs/RELEASING.md section 1 --
+
+              python3 scripts/set_version.py $CLAIM
+
+          then rebuild, because the binaries carry the old number until
+          they are compiled again."
+else
+    ok "patch_upstream.py says $WANT_VER, which is what was asked"
+fi
+
+# And then the files themselves, which is the part that cannot be argued with.
+# The miner is skipped: it carries its own version (wam-miner 1.0.0), which
+# moves independently of the release and is checked by its own self-test.
+vbad=0
+for f in "$FROM"/*; do
+    [ -f "$f" ] || continue
+    case "${f##*/}" in
+        wam-miner|wam-miner.exe|*.log|*.txt|*.md) continue ;;
+    esac
+    seen="$(grep -aoE 'v[0-9]+\.[0-9]+\.[0-9]+' "$f" 2>/dev/null | sort -u | tr '\n' ' ')"
+    if [ -z "$seen" ]; then
+        warn "$(printf '%-16s no version string found -- not checked' "${f##*/}")"
+    elif printf '%s' " $seen" | grep -q " $VERSION "; then
+        ok "$(printf '%-16s says %s' "${f##*/}" "$VERSION")"
+    else
+        bad "$(printf '%-16s says %s, not %s' "${f##*/}" "$seen" "$VERSION")"
+        vbad=$((vbad + 1))
+    fi
+done
+[ "$vbad" -eq 0 ] || die "$vbad binary(ies) report a different version than $VERSION.
+
+          These were compiled before the version was moved. Nothing was
+          packaged, because an archive whose name and contents disagree is
+          worse than no archive: it is wrong in a way the person holding it
+          cannot see."
+
+# ---------------------------------------------------------------------------
+echo
+echo "${BLD}2. the same layout as the Linux archive${OFF}"
+
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
+NODE="$STAGE/wam-coin-$VERSION"
+mkdir -p "$NODE/bin" "$OUT"
+
+for f in "$FROM"/*; do
+    [ -f "$f" ] || continue
+    case "${f##*/}" in
+        wam-miner|wam-miner.exe) ;;                      # handled below
+        *.log|*.txt|*.md) ;;
+        *) cp "$f" "$NODE/bin/" ;;
+    esac
+done
+for f in COPYING README.md WHITEPAPER.md SECURITY.md; do
+    [ -f "$REPO/$f" ] && cp "$REPO/$f" "$NODE/"
+done
+ok "bin/ holds $(find "$NODE/bin" -type f | wc -l | tr -d ' ') file(s)"
+
+# Debug symbols, if whoever built these left them in.
+#
+# package_release.sh has stripped the Linux binaries since the first release --
+# "Debug symbols are most of the size and none of the use. 339 MB -> ~30 MB" --
+# and on 12 September the Windows artifact from platform-build #10 was 197 MB
+# because nothing in the Windows path did the same. On a connection carrying
+# 16 KB/s that is three and a half hours to download a node.
+#
+# build_windows.sh now strips before the consensus gate runs, so binaries that
+# came through the workflow arrive here already stripped and this is a no-op
+# that says so. It stays because this script also accepts a directory somebody
+# built by hand.
+BEFORE_KB=$(du -sk "$NODE/bin" | cut -f1)
+if command -v "$STRIP" >/dev/null 2>&1; then
+    "$STRIP" "$NODE/bin"/* 2>/dev/null || true
+    AFTER_KB=$(du -sk "$NODE/bin" | cut -f1)
+    if [ "$AFTER_KB" -lt "$BEFORE_KB" ]; then
+        ok "stripped      $(( BEFORE_KB / 1024 )) MB -> $(( AFTER_KB / 1024 )) MB"
+    else
+        ok "no symbols to strip -- already $(( AFTER_KB / 1024 )) MB"
+    fi
+else
+    # Not fatal: a 197 MB archive is worse than a small one and better than
+    # none. But it is said in the colour that means "look at this".
+    warn "$STRIP not found, so nothing was stripped: $(( BEFORE_KB / 1024 )) MB"
+    warn "of binaries, most of it debug symbols. On Ubuntu, for Windows:"
+    warn "    sudo apt install binutils-mingw-w64-x86-64"
+fi
+
+# The note itself is scripts/release_note.sh, and it is a separate file for
+# the reason written at the top of it: this text was wrong four times in one
+# evening, and the root of all four was that the packaging is parameterised
+# by platform while only one branch of it was ever exercised, on Linux.
+#
+# Separated, it needs no binaries and no runner -- a platform name and a
+# version are enough -- so scripts/test/test_release_note.sh can exercise
+# every platform this project supports, in a second, before anything is
+# pushed to a runner.
+if ! bash "$REPO/scripts/release_note.sh" \
+        --platform "$PLATFORM" --version "$VERSION" > "$NODE/RELEASE.txt"; then
+    die "release_note.sh failed for $PLATFORM. Nothing was packaged."
+fi
+# Measured, not asserted. The line above used to print whatever happened,
+# including for an empty file, which is how a zero-byte RELEASE.txt reached
+# an archive somebody could download. 1500 bytes is well under the real size
+# and well over any truncation.
+RTXT_BYTES=$(wc -c < "$NODE/RELEASE.txt" 2>/dev/null || echo 0)
+if [ "$RTXT_BYTES" -lt 1500 ]; then
+    die "RELEASE.txt came out $RTXT_BYTES bytes, which is not a release note.
+
+          It is the file that tells a stranger what was tested and what was
+          not, so an empty or truncated one is worse than none: the archive
+          looks complete and says nothing. Nothing was packaged."
+fi
+ok "RELEASE.txt   $RTXT_BYTES bytes -- what was tested, and what was not"
+
+MINERSRC=""
+for cand in "$FROM/wam-miner.exe" "$FROM/wam-miner"; do
+    [ -f "$cand" ] && MINERSRC="$cand" && break
+done
+if [ -n "$MINERSRC" ]; then
+    MIN="$STAGE/wam-miner-$VERSION"
+    mkdir -p "$MIN"
+    cp "$MINERSRC" "$MIN/"
+    command -v "$STRIP" >/dev/null 2>&1 && "$STRIP" "$MIN"/* 2>/dev/null || true
+    [ -f "$REPO/COPYING" ] && cp "$REPO/COPYING" "$MIN/"
+    [ -f "$REPO/miner/README.md" ] && cp "$REPO/miner/README.md" "$MIN/"
+    ok "miner packaged separately, as on Linux"
+else
+    # Loud, because this is the failure that shipped nothing for six days.
+    # RandomX exists in this chain so an ordinary desktop can mine, and most
+    # ordinary desktops are the platform being packaged here. A node without a
+    # miner gives those people a wallet and tells them to install Linux.
+    warn "no miner in $FROM -- the node archive is made alone."
+    warn "For Windows and macOS that is a release that cannot mine. Check that"
+    warn "the build script produced wam-miner$([ "$PLATFORM" = windows ] && echo .exe)."
+fi
+
+# ---------------------------------------------------------------------------
+echo
+echo "${BLD}3. archives${OFF}"
+
+made=()
+pack() {   # pack <stage subdir> <archive base name>
+    local dir="$1" base="$2"
+    if [ "$ARCHIVE" = "zip" ]; then
+        command -v zip >/dev/null 2>&1 || die "zip is not installed, and Windows users expect a .zip"
+        ( cd "$STAGE" && zip -q -r "$OUT/$base.zip" "$dir" ) || die "zip failed for $base"
+        made+=("$base.zip")
+    else
+        tar -czf "$OUT/$base.tar.gz" -C "$STAGE" "$dir" || die "tar failed for $base"
+        made+=("$base.tar.gz")
+    fi
+}
+
+pack "wam-coin-$VERSION"  "wam-coin-$VERSION-$TRIPLET"
+[ -n "$MINERSRC" ] && pack "wam-miner-$VERSION" "wam-miner-$VERSION-$TRIPLET"
+
+for a in "${made[@]}"; do
+    sz=$(stat -c%s "$OUT/$a" 2>/dev/null || echo 0)
+    ok "$(printf '%-46s %s' "$a" "$(( sz / 1024 )) KB")"
+done
+
+# ---------------------------------------------------------------------------
+echo
+echo "${BLD}4. the lines to add to SHA256SUMS${OFF}"
+echo
+( cd "$OUT" && sha256sum "${made[@]}" ) | sed 's/^/    /'
+echo
+echo "        Append these to the release's SHA256SUMS, then sign that file"
+echo "        with the offline key -- this script cannot and must not:"
+echo
+echo "            bash scripts/sign_release.sh"
+echo
+echo "=================================================================="
+printf ' %s%s%s packaged for %s%s\n' "$GRN" "$BLD" "$VERSION" "$TRIPLET" "$OFF"
+echo "=================================================================="
+echo

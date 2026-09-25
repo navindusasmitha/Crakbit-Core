@@ -1,0 +1,41 @@
+DESTINATION: a public comment on Bisq PR #8030
+https://github.com/bisq-network/bisq/pull/8030
+SEND: part 1 on 14 September, part 2 on 15 September
+NOTE: the replay-protection answer is already in the thread and a
+maintainer marked it 👍, so this does not re-argue it. If #8030 is closed
+rather than open, part 1 asks whether to reopen or resubmit; the altcoin
+policy is theirs and we said we would not push against it.
+===========================================================================
+PART 1 — send 14 September
+===========================================================================
+
+Mainnet opens tomorrow, 2026-09-15 00:00:00 UTC. That is the timestamp
+inside the genesis block rather than a plan — a node started before it
+refuses to run — so the date is fixed.
+
+Everything an address-validation review needs is already checkable:
+
+  mainnet genesis   d8d3debea987b62a0934c3980d62bffbb6e16aa797d19891d4fcc9b9fb11d7e9
+  network magic     0x57 0x41 0x4d 0x21   ("WAM!")
+  base58 prefixes   73 / 135 / 190   — addresses W..., w..., WIF V...
+  bech32 HRP        wam              (twam on testnet)
+  source            https://github.com/wam-coin-official/wam-coin
+  binaries          https://github.com/wam-coin-official/wam-coin/releases/tag/v0.1.8
+                    Linux, Windows, macOS — SHA256SUMS signed
+
+`WAMCoin.java` and `WAMCoinTest.java` are unchanged, with the test vectors
+generated from this chain.
+
+If this PR should be reopened for the review, say so and I will rebase it;
+if you would rather have a fresh one now that mainnet exists, I will open
+that instead. And the altcoin policy is yours — I said I would not push
+against it and I am not doing so now.
+
+===========================================================================
+PART 2 — send 15 September, after the chain is verified
+===========================================================================
+
+Mainnet is live: height <<HEIGHT>>, best block <<BESTHASH>>, measured
+<<UTC>>, genesis
+d8d3debea987b62a0934c3980d62bffbb6e16aa797d19891d4fcc9b9fb11d7e9 on all
+three seed nodes.

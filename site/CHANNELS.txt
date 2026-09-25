@@ -1,0 +1,195 @@
+===========================================================================
+ WAM Coin -- the official channels
+===========================================================================
+
+ This file is the canonical list. Where it disagrees with anything else,
+ including the README, this file is correct.
+
+
+ THE LIST
+ --------
+
+   website        https://wamcoin.org
+   source         https://github.com/wam-coin-official/wam-coin
+   announcements  https://t.me/wam_coin_updates
+   x / twitter    https://x.com/WAMCoinCore
+   discord        https://discord.gg/Gxvmrjy9Qb
+   bitcointalk    https://bitcointalk.org/index.php?topic=5591218.0
+   youtube        https://www.youtube.com/@WAMcoin-l1z
+   reddit         https://www.reddit.com/user/WAMCoinCore/   (ours, see below)
+   bluesky        https://bsky.app/profile/wamcoin.org       (see below -- this
+                                                              one proves itself)
+   tiktok         https://www.tiktok.com/@wamcoin
+   twitch         https://www.twitch.tv/wamcoin
+   email          wam.coin.official@proton.me
+
+ And the three services the network itself runs:
+
+   explorer       https://explorer.wamcoin.org
+   mining pool    https://pool.wamcoin.org   (stratum on 3333 / 3334 / 3335)
+   electrum       electrum.wamcoin.org:50002 (SSL)
+
+ Those three are listed here because they are the ones worth impersonating.
+ A fake pool takes your hash rate; a fake Electrum server can lie to your
+ wallet about what you hold. Check the host against this file before you
+ point anything at it.
+
+ There are no others. No second account on any platform named above, no
+ Instagram, no "support" account, no exchange listing, no presale, no
+ airdrop, no token sale, no wallet app. If you have found one of those and
+ it says WAM, it is not us.
+
+ That sentence used to name each platform it was denying, and it went out
+ of date three times in two days -- once denying a Reddit account that was
+ ours. A list of what does not exist has to be rewritten every time
+ something does; a rule does not.
+
+ The Reddit account is ours, registered on 10 August 2026 so that nobody
+ else could take the name. One post was made from it, carrying links to
+ these same channels. Reddit removed it and applied a temporary spam
+ restriction: a new account posting external links is what that filter is
+ for. So the page looks empty, and that is Reddit's filtering of a new
+ account rather than any sign the account is not ours.
+
+ The same three identities are also linked as verified connections on the
+ founder's Discord profile -- github.com/wam-coin-official,
+ reddit.com/user/WAMCoinCore and x.com/WAMCoinCore. Discord verified each
+ of those by sign-in, not by being told, which makes it a second way to
+ check this file that does not depend on this file.
+
+ THE ONE ACCOUNT THAT PROVES ITSELF WITHOUT US
+
+ Every other line above asks you to trust either this file or the platform
+ it names. A "website" field on a profile is text somebody typed, and an
+ impostor types the same text.
+
+ The Bluesky handle is different. It is not a name we chose on Bluesky --
+ it is this domain:
+
+   @wamcoin.org
+
+ Bluesky grants a domain as a handle only to whoever can write a DNS record
+ under it, and it re-checks. So the handle is a statement by the domain
+ itself, and you can read that statement without us and without Bluesky:
+
+   dig +short TXT _atproto.wamcoin.org
+
+   "did=did:plc:exxxhvsr3nals4cabrviatmt"
+
+ Whoever controls wamcoin.org published that record, and only whoever
+ controls wamcoin.org could. Nobody can forge it without taking the domain,
+ and if somebody takes the domain, this file is gone too.
+
+ That is the strongest identity proof this project has anywhere, and it is
+ stronger than the signature on this file for one narrow purpose: it needs
+ no key of ours to check, only a DNS query anybody can run.
+
+
+ WHAT NOBODY OFFICIAL WILL EVER DO
+ ---------------------------------
+
+   * ask you for a seed phrase, private key, or wallet file
+   * ask you to send coins anywhere to "verify", "unlock" or "register"
+   * ask you for money, in any currency, for any reason
+   * message you first
+   * offer you a guaranteed return, an allocation, or an early price
+
+ Every one of those is the whole of crypto fraud. There is no sixth kind.
+ The correct response to all five is to stop reading.
+
+
+ HOW TO CHECK THIS FILE
+ ----------------------
+
+ Accounts that link to each other prove very little: whoever takes one of
+ them can point it at a row of impostors. So this file is meant to be
+ signed.
+
+   curl -O https://wamcoin.org/CHANNELS.txt
+   curl -O https://wamcoin.org/CHANNELS.txt.asc
+   gpg --verify CHANNELS.txt.asc CHANNELS.txt
+
+ The fingerprint that must come back is published in SECURITY.md in the
+ source repository, and nowhere else. Compare it character by character.
+ A signature that verifies against some other key proves nothing at all.
+
+ GnuPG will also print, on a perfectly good signature:
+
+   gpg: WARNING: This key is not certified with a trusted signature!
+
+ That is not a failure and it is not about this file. It means only that
+ you have not told your own keyring that you trust our key -- which you
+ should not do on first contact anyway. The line that matters is the one
+ that says "Good signature", and the fingerprint underneath it. If you see
+ "BAD signature", that is the real thing, and it means these bytes are not
+ the bytes we signed.
+
+ The key that signs this is kept offline and is not on any machine that
+ faces the internet. The same key signs every release from v0.1.6, so the
+ signature on your download and the signature on this list are the same
+ claim, made once and checkable twice.
+
+ A signature covers exact bytes. This file is revised whenever a channel is
+ added, and every revision needs a new signature -- so if the verification
+ fails, the likely reason is that you hold the signature of a different
+ revision. Fetch both again from the same place, together.
+
+ Revisions 1 and 2 were never signed at all, and said so, but gave a reason
+ that had stopped being true: that the key ceremony had not been held. It
+ had. The file simply had not been signed with it, and nobody noticed the
+ sentence had gone stale for a fortnight.
+
+
+ WHAT THIS FILE DOES NOT CLAIM
+ -----------------------------
+
+ That the software is safe. No third-party security audit has been done.
+ That the coin is worth anything. It has no price and may never have one.
+ That the project will continue. Most do not.
+
+ This file establishes who is speaking. Nothing more.
+
+
+---------------------------------------------------------------------------
+ Revision 3 -- 2026-09-04
+   Added the BitcoinTalk announcement thread and the contact email. Both
+   were official the whole time. The thread has been up since 14 August,
+   three days after revision 1 was written, and it was never added -- so
+   the file that exists to say what is ours has spent three weeks implying
+   our own announcement thread was an impostor's, and could have been cited
+   against it by anybody who wanted to.
+
+   This is the second time. Revision 2 fixed exactly this for the explorer,
+   the pool and the Electrum server. The lesson did not stick, because
+   nothing in the project checks it: a new channel is added by a person
+   remembering to, and the person did not.
+
+   Also corrected: "four accounts" was written when there were four and was
+   wrong at five, before this revision made it seven. A count in prose goes
+   stale every time the list grows, so the count is gone.
+
+   Also corrected: the note explaining a missing CHANNELS.txt.asc still
+   blamed a key ceremony that has since been held.
+
+   And this is the first revision that is actually signed. Revisions 1 and 2
+   told the reader to run gpg --verify against a file that did not exist,
+   for three and a half weeks, which is a worse failure than not offering
+   the check at all: it reads as though verification is available, and the
+   reader who tries it and gets nothing has no way to tell our negligence
+   from an attack. scripts/sign_channels.sh now signs and verifies its own
+   signature.
+
+   That sentence used to end "so a revision cannot be published unsigned by
+   forgetting", and on 8 September it was forgotten twice in one day. A
+   script that is correct when run guarantees nothing about being run. What
+   makes the claim true is a check that fails on its own --
+   scripts/check_channels_signed.sh, in the sweep, which compares the bytes
+   git holds against the signature git holds.
+
+ Revision 2 -- 2026-08-21
+   Added the explorer, the pool and the Electrum server. They existed and
+   were missing here, so this file -- whose one job is to say what is ours
+   -- was calling three of our own hosts impostors.
+
+ Revision 1 -- 2026-08-11
+---------------------------------------------------------------------------

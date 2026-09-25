@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WAM Coin — a CPU-mineable proof-of-work currency</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<meta name="description" content="A CPU-mineable proof-of-work currency with a hard 22,000,000 cap. RandomX, two-minute blocks, a disclosed and time-locked founder reserve. Launching 15 September 2026.">
+<link rel="canonical" href="https://wamcoin.org/">
+
+<!-- Every account that is us, in the form a search engine actually reads.
+     schema.org's sameAs is the standard way to say "these profiles and this
+     website are one entity" -- it is what a search engine assembles an
+     official-accounts panel from. Without it, and without the visible links
+     further down, a profile our own domain never points at is a profile
+     nothing associates with us, and the impostor's copy is the one that gets
+     found first.
+
+     This runs in the opposite direction to the platforms' own verification,
+     and it is the direction we control: the claim comes from the domain,
+     which nobody else holds. Bluesky is the one that also proves itself the
+     other way, without us and without trusting Bluesky -- the handle IS the
+     domain, bound by a TXT record at _atproto.wamcoin.org that any stranger
+     can query. The rest carry only what they assert.
+
+     CHANNELS.txt is the signed copy of this same list. If the two ever
+     disagree, the signed one is the answer and this is the mistake. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "WAM Coin",
+  "alternateName": "WAMCoin",
+  "url": "https://wamcoin.org/",
+  "logo": "https://wamcoin.org/og-card.png",
+  "email": "wam.coin.official@proton.me",
+  "foundingDate": "2026",
+  "description": "A CPU-mineable proof-of-work currency with a hard 22,000,000 cap. RandomX, two-minute blocks, a disclosed and time-locked founder reserve. Mainnet 15 September 2026.",
+  "sameAs": [
+    "https://github.com/wam-coin-official/wam-coin",
+    "https://x.com/WAMCoinCore",
+    "https://t.me/wam_coin_updates",
+    "https://discord.gg/Gxvmrjy9Qb",
+    "https://bsky.app/profile/wamcoin.org",
+    "https://www.youtube.com/@WAMcoin-l1z",
+    "https://www.reddit.com/user/WAMCoinCore/",
+    "https://www.tiktok.com/@wamcoin",
+    "https://www.twitch.tv/wamcoin",
+    "https://bitcointalk.org/index.php?topic=5591218.0"
+  ]
+}
+</script>
+
+<!-- Without these, a link to this page posted on X, Discord, Telegram or a
+     forum renders as a bare URL: no title, no summary, no mark. A Bisq
+     maintainer read a submission for this coin and replied "I do not see any
+     project related to WAM" -- the links were in the pull request, and this
+     is part of what he saw instead. Four lines of HTML.
+
+     The image is the struck mark itself, which already carries the supply
+     figure and the launch date, so the card says nothing the coin does not. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="WAM Coin">
+<meta property="og:url" content="https://wamcoin.org/">
+<meta property="og:title" content="WAM Coin — a CPU-mineable proof-of-work currency">
+<meta property="og:description" content="A Bitcoin Core v28.1 fork with RandomX proof of work. A hard 22,000,000 cap, two-minute blocks, and a founder reserve locked in the genesis block itself. Mainnet 15 September 2026.">
+<meta property="og:image" content="https://wamcoin.org/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The WAM Coin mark: a struck gold coin reading 22,000,000 and WAMCOIN 15-9-2026.">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ar_LY">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@WAMCoinCore">
+<meta name="twitter:title" content="WAM Coin — a CPU-mineable proof-of-work currency">
+<meta name="twitter:description" content="A Bitcoin Core v28.1 fork with RandomX proof of work. A hard 22,000,000 cap and a founder reserve locked in the genesis block. Mainnet 15 September 2026.">
+<meta name="twitter:image" content="https://wamcoin.org/og-card.png">
+
+<!-- No fonts, no analytics, no CDN, nothing loaded from anywhere else. A page
+     that asks a stranger to trust a currency should not also ask them to trust
+     four other servers. View source: this is the whole thing.
+
+     The card image above is served from this domain for the same reason. -->
+
+<style>
+:root {
+  --bg:#faf9f7; --fg:#1a1a1a; --dim:#5c5a57; --line:#e2ded9;
+  --green:#0B7C5C; --gold:#D9A63C; --card:#fff; --warn-bg:#fff8e8; --warn-line:#e8cf9a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#0e1211; --fg:#eceae7; --dim:#9a9691; --line:#252b29;
+    --green:#14B89A; --gold:#D9A63C; --card:#141918; --warn-bg:#1f1a0e; --warn-line:#4a3c1c;
+  }
+}
+* { box-sizing:border-box; }
+body {
+  margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap { max-width:760px; margin:0 auto; padding:0 22px 90px; }
+a { color:var(--green); text-decoration:none; border-bottom:1px solid transparent; }
+a:hover { border-bottom-color:currentColor; }
+code, .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.9em; }
+
+header { padding:70px 0 34px; text-align:center; }
+.mark { width:76px; height:76px; margin:0 auto 20px; display:block; }
+h1 { margin:0 0 8px; font-size:2.05rem; letter-spacing:-.02em; }
+.tag { color:var(--dim); font-size:1.05rem; margin:0; }
+.chips { margin-top:20px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+.chip {
+  font-size:.8rem; padding:4px 11px; border:1px solid var(--line);
+  border-radius:99px; color:var(--dim);
+}
+.chip.live { border-color:var(--green); color:var(--green); }
+
+.warn {
+  background:var(--warn-bg); border:1px solid var(--warn-line);
+  border-radius:10px; padding:18px 20px; margin:34px 0;
+}
+.warn h2 { margin:0 0 8px; font-size:1rem; letter-spacing:.02em; text-transform:uppercase; }
+.warn p { margin:0; font-size:.96rem; }
+
+h2.sec { font-size:1.28rem; margin:46px 0 14px; letter-spacing:-.01em; }
+p { margin:0 0 14px; }
+.dim { color:var(--dim); }
+
+table { width:100%; border-collapse:collapse; margin:18px 0; font-size:.95rem; }
+th, td { text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); }
+th { color:var(--dim); font-weight:600; font-size:.82rem; text-transform:uppercase; letter-spacing:.04em; }
+td.num { text-align:right; font-family:ui-monospace,Menlo,Consolas,monospace; white-space:nowrap; }
+tr.sum th, tr.sum td { border-top:2px solid var(--line); }
+tr.sum th { color:var(--fg); }
+
+pre {
+  background:var(--card); border:1px solid var(--line); border-radius:9px;
+  padding:14px 16px; overflow-x:auto; font-size:.86rem; line-height:1.55; margin:14px 0;
+}
+
+.links { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin:22px 0; }
+.card {
+  display:block; padding:15px 17px; border:1px solid var(--line);
+  border-radius:10px; background:var(--card); border-bottom:1px solid var(--line);
+}
+.card:hover { border-color:var(--green); }
+.card b { display:block; font-size:.98rem; margin-bottom:3px; }
+.card span { color:var(--dim); font-size:.85rem; }
+
+footer { margin-top:60px; padding-top:22px; border-top:1px solid var(--line); color:var(--dim); font-size:.86rem; }
+
+/* ---------------------------------------------------------------------
+   The language switch, in CSS alone.
+
+   A checkbox and two sibling rules. There is one small script at the
+   foot of this page, for the countdown, and the switch deliberately does
+   not use it: language should not depend on script running. Both
+   languages are in the HTML regardless, so a search engine, a screen
+   reader and a browser with CSS off all get the whole page.
+
+   .ar-i is the inline variant. `display:revert` would cover both, but a
+   browser that does not know it leaves the Arabic hidden forever, and
+   the failure is invisible to whoever deployed it.
+   --------------------------------------------------------------------- */
+.ar, .ar-i { display:none; }
+#lang:checked ~ .wrap .en   { display:none; }
+#lang:checked ~ .wrap .en-i { display:none; }
+#lang:checked ~ .wrap .ar   { display:block; }
+#lang:checked ~ .wrap .ar-i { display:inline; }
+
+.ar { direction:rtl; text-align:right; }
+
+/* Arabic is cursive: letter-spacing severs the joins between letters and
+   uppercase does nothing at all. Both are inherited from the Latin rules
+   above, so both are undone here. */
+.ar th { letter-spacing:normal; text-transform:none; font-size:.88rem; }
+.ar th, .ar td { text-align:right; }
+.ar td.num { text-align:left; direction:ltr; }
+.ar pre, .ar code { direction:ltr; text-align:left; }
+.ar ul { padding:0 20px 0 0; margin:14px 0; }
+.ar li { margin-bottom:9px; }
+
+.langbtn {
+  display:inline-block; margin-top:20px; cursor:pointer; user-select:none;
+  font-size:.82rem; padding:5px 15px; border:1px solid var(--line);
+  border-radius:99px; color:var(--dim); background:var(--card);
+}
+.langbtn:hover { border-color:var(--green); color:var(--green); }
+#lang:focus-visible ~ .wrap .langbtn { outline:2px solid var(--green); outline-offset:2px; }
+</style>
+</head>
+<body>
+<input type="checkbox" id="lang" hidden>
+<div class="wrap">
+
+<header>
+  <img class="mark" src="wam-coin.png" width="256" height="256"
+       alt="WAM Coin" decoding="async">
+  <h1>WAM Coin</h1>
+  <p class="tag en">A CPU-mineable proof-of-work currency with a hard 22,000,000 cap.</p>
+  <p class="tag ar">عملة إثبات عمل تُعدَّن بالمعالجات العادية، بسقف نهائي قدره 22,000,000 وحدة.</p>
+  <div class="chips">
+    <span class="chip">RandomX</span>
+    <span class="chip en-i">2-minute blocks</span>
+    <span class="chip ar-i">بلوك كل دقيقتين</span>
+    <span class="chip">DarkGravityWave v3</span>
+    <span class="chip live en-i" id="status-en">Testnet running · mainnet 15 Sep 2026</span>
+    <span class="chip live ar-i" id="status-ar">الشبكة التجريبية تعمل · الإطلاق 15 سبتمبر 2026</span>
+  </div>
+  <label class="langbtn" for="lang">
+    <span class="en-i">العربية</span><span class="ar-i">English</span>
+  </label>
+</header>
+
+<div class="en">
+
+<div class="warn">
+  <h2>Before anything else</h2>
+  <p><strong>This coin may be worth nothing.</strong> The overwhelming majority of new
+  cryptocurrencies fail, and there is no reason to assume this one is different.
+  <strong>Nobody is guaranteed to buy it from you.</strong> There is no price on this page
+  and there never will be. Treat anything you acquire as money you can afford to lose
+  entirely.</p>
+</div>
+
+<h2 class="sec">What it is</h2>
+<p>A fork of Bitcoin Core v28.1 with four deliberate departures: a hard ceiling of
+22,000,000 coins, a two-minute block target, <strong>RandomX</strong> proof of work so that
+ordinary CPUs stay competitive against purpose-built hardware, and difficulty retargeting on
+every block so that a rented hash-rate spike cannot freeze the chain.</p>
+
+<p>Roughly 250,000 lines of peer-to-peer networking, script interpretation and wallet code are
+inherited from a codebase that has been adversarially reviewed for fifteen years. Retyping
+that would not have made WAM more original — it would have made it less safe. About 3,000
+lines are genuinely ours, and every one of them is
+<a href="https://github.com/wam-coin-official/wam-coin">public</a>.</p>
+
+<h2 class="sec">The numbers</h2>
+<table>
+  <tr><th>Maximum supply</th><td class="num">22,000,000 WAM</td></tr>
+  <tr><th>Public mining</th><td class="num">19,250,000 · 87.50%</td></tr>
+  <tr><th>Founder reserve</th><td class="num">2,000,000 · 9.09%</td></tr>
+  <tr><th>Operating treasury</th><td class="num">750,000 · 3.41%</td></tr>
+  <tr class="sum"><th>Not mined by the public</th><td class="num"><strong>2,750,000 · 12.50%</strong></td></tr>
+  <tr><th>Block target</th><td class="num">120 seconds</td></tr>
+  <tr><th>Initial reward</th><td class="num">50 WAM</td></tr>
+  <tr><th>Halving</th><td class="num">every 200,000 blocks</td></tr>
+  <tr><th>Proof of work</th><td class="num">RandomX</td></tr>
+</table>
+
+<p class="dim"><strong>None of the founder reserve is spendable at launch.</strong> All
+2,000,000 are locked in the genesis block itself by <code>OP_CHECKLOCKTIMEVERIFY</code>,
+releasing 20% a year from September 2027 to September 2031. The 5% treasury fee is a
+consensus rule that stops permanently at block 400,000, after which miners receive the
+entire subsidy. Neither is a promise; both are enforced by every node, and you can read the
+lock out of block 0 yourself.</p>
+
+<h2 class="sec">What the founder does not do</h2>
+<p>The founder keeps the founder reserve and grants himself nothing above it. He does not
+sell WAM and does not support its price — <strong>because a founder who accumulates beyond
+his own share corrupts the distribution</strong>, and a coin concentrated in one hand is not
+distributed however its schedule reads.</p>
+<p>If he ever needs it for something, he buys it the way you would: from a miner or a venue,
+at whatever it is worth that day.</p>
+<p class="dim">This is a restriction he placed on himself for the fairness of the
+distribution. It is not a promise to you, and it puts a floor under nothing.</p>
+
+<h2 class="sec">Do not take our word for it</h2>
+<p>Every claim above has a command that proves or disproves it. These read the shipped
+binary, not this page:</p>
+
+<pre># the 22,000,000 cap, replayed with exact integer arithmetic
+python3 scripts/verify_supply.py
+
+# every difference between WAM and Bitcoin, with the reason for each
+python3 scripts/patch_upstream.py --list
+
+# what the running chain says about its own money
+wam-cli getsupplyinfo</pre>
+
+<p>And one that is not ours to write. On 26 August 2026 SatoshiLabs merged WAM
+into the registry every wallet reads before it derives an address:
+<a href="https://github.com/satoshilabs/slips/blob/master/slip-0044.md">SLIP-0044</a>
+coin type <b>5718349</b>, and
+<a href="https://github.com/satoshilabs/slips/blob/master/slip-0173.md">SLIP-0173</a>
+prefix <b>wam</b>. The numbers are reserved to this chain and to no other. That is
+a fact about us kept by somebody else — it is not an endorsement, a listing, or a
+promise that any wallet will add support.</p>
+
+<h2 class="sec">Links</h2>
+<div class="links">
+  <a class="card" href="https://github.com/wam-coin-official/wam-coin">
+    <b>Source code</b><span>github.com/wam-coin-official</span></a>
+  <a class="card" href="https://github.com/wam-coin-official/wam-coin/blob/main/WHITEPAPER.md">
+    <b>Whitepaper</b><span>the design, and its limits</span></a>
+  <a class="card" href="https://x.com/WAMCoinCore">
+    <b>X</b><span>@WAMCoinCore</span></a>
+  <a class="card" href="https://t.me/wam_coin_updates">
+    <b>Announcements</b><span>t.me/wam_coin_updates</span></a>
+  <a class="card" href="https://discord.gg/Gxvmrjy9Qb">
+    <b>Discord</b><span>discuss and ask</span></a>
+  <a class="card" href="/start/">
+    <b>Start here</b><span>run a node, from nothing</span></a>
+  <a class="card" href="https://explorer.wamcoin.org">
+    <b>Explorer</b><span>every block, as mined</span></a>
+  <a class="card" href="https://pool.wamcoin.org">
+    <b>Mining pool</b><span>pool.wamcoin.org</span></a>
+  <a class="card" href="https://github.com/wam-coin-official/wam-coin/blob/main/SECURITY.md">
+    <b>Security</b><span>report a vulnerability</span></a>
+  <a class="card" href="/CHANNELS.txt">
+    <b>Official channels</b><span>the canonical list</span></a>
+</div>
+
+<!-- The cards above are the channels somebody actually needs. These are the
+     rest, listed because a search engine has no reason to connect an account
+     to this project unless this domain points at it -- and the account it
+     finds instead will be somebody else's, wearing our name. -->
+<p class="dim">Also ours, and nowhere else:
+<a href="https://bsky.app/profile/wamcoin.org">Bluesky</a> ·
+<a href="https://www.youtube.com/@WAMcoin-l1z">YouTube</a> ·
+<a href="https://www.reddit.com/user/WAMCoinCore/">Reddit</a> ·
+<a href="https://www.tiktok.com/@wamcoin">TikTok</a> ·
+<a href="https://www.twitch.tv/wamcoin">Twitch</a> ·
+<a href="https://bitcointalk.org/index.php?topic=5591218.0">BitcoinTalk</a>.
+The Bluesky handle is <span class="mono">@wamcoin.org</span> — that is this domain, bound by a
+DNS record you can query yourself, so it proves itself without trusting us or Bluesky.</p>
+
+<p class="dim">Those are the only accounts. Nobody speaking for WAM will message you first,
+offer you an allocation, or ask you for a key or a payment — there is nothing to buy and no
+reason anyone would need to reach you. <a href="/CHANNELS.txt">CHANNELS.txt</a> is the plain-text
+copy of this list, kept so it can be signed and checked rather than merely believed.</p>
+
+<h2 class="sec">Mining</h2>
+<p>WAM is mined by ordinary computers. There is no pre-sale, no allocation to buy into, and
+no way to acquire it at launch except by mining it or by trading with someone who did.</p>
+<p class="dim">Mainnet opens 15 September 2026. Until then the testnet is running, and its
+coins are worth nothing by design.</p>
+<p class="dim"><strong>If you run a node, subscribe to releases</strong> on
+<a href="https://github.com/wam-coin-official/wam-coin">the repository</a> —
+<span class="mono">Watch ▾ → Custom → Releases</span>. Some releases change a consensus
+rule, and a node left on an old one is rejected by the network at the next block it
+disagrees about. It does eventually warn you, in a log nobody is reading. A release
+notification arrives where you got the software, before any of that.</p>
+
+<p class="dim"><strong>One pool is not a network.</strong> There is a project pool at
+<a href="https://pool.wamcoin.org">pool.wamcoin.org</a>, and there should be others that
+are not ours. What keeps a chain decentralised is not how a pool is built — a pool is
+central by definition — it is that a miner can leave for one somebody else runs, or mine
+alone. <a href="https://github.com/wam-coin-official/wam-coin/blob/main/docs/POOL_OPERATOR.md">POOL_OPERATOR.md</a>
+is the whole thing: architecture, configuration, payouts, and what it costs to run. If you
+start one, say so and it will be listed here beside ours.</p>
+
+<p class="dim"><strong>The founder mines too</strong> — same software, same public pool,
+same difficulty as anyone else, and the addresses he mines to will be published here. A new
+chain with few miners is a chain that is cheap to attack, so he is the floor under its
+security until others arrive. His share of the hash rate will be large at launch and is
+meant to fall; it will be published so you can watch it fall rather than take his word for
+it.</p>
+
+<h2 class="sec">Trading</h2>
+<p><strong>WAM is not listed anywhere, and there is no price.</strong> It cannot be bought.</p>
+<p class="dim">Enquiries have been sent to six decentralised venues — Komodo Wallet,
+BasicSwap DEX, Bisq, Maya Protocol, Haveno and Block DX — asking what they require in order
+to list a chain like this. <strong>None of them has agreed to anything.</strong> They are
+requests for requirements, sent before launch because reviews at venues of this kind take
+weeks, and this line will say something different only when one of them says yes.</p>
+<p class="dim">WAM is its own layer 1 rather than a token on someone else's chain, so it
+settles by atomic swap or a peer-to-peer order book. It cannot appear on an automated market
+maker such as Uniswap without a bridge and a wrapped representation, which is the same
+reason Monero does not.</p>
+
+</div><!-- /en -->
+
+
+<div class="ar" lang="ar" dir="rtl">
+
+<div class="warn">
+  <h2>قبل أي شيء آخر</h2>
+  <p><strong>قد لا تساوي هذه العملة شيئاً.</strong> الغالبية الساحقة من العملات الرقمية
+  الجديدة تفشل، ولا يوجد سبب لافتراض أن هذه استثناء. <strong>ولا أحد يضمن أن يشتريها
+  منك.</strong> لا يوجد سعر في هذه الصفحة ولن يوجد. اعتبر أي مبلغ تضعه فيها مبلغاً تحتمل
+  خسارته بالكامل.</p>
+</div>
+
+<h2 class="sec">ما هي</h2>
+<p>تفريعة من Bitcoin Core v28.1 بأربعة اختلافات مقصودة: سقف نهائي قدره 22,000,000 وحدة،
+وبلوك كل دقيقتين، وإثبات عمل <strong>RandomX</strong> ليبقى المعالج العادي منافساً أمام
+العتاد المصنوع خصيصاً للتعدين، وإعادة ضبط للصعوبة عند كل بلوك حتى لا تستطيع قوة تعدين
+مستأجرة أن تُجمّد السلسلة.</p>
+
+<p>نحو 250,000 سطر من شبكة الند للند وتفسير السكربت وإدارة المحفظة موروثة من قاعدة كود
+خضعت لمراجعة عدائية طوال خمسة عشر عاماً. إعادة كتابتها ما كانت لتجعل WAM أكثر أصالة — كانت
+لتجعلها أقل أماناً. نحو 3,000 سطر هي ملكنا فعلاً، وكلها
+<a href="https://github.com/wam-coin-official/wam-coin">منشورة</a>.</p>
+
+<h2 class="sec">الأرقام</h2>
+<table>
+  <tr><th>الحد الأقصى للإصدار</th><td class="num">22,000,000 WAM</td></tr>
+  <tr><th>التعدين العام</th><td class="num">19,250,000 · 87.50%</td></tr>
+  <tr><th>احتياطي المؤسس</th><td class="num">2,000,000 · 9.09%</td></tr>
+  <tr><th>خزينة التشغيل</th><td class="num">750,000 · 3.41%</td></tr>
+  <tr class="sum"><th>غير مُعدَّن للعموم</th><td class="num"><strong>2,750,000 · 12.50%</strong></td></tr>
+  <tr><th>زمن البلوك</th><td class="num">120 ثانية</td></tr>
+  <tr><th>مكافأة البلوك الأول</th><td class="num">50 WAM</td></tr>
+  <tr><th>التنصيف</th><td class="num">كل 200,000 بلوك</td></tr>
+  <tr><th>إثبات العمل</th><td class="num">RandomX</td></tr>
+</table>
+
+<p class="dim"><strong>لا شيء من احتياطي المؤسس قابل للصرف يوم الإطلاق.</strong> المليونان
+كلّها مقفلة داخل بلوك التكوين نفسه بـ<code>OP_CHECKLOCKTIMEVERIFY</code>، ويُفرج عنها بنسبة
+20% سنوياً من سبتمبر 2027 إلى سبتمبر 2031. ورسوم التشغيل البالغة 5% قاعدة إجماع تتوقّف
+نهائياً عند البلوك 400,000، وبعدها يأخذ المعدّنون المكافأة كاملة. لا هذا وعد ولا ذاك — كلاهما
+تفرضه كل عقدة، ويمكنك قراءة القفل من البلوك صفر بنفسك.</p>
+
+<h2 class="sec">ما لا يفعله المؤسّس</h2>
+<p>المؤسّس يحتفظ باحتياطي المؤسّس ولا يمنح نفسه شيئاً فوقه. لا يبيع WAM ولا يسند سعرها —
+<strong>لأن مؤسّساً يجمع فوق حصّته يُفسد التوزيع</strong>، وعملةٌ تتركّز في يدٍ واحدة ليست
+موزَّعةً مهما قال جدولها.</p>
+<p>وإن احتاجها يوماً لأمر، اشتراها كما تشتريها أنت: من معدّن أو من منصّة، بما تساويه ذلك
+اليوم.</p>
+<p class="dim">هذا قيدٌ وضعه على نفسه من أجل عدالة التوزيع. وليس وعداً لك، ولا يضع أرضيةً
+تحت شيء.</p>
+
+<h2 class="sec">لا تصدّقنا — تحقّق بنفسك</h2>
+<p>كل رقم أعلاه له أمر يُثبته أو ينفيه. هذه الأوامر تقرأ الملف التنفيذي نفسه، لا هذه الصفحة:</p>
+
+<ul>
+  <li><code>python3 scripts/verify_supply.py</code><br>
+      <span class="dim">يعيد حساب السقف 22,000,000 بحساب صحيح دقيق، بلوكاً بلوكاً.</span></li>
+  <li><code>python3 scripts/patch_upstream.py --list</code><br>
+      <span class="dim">كل اختلاف بين WAM وبيتكوين، ومعه سبب وجوده.</span></li>
+  <li><code>wam-cli getsupplyinfo</code><br>
+      <span class="dim">ما تقوله السلسلة العاملة عن نقودها هي، لا ما نقوله نحن عنها.</span></li>
+</ul>
+
+<p>وهناك واحدةٌ ليست بأيدينا. في ٢٦ أغسطس ٢٠٢٦ أدرجت SatoshiLabs عملة WAM في السجلّ
+الذي تقرؤه كل محفظة قبل أن تشتقّ عنواناً:
+<a href="https://github.com/satoshilabs/slips/blob/master/slip-0044.md">SLIP-0044</a>
+بنوع عملة <b>5718349</b>، و<a href="https://github.com/satoshilabs/slips/blob/master/slip-0173.md">SLIP-0173</a>
+ببادئة <b>wam</b>. الرقمان محجوزان لهذه السلسلة دون غيرها. وهذه حقيقةٌ عنّا يحفظها سوانا —
+وليست تزكيةً، ولا إدراجاً، ولا وعداً بأن محفظةً ما ستدعمنا.</p>
+
+<h2 class="sec">الروابط</h2>
+<div class="links">
+  <a class="card" href="https://github.com/wam-coin-official/wam-coin">
+    <b>الكود المصدري</b><span dir="ltr">github.com/wam-coin-official</span></a>
+  <a class="card" href="https://github.com/wam-coin-official/wam-coin/blob/main/WHITEPAPER.md">
+    <b>الورقة البيضاء</b><span>التصميم، وحدوده</span></a>
+  <a class="card" href="https://x.com/WAMCoinCore">
+    <b>X</b><span dir="ltr">@WAMCoinCore</span></a>
+  <a class="card" href="https://t.me/wam_coin_updates">
+    <b>قناة الإعلانات</b><span dir="ltr">t.me/wam_coin_updates</span></a>
+  <a class="card" href="https://discord.gg/Gxvmrjy9Qb">
+    <b>ديسكورد</b><span>للنقاش والأسئلة</span></a>
+  <a class="card" href="/start-ar/">
+    <b>ابدأ من هنا</b><span>شغّل عقدةً من الصفر</span></a>
+  <a class="card" href="https://explorer.wamcoin.org">
+    <b>مستكشف السلسلة</b><span>كل بلوك كما عُدِّن</span></a>
+  <a class="card" href="https://pool.wamcoin.org">
+    <b>مجمّع التعدين</b><span dir="ltr">pool.wamcoin.org</span></a>
+  <a class="card" href="https://github.com/wam-coin-official/wam-coin/blob/main/SECURITY.md">
+    <b>الأمان</b><span>الإبلاغ عن ثغرة</span></a>
+  <a class="card" href="/CHANNELS.txt">
+    <b>القنوات الرسمية</b><span>القائمة المرجعية</span></a>
+</div>
+
+<p class="dim">ولنا أيضاً، ولا شيء غيرها:
+<a href="https://bsky.app/profile/wamcoin.org">Bluesky</a> ·
+<a href="https://www.youtube.com/@WAMcoin-l1z">YouTube</a> ·
+<a href="https://www.reddit.com/user/WAMCoinCore/">Reddit</a> ·
+<a href="https://www.tiktok.com/@wamcoin">TikTok</a> ·
+<a href="https://www.twitch.tv/wamcoin">Twitch</a> ·
+<a href="https://bitcointalk.org/index.php?topic=5591218.0">BitcoinTalk</a>.
+ومعرّفنا على Bluesky هو <span class="mono" dir="ltr">@wamcoin.org</span> — وهو نطاقنا هذا نفسه،
+مربوط بسجل DNS تستطيع أن تستعلم عنه بنفسك، فيثبت نفسه دون أن تصدّقنا ودون أن تصدّق Bluesky.</p>
+
+<p class="dim">هذه هي الحسابات الوحيدة. لن يراسلك أحد باسم WAM أولاً، ولن يعرض عليك حصة،
+ولن يطلب منك مفتاحاً ولا مبلغاً — لا يوجد شيء يُشترى، ولا سبب يجعل أحداً يحتاج الوصول إليك.
+<a href="/CHANNELS.txt">CHANNELS.txt</a> نسخة نصية صِرفة من هذه القائمة، محفوظة بهذا الشكل
+لتقبل توقيعاً يمكن التحقّق منه، بدل أن يُطلب منك تصديقها فحسب.</p>
+
+<h2 class="sec">التعدين</h2>
+<p>تُعدَّن WAM بأجهزة الحاسب العادية. لا يوجد بيع مسبق، ولا حصة تُشترى، ولا طريقة للحصول
+عليها يوم الإطلاق إلا بتعدينها أو بمبادلتها مع من عدّنها.</p>
+<p class="dim">تُفتح الشبكة الرئيسية في 15 سبتمبر 2026. وحتى ذلك الحين تعمل الشبكة التجريبية،
+وعملاتها لا تساوي شيئاً بالتصميم.</p>
+<p class="dim"><strong>ومن يُشغّل عقدةً فليشترك في إشعارات الإصدارات</strong> على
+<a href="https://github.com/wam-coin-official/wam-coin">المستودع</a> —
+<span class="mono">Watch ▾ ← Custom ← Releases</span>. فبعض الإصدارات تُغيّر قاعدة إجماع،
+وعقدةٌ تبقى على القديم ترفضها الشبكة عند أول كتلةٍ تختلف عليها. وهي تُحذّرك في النهاية،
+في سجلٍّ لا يقرأه أحد. أمّا إشعار الإصدار فيصلك في المكان الذي أخذتَ منه البرنامج،
+قبل ذلك كله.</p>
+
+<p class="dim"><strong>ومجمّعٌ واحد ليس شبكة.</strong> يوجد مجمّع للمشروع على
+<a href="https://pool.wamcoin.org">pool.wamcoin.org</a>، ويجب أن توجد مجمّعاتٌ أخرى ليست
+لنا. فما يحفظ لامركزية السلسلة ليس تصميم المجمّع — المجمّع مركزيٌّ بطبيعته — بل أن يستطيع
+المعدّن أن يرحل إلى مجمّعٍ يديره غيرنا، أو أن يعدّن وحده.
+و<a href="https://github.com/wam-coin-official/wam-coin/blob/main/docs/POOL_OPERATOR.md">POOL_OPERATOR.md</a>
+فيه كل شيء: البنية، والإعداد، والدفعات، وما يكلّفه التشغيل. ومن يُنشئ واحداً فليخبرنا،
+ويُذكَر هنا بجانب مجمّعنا.</p>
+
+<p class="dim"><strong>والمؤسّس يعدّن أيضاً</strong> — بالبرنامج نفسه، ومن المجمّع العام
+نفسه، وبالصعوبة نفسها كأي أحد، والعناوين التي يعدّن إليها ستُنشر هنا. سلسلةٌ جديدة قليلة
+المعدّنين سلسلةٌ رخيصة المهاجمة، فهو الأرضية تحت أمانها حتى يأتي غيره. ونصيبه من قوّة
+الشبكة سيكون كبيراً يوم الإطلاق ومقصودٌ أن ينزل؛ وسيُنشر لتراه ينزل بنفسك بدل أن تُصدّقه.</p>
+
+<h2 class="sec">التداول</h2>
+<p><strong>WAM غير مُدرجة في أي منصّة، ولا سعر لها.</strong> ولا يمكن شراؤها.</p>
+<p class="dim">أُرسلت استفسارات إلى ستّ منصّات لا مركزية — Komodo Wallet وBasicSwap DEX
+وBisq وMaya Protocol وHaveno وBlock DX — سؤالاً عمّا تشترطه لإدراج سلسلة كهذه.
+<strong>ولم يوافق أيٌّ منها على شيء.</strong> هي طلب متطلّبات، أُرسل قبل الإطلاق لأن المراجعة
+في مثل هذه المنصّات تستغرق أسابيع، ولن يتغيّر هذا السطر إلّا يوم يقول أحدها نعم.</p>
+<p class="dim">WAM سلسلة مستقلّة بذاتها لا عملة رمزية على سلسلة غيرها، فتداولها يكون بمبادلة
+ذرّية أو بدفتر أوامر بين الأطراف. ولا يمكن إدراجها في منصّة صانع سوق آلي مثل Uniswap بلا
+جسر ونسخة ملفوفة — وهو نفس سبب غياب مونيرو عنها.</p>
+
+</div><!-- /ar -->
+
+
+<footer>
+  <p class="en">MIT licensed, as Bitcoin Core. Two independent developers have reviewed it and their findings were adopted; no paid security audit has been performed.</p>
+  <p class="en">This page states no price, forecasts no value, and solicits nothing.</p>
+  <p class="ar" dir="rtl">رخصة MIT، كما Bitcoin Core. راجعها مطوّران مستقلّان وأُخذت
+  ملاحظاتهما؛ ولم يُجرَ تدقيق أمني مدفوع.</p>
+  <p class="ar" dir="rtl">هذه الصفحة لا تذكر سعراً، ولا تتنبّأ بقيمة، ولا تطلب منك شيئاً.</p>
+</footer>
+
+</div>
+
+<script>
+// The only script on the page: turn the launch date into something a reader
+// can act on. It reads the clock and nothing else -- no network, no storage,
+// no cookies. The language switch above is deliberately CSS-only; this is here
+// because a countdown cannot be computed from a stylesheet.
+//
+// Both chips are written, not just the visible one. Which one is showing is a
+// CSS state this script cannot see, and guessing would leave the other stale
+// for anyone who then switches language.
+(function () {
+  var launch = Date.UTC(2026, 8, 15, 0, 0, 0);   // 15 September 2026, 00:00 UTC
+  var days = Math.ceil((launch - Date.now()) / 86400000);
+
+  var text = {
+    en: days > 1  ? 'Testnet running · mainnet in ' + days + ' days'
+      : days === 1 ? 'Testnet running · mainnet tomorrow'
+      : days === 0 ? 'Mainnet launches today'
+      :              'Mainnet live since 15 September 2026',
+
+    // Arabic marks 3-10 differently from 11+, and 1 and 2 differently again.
+    // "في 5 أيام" is right; "في 15 أيام" is not -- it is "في 15 يوماً".
+    ar: days > 10 ? 'الشبكة التجريبية تعمل · الإطلاق بعد ' + days + ' يوماً'
+      : days > 2  ? 'الشبكة التجريبية تعمل · الإطلاق بعد ' + days + ' أيام'
+      : days === 2 ? 'الشبكة التجريبية تعمل · الإطلاق بعد يومين'
+      : days === 1 ? 'الشبكة التجريبية تعمل · الإطلاق غداً'
+      : days === 0 ? 'الشبكة الرئيسية تُطلق اليوم'
+      :              'الشبكة الرئيسية تعمل منذ 15 سبتمبر 2026'
+  };
+
+  Object.keys(text).forEach(function (lang) {
+    var el = document.getElementById('status-' + lang);
+    if (el) el.textContent = text[lang];
+  });
+})();
+</script>
+</body>
+</html>

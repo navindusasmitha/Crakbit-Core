@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mine WAM — nine lines</title>
+<link rel="icon" href="/favicon.png" type="image/png">
+<meta name="description" content="The shortest correct way to start mining WAM Coin: nine commands, no explanation.">
+<link rel="canonical" href="https://wamcoin.org/mine/">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="WAM Coin">
+<meta property="og:title" content="Mine WAM — nine lines">
+<meta property="og:description" content="Nine commands and nothing to read. Written because a tester said his friends wanted the shortest way to start, and the guide is the wrong shape for that.">
+<meta property="og:image" content="https://wamcoin.org/og-card.png">
+<meta property="og:url" content="https://wamcoin.org/mine/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@WAMCoinCore">
+<meta name="twitter:image" content="https://wamcoin.org/og-card.png">
+<style>
+:root{--bg:#faf9f7;--fg:#1a1a1a;--dim:#5c5a57;--rule:#e3e0db;--code:#f2f0ec;--accent:#8a6d1f}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0e1211;--fg:#eceae7;--dim:#9a9691;--rule:#242a29;--code:#171d1c;--accent:#c9a94a}}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);margin:0;padding:2.2rem 1.1rem 5rem;
+ font:16px/1.72 ui-serif,Georgia,"Times New Roman",serif;-webkit-text-size-adjust:100%}
+main{max-width:44rem;margin:0 auto}
+h1{font-size:1.85rem;line-height:1.25;margin:0 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.6rem 0 .7rem;padding-top:1.1rem;border-top:1px solid var(--rule)}
+h3{font-size:1.06rem;margin:1.8rem 0 .5rem}
+p,li{margin:.75rem 0}
+a{color:inherit;text-decoration:underline;text-underline-offset:2px;text-decoration-color:var(--accent)}
+code{background:var(--code);padding:.12em .38em;border-radius:3px;
+ font:13.5px/1.5 ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;word-break:break-word}
+pre{background:var(--code);padding:.95rem 1.05rem;border-radius:6px;overflow-x:auto;
+ border:1px solid var(--rule)}
+pre code{background:none;padding:0;white-space:pre}
+blockquote{margin:1.1rem 0;padding:.1rem 0 .1rem 1rem;border-inline-start:3px solid var(--accent);color:var(--dim)}
+table{border-collapse:collapse;width:100%;margin:1.1rem 0;font-size:.94rem;display:block;overflow-x:auto}
+th,td{border-bottom:1px solid var(--rule);padding:.5rem .6rem;text-align:start}
+th{font-weight:600}
+hr{border:0;border-top:1px solid var(--rule);margin:2.2rem 0}
+/* The mark, on every page. A reader who meets WAM in a search result should
+   have seen the same coin four times before they read the name. */
+.mast{display:flex;align-items:center;gap:.7rem;margin-bottom:1.4rem}
+.mast img{width:44px;height:44px;flex:none;border-radius:50%}
+.mast .wordmark{font-weight:600;letter-spacing:-.01em;font-size:1.05rem}
+.mast .wordmark span{display:block;font-size:.8rem;font-weight:400;color:var(--dim);
+ letter-spacing:0}
+.top{display:flex;gap:1rem;flex-wrap:wrap;font-size:.9rem;color:var(--dim);
+ margin-bottom:2rem;padding-bottom:1rem;border-bottom:1px solid var(--rule)}
+.foot{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--rule);
+ font-size:.87rem;color:var(--dim)}
+[dir=rtl]{font-family:ui-serif,"Noto Naskh Arabic","Amiri",Georgia,serif}
+[dir=rtl] pre,[dir=rtl] code{direction:ltr;text-align:left}
+</style>
+</head>
+<body>
+<main>
+<a class="mast" href="/">
+  <img src="/wam-coin.png" alt="The WAM Coin mark" width="44" height="44">
+  <span class="wordmark">WAM Coin<span>A CPU-mineable proof-of-work currency</span></span>
+</a>
+<nav class="top">
+  <a href="/">wamcoin.org</a>
+  <a href="/start/">start</a>
+  <a href="/start-ar/">بالعربية</a>
+  <a href="/whitepaper/">whitepaper</a>
+  <a href="/security/">security</a>
+  <a href="/build/">build</a>
+  <a href="/pool/">pool</a>
+  <a href="/rehearsals/">rehearsals</a>
+  <a href="https://github.com/wam-coin-official/wam-coin/blob/main/docs/MINE.md">source</a>
+</nav>
+<h1 id="mine-wam">Mine WAM</h1>
+<p>Nine lines, no explanation. If you want the explanation, read <a href="/start/">START_HERE.md</a>.</p>
+<p>This page exists because a tester on 5 September said his friends "want plain jane, step by step, and shortest way to start mining", and he was right that the guide is the wrong shape for that. It explains what a blockchain is, which that reader either knows already or does not care about.</p>
+<p>Linux, Windows, or a Mac with an Apple chip. About 2 GB of free memory. Nothing else.</p>
+<p>The Linux commands are first because they are the ones strangers have been running since August. <a href="#windows">Windows</a> and <a href="#macos">macOS</a> are below them and both are new in v0.1.8 — including what each operating system will say about the files when you first run them, which is explained there rather than left to surprise you.</p>
+<h2 id="the-test-network-live-now">The test network — live now</h2>
+<pre><code>curl -LO https://github.com/wam-coin-official/wam-coin/releases/download/v0.1.9/wam-coin-v0.1.9-x86_64-linux-gnu.tar.gz
+curl -LO https://github.com/wam-coin-official/wam-coin/releases/download/v0.1.9/wam-miner-v0.1.9-x86_64-linux-gnu.tar.gz
+curl -LO https://github.com/wam-coin-official/wam-coin/releases/download/v0.1.9/SHA256SUMS
+curl -LO https://github.com/wam-coin-official/wam-coin/releases/download/v0.1.9/SHA256SUMS.asc
+curl -LO https://raw.githubusercontent.com/wam-coin-official/wam-coin/main/scripts/verify_release.sh
+curl -LO https://raw.githubusercontent.com/wam-coin-official/wam-coin/main/SIGNING-KEY.asc
+bash verify_release.sh .
+tar -xzf wam-coin-v0.1.9-x86_64-linux-gnu.tar.gz &amp;&amp; tar -xzf wam-miner-v0.1.9-x86_64-linux-gnu.tar.gz
+cd wam-coin-v0.1.9/bin
+./wamd -testnet -daemon
+./wam-cli -testnet createwallet "mine"
+./wam-cli -testnet -rpcwallet=mine getnewaddress</code></pre>
+<blockquote><p><strong>Back it up before you do anything else.</strong> One command, now, while there is nothing in it to lose:</p>
+<pre><code>./wam-cli -testnet -rpcwallet=mine backupwallet ~/wam-wallet-backup.dat</code></pre>
+<p>This page says the same thing again further down, and on 6 September that was a hundred lines too late: somebody following it created a wallet, tidied his directory an hour later, and deleted the only copy. On testnet that costs nothing. The habit is what is being built here, and the person who builds it on 15 September has money in the file.</p></blockquote>
+<p><strong>If you restart the node and <code>wam-cli</code> answers <code>-18 Requested wallet does not exist or is not loaded</code>,</strong> the wallet is on disk and simply not open. Bitcoin Core reopens the wallets it had open when it was last shut down cleanly; a node stopped any other way, or started against a datadir that was cleared, comes back with none.</p>
+<pre><code>./wam-cli -testnet listwallets           # what is open right now
+ls ~/.wam/testnet3/wallets/              # what exists on disk
+./wam-cli -testnet loadwallet "mine"     # open it again</code></pre>
+<p><strong>Do not use <code>scripts/gen_founder_key.py</code> for a mining address.</strong> It is in the repository and it produces a valid address, so people find it and use it — one miner did on launch night, and his address found a block. It is an air-gapped ceremony tool: it prints a private key once, stores it nowhere, and expects you to write it on paper. No wallet holds that key, so there is no seed phrase, no backup file, and nothing for <code>backupwallet</code> to copy. Lose the paper and everything mined to it is gone, with no error at any point until the day you try to spend. The commands above are what you want.</p>
+<p>Nothing is lost either way — <code>createwallet</code> writes a file and deleting <code>blocks</code>, <code>chainstate</code> or <code>peers.dat</code> does not touch it. This was found on 6 September by somebody following this page, restarting his node three times, and being told his wallet did not exist.</p>
+<p>The last command prints your address; it starts with <code>twam1</code>. Then, from where the miner unpacked:</p>
+<pre><code>./wam-miner -o stratum+tcp://pool.wamcoin.org:3333 -u YOUR_ADDRESS -t 4</code></pre>
+<p><strong>3333, and the address must be a mainnet one.</strong> Until 00:00 UTC on 15 September the pool served testnet on 13333. At that moment it was converted -- there is one <code>wam-pool</code> service -- so <strong>13333 answers nothing now</strong> and 3333-3336 are the live pool. An address beginning <code>twam1</code> is a testnet address and the pool refuses it: "bech32 checksum failed" or "invalid address" in your miner's log means exactly this, and you are hashing for nothing until you fix it. Create the address with the mainnet commands above, with no <code>-testnet</code>, and COPY it rather than retyping it -- the checksum catches a single wrong character, which is what it is for.</p>
+<p><code>-t 4</code> is how many processor cores to use. Without it the miner takes every core but one, which makes the rest of the machine unpleasant to use.</p>
+<h2 id="windows">Windows</h2>
+<p>Since v0.1.8 there are Windows binaries, node and miner, and they need no WSL and no Linux. Open PowerShell and work in a folder you choose:</p>
+<pre><code>mkdir C:\wam ; cd C:\wam
+curl.exe -LO https://github.com/wam-coin-official/wam-coin/releases/download/v0.1.9/wam-coin-v0.1.9-x86_64-w64-mingw32.zip
+curl.exe -LO https://github.com/wam-coin-official/wam-coin/releases/download/v0.1.9/wam-miner-v0.1.9-x86_64-w64-mingw32.zip
+curl.exe -LO https://github.com/wam-coin-official/wam-coin/releases/download/v0.1.9/SHA256SUMS
+Expand-Archive wam-coin-v0.1.9-x86_64-w64-mingw32.zip -DestinationPath .
+Expand-Archive wam-miner-v0.1.9-x86_64-w64-mingw32.zip -DestinationPath .</code></pre>
+<p><strong>Check it before you run it.</strong> One command, and it is the only step here that cannot be checked afterwards:</p>
+<pre><code>curl.exe -LO https://github.com/wam-coin-official/wam-coin/releases/download/v0.1.9/SHA256SUMS.asc
+curl.exe -LO https://raw.githubusercontent.com/wam-coin-official/wam-coin/main/SIGNING-KEY.asc
+curl.exe -LO https://raw.githubusercontent.com/wam-coin-official/wam-coin/main/scripts/verify_release.ps1
+powershell -ExecutionPolicy Bypass -File verify_release.ps1</code></pre>
+<p>It should end with <code>this is the WAM release, unmodified since it was signed</code>. Anything else, and it will say what is wrong and tell you not to run the files.</p>
+<p>This page used to tell you to run <code>certutil -hashfile</code> and compare sixty-four hexadecimal characters against <code>SHA256SUMS</code> by eye. Nobody does that: people check the first four characters and the last four, which is the check an attacker would design for. The script compares every one of them, and then does the part <code>certutil</code> cannot — it verifies that <code>SHA256SUMS</code> itself is ours, by the fingerprint published in <a href="/security/">SECURITY.md</a>.</p>
+<p>That last part needs GnuPG, which Windows does not ship. If you have <a href="https://gitforwindows.org/">Git for Windows</a> you already have one and the script finds it; otherwise install <a href="https://gpg4win.org/">Gpg4win</a>. Without it the script checks the hashes, tells you the signature was <strong>not</strong> checked, and exits without saying the release is good — because a matching hash against an unsigned list proves your download is not corrupt and proves nothing about who wrote the list.</p>
+<p>Then the node, with the directory named explicitly so you always know where the wallet is:</p>
+<pre><code>cd wam-coin-v0.1.9\bin
+.\wamd.exe -testnet -datadir=C:\wam\data
+.\wam-cli.exe -testnet -datadir=C:\wam\data createwallet "mine"
+.\wam-cli.exe -testnet -datadir=C:\wam\data -rpcwallet=mine backupwallet C:\wam\wallet-backup.dat
+.\wam-cli.exe -testnet -datadir=C:\wam\data -rpcwallet=mine getnewaddress</code></pre>
+<p><strong>Two things Windows does differently, and both were wrong in this guide until 2026-09-14 — a reader following it hit them before we did.</strong></p>
+<p><strong><code>-daemon</code> does not exist on Windows.</strong> The node answers <code>Error: -daemon is not supported on this operating system</code> and exits. So <code>wamd.exe</code> runs in the window you started it in: leave that window open and open a <strong>second</strong> PowerShell for the <code>wam-cli.exe</code> commands. If you would rather it stayed out of the way:</p>
+<pre><code>Start-Process -FilePath .\wamd.exe `
+  -ArgumentList '-testnet','-datadir=C:\wam\data' -WindowStyle Minimized</code></pre>
+<p><strong><code>curl</code> in PowerShell is not curl.</strong> It is an alias for <code>Invoke-WebRequest</code>, which does not understand <code>-LO</code> and fails. The real program is <code>C:\WINDOWS\system32\curl.exe</code>, which is why every download above says <code>curl.exe</code> rather than <code>curl</code>.</p>
+<p><strong>And for mainnet, from 00:00 UTC on 15 September: the same four commands without <code>-testnet</code>, and a different data directory</strong> — never the testnet one:</p>
+<pre><code>.\wamd.exe -datadir=C:\wam\mainnet
+.\wam-cli.exe -datadir=C:\wam\mainnet createwallet "mine"
+.\wam-cli.exe -datadir=C:\wam\mainnet -rpcwallet=mine backupwallet C:\wam\mainnet-wallet-backup.dat
+.\wam-cli.exe -datadir=C:\wam\mainnet -rpcwallet=mine getnewaddress</code></pre>
+<p>and the miner, from the folder it unpacked into:</p>
+<pre><code>.\wam-miner.exe -o stratum+tcp://pool.wamcoin.org:3333 -u YOUR_ADDRESS -t 4</code></pre>
+<h3 id="windows-will-call-the-miner-a-virus-and-it-is-wrong">Windows will call the miner a virus, and it is wrong</h3>
+<p>This is the part nobody tells you, so it is written here before it happens to you. On 12 September, the first time the Windows miner was run on a real desktop, it passed every self-test, connected to the pool, took a job, and started hashing. Fourteen seconds later Windows Defender killed the process and deleted the file:</p>
+<pre><code>Trojan:Win32/Bearfoos.A!ml        Severity: Severe</code></pre>
+<p><code>!ml</code> means a machine-learning guess, and <code>Bearfoos.A</code> is a generic label. The reason is not subtle: a program that opens a network connection and then uses every processor core is behaving exactly like the cryptojacking malware that does this to people without asking. No scanner can tell them apart by behaviour, because the behaviour is identical. The difference is consent — you chose to run it, and it mines to the address on its own command line and nowhere else.</p>
+<p>The thing that removes the warning is a publisher certificate, which costs money and a registered company, and this project has neither yet. So:</p>
+<ol><li><strong>Verify the file instead of trusting a verdict.</strong> The SHA256 above and the signature on <code>SHA256SUMS</code> are evidence that these are the bytes we built. An antivirus verdict is an opinion about behaviour.</li><li><strong>If you want to mine, allow that one file</strong>, by name — Windows Security → Virus &amp; threat protection → Manage settings → Exclusions → Add → File, and pick <code>wam-miner.exe</code>. Not a folder. Not the whole machine. Turning your antivirus off to run a stranger's program is how people actually get robbed, and anyone telling you to do that is not us.</li><li><strong>Or do not mine, and run the node anyway.</strong> <code>wamd.exe</code> is not a miner and is not normally flagged. A node that relays blocks and holds a wallet is a real contribution and costs you no CPU.</li></ol>
+<p>The node's own first run may show a blue SmartScreen box saying "Windows protected your PC" — that is the unsigned-publisher notice, not a virus report. <code>More info</code> → <code>Run anyway</code>, once you have checked the hash.</p>
+<h2 id="macos">macOS</h2>
+<p>Apple Silicon only — an M1, M2, M3 or M4. An Intel Mac cannot run these and has to build its own; <a href="/build/#9-building-on-macos">BUILD.md §9</a> is twenty minutes.</p>
+<p><strong>And one thing you should know before you start, because we would want to know it.</strong> These binaries are built on an Apple machine — a macOS runner — and on that machine they sync this chain from its genesis block before the archive is allowed to be published. What has <strong>not</strong> happened is a person sitting at a Mac they own, opening them, and using the wallet. Nobody on this project owns a Mac.</p>
+<p>So if you are that person: tell us what happened, whether it worked or not. The security contact is in <code>SECURITY.md</code>, and the channels are on the website. A first report from a platform we do not own is worth more to us than anything we can measure ourselves.</p>
+<pre><code>mkdir -p ~/wam &amp;&amp; cd ~/wam
+curl -LO https://github.com/wam-coin-official/wam-coin/releases/download/v0.1.9/wam-coin-v0.1.9-arm64-apple-darwin.tar.gz
+curl -LO https://github.com/wam-coin-official/wam-coin/releases/download/v0.1.9/wam-miner-v0.1.9-arm64-apple-darwin.tar.gz
+curl -LO https://github.com/wam-coin-official/wam-coin/releases/download/v0.1.9/SHA256SUMS
+curl -LO https://github.com/wam-coin-official/wam-coin/releases/download/v0.1.9/SHA256SUMS.asc
+curl -LO https://raw.githubusercontent.com/wam-coin-official/wam-coin/main/SIGNING-KEY.asc
+curl -LO https://raw.githubusercontent.com/wam-coin-official/wam-coin/main/scripts/verify_release.sh
+bash verify_release.sh .</code></pre>
+<p><code>verify_release.sh</code> needs GnuPG, which macOS does not ship: <code>brew install gnupg</code> first, or the script will tell you the signature was <strong>not</strong> checked and exit without calling the release good. It should end with <code>this is the WAM release, unmodified since it was signed</code>.</p>
+<p>Then:</p>
+<pre><code>tar -xzf wam-coin-v0.1.9-arm64-apple-darwin.tar.gz
+tar -xzf wam-miner-v0.1.9-arm64-apple-darwin.tar.gz
+cd wam-coin-v0.1.9/bin
+./wamd -testnet -datadir=$HOME/wam/data -daemon
+./wam-cli -testnet -datadir=$HOME/wam/data createwallet "mine"
+./wam-cli -testnet -datadir=$HOME/wam/data -rpcwallet=mine backupwallet $HOME/wam/wallet-backup.dat
+./wam-cli -testnet -datadir=$HOME/wam/data -rpcwallet=mine getnewaddress</code></pre>
+<p>and the miner, from where it unpacked:</p>
+<pre><code>./wam-miner -o stratum+tcp://pool.wamcoin.org:3333 -u YOUR_ADDRESS -t 4</code></pre>
+<h3 id="macos-will-refuse-to-run-them-the-first-time">macOS will refuse to run them the first time</h3>
+<p>Not a virus warning and not the same thing Windows does. You will see</p>
+<pre><code>"wamd" cannot be opened because the developer cannot be verified.</code></pre>
+<p>or, from the terminal, <code>killed: 9</code>. These binaries are not <strong>notarised</strong> — Apple's process where a developer uploads each build to Apple, pays for a developer account, and receives a stapled approval. This project has no such account, so nothing here is stapled, and macOS treats an unstapled binary downloaded from the internet as untrusted by default.</p>
+<p>The honest position is the same as on Windows: we cannot remove that message, so we tell you about it. What to do, once you have run <code>verify_release.sh</code> and seen it pass:</p>
+<pre><code>xattr -d com.apple.quarantine ./wamd ./wam-cli ./wam-miner</code></pre>
+<p>That removes the <em>downloaded-from-the-internet</em> mark from those three files and nothing else. It is not "disable Gatekeeper", it is not <code>sudo</code>, and it does not change a system setting. Do it only for files whose signature you have just checked, and never because a stranger told you to.</p>
+<h2 id="the-one-line-that-is-not-optional">The one line that is not optional</h2>
+<pre><code>curl -LO https://github.com/wam-coin-official/wam-coin/releases/download/v0.1.9/SHA256SUMS.asc
+curl -LO https://raw.githubusercontent.com/wam-coin-official/wam-coin/main/scripts/verify_release.sh
+curl -LO https://raw.githubusercontent.com/wam-coin-official/wam-coin/main/SIGNING-KEY.asc
+bash verify_release.sh .</code></pre>
+<p>It should print <code>OK</code>. It costs a second, and it is the whole difference between running our file and running whatever arrived instead. Every other step here can be skipped and retried later; this one cannot be checked afterwards.</p>
+<h2 id="what-you-are-mining">What you are mining</h2>
+<p>Test coins. They are worth nothing, they will not become real coins, and the test chain is wiped whenever that is useful — it has been already. Mine here to find what breaks before 15 September, not to earn.</p>
+<h2 id="on-15-september-mainnet">On 15 September, mainnet</h2>
+<p>The same commands without <code>-testnet</code>:</p>
+<pre><code>./wamd -daemon
+./wam-cli createwallet "mine"
+./wam-cli -rpcwallet=mine getnewaddress
+./wam-miner -o stratum+tcp://pool.wamcoin.org:3333 -u YOUR_ADDRESS -t 4</code></pre>
+<p>Two things are <strong>not</strong> the same.</p>
+<p><strong>Your testnet address will not work.</strong> Make a new wallet. Testnet derives on coin type 1 — SLIP-44 reserves it for every test chain, deliberately, so test keys can never be confused with real ones — and WAM mainnet uses 5718349. The prefixes differ too: <code>twam1</code> here, <code>wam1</code> there. The pool refuses a testnet address on mainnet, so nothing is lost; it simply will not work.</p>
+<p><strong>Do not assume today's download is the launch binary.</strong> A release between now and the 15th may change a consensus rule. v0.1.5 moved the mainnet treasury address, and a node left on v0.1.4 would reject every valid block on launch day and fork itself off the network at height 1 — silently, while appearing to run perfectly. Subscribe so you are told:</p>
+<p>github.com/wam-coin-official/wam-coin → <strong>Watch ▾</strong> → <strong>Custom</strong> → <strong>Releases</strong> ✓</p>
+<h2 id="when-it-does-not-work">When it does not work</h2>
+<p><strong><code>dnsseed thread exit</code>, and nothing else happens.</strong> You are on mainnet, which is one block until 15 September, so the node is correctly fully synced and stops looking for peers. Add <code>-testnet</code>.</p>
+<p><strong><code>incorrect password attempt</code> in the log.</strong> There is no password. The node writes <code>&lt;datadir&gt;/.cookie</code> at startup and clients read it, so <code>wam-cli</code> needs the same <code>-testnet</code> and the same <code>-datadir=</code> as the daemon. A leftover <code>wam.conf</code> carrying <code>rpcuser</code>/<code>rpcpassword</code> fights the cookie; delete those two lines.</p>
+<p><strong><code>accepted</code> stays at 0.</strong> Usually the wrong address format — it must start with <code>twam1</code> on the test network.</p>
+<p><strong>No block ever found.</strong> Normal. One machine among many finds one rarely, which is what the pool is for; your share of what the pool finds is paid to your address anyway.</p>
+<h2 id="your-balance-will-say-zero-and-that-is-normal">Your balance will say zero, and that is normal</h2>
+<p>The pool pays out at <strong>1 WAM</strong> and runs a payment round every <strong>10 minutes</strong>. Below that threshold your earnings sit in the pool's ledger and not in your wallet, so</p>
+<pre><code>./wam-cli -testnet -rpcwallet=mine getbalance
+0.00000000</code></pre>
+<p>is what you will see for the first while, however hard the machine is working. Nothing is missing and more threads is not the fix — it only raises your share of each block the pool finds.</p>
+<p>Watch the ledger instead of the wallet:</p>
+<p>    https://pool.wamcoin.org</p>
+<p>And if you change your payout address, your share history starts again from nothing. Whatever the old address had earned stays owed to that address.</p>
+<p>Written down on 6 September, after somebody mined for an hour, read <code>0.00000000</code>, and reasonably concluded something was broken.</p>
+<h3 id="and-getbalance-will-drop-when-you-send-to-yourself">And <code>getbalance</code> will DROP when you send to yourself</h3>
+<p>Send one coin from your own wallet to another address in the same wallet and the balance goes down, not sideways. Nothing was lost. <code>getbalance</code> reports only what is confirmed and spendable, and your change output is sitting in the mempool until a block carries it.</p>
+<p><code>getbalance</code> is one number. <code>getbalances</code> is the truth:</p>
+<pre><code>./wam-cli -testnet -rpcwallet=mine getbalances
+{
+  "mine": {
+    "trusted": 6.99973355,            confirmed, spendable now
+    "untrusted_pending": 11.15475873, sent or received, not yet in a block
+    "immature": 0.00000000            mined, waiting out the 100 blocks
+  }
+}</code></pre>
+<p>Use <code>getbalances</code> whenever a number surprises you. The three add up; one of them alone never does.</p>
+<p>Written down on 6 September because a miner sent a coin to himself, watched the balance fall, and another miner — walkjivefly — explained it in the channel before this project did.</p>
+<h2 id="back-up-the-wallet">Back up the wallet</h2>
+<pre><code>./wam-cli -testnet -rpcwallet=mine backupwallet /path/you/choose/backup.dat</code></pre>
+<p>It prints nothing on success. Check the file exists and has a size — that is the whole confirmation.</p>
+<p>The live wallet is at <code>~/.wam/testnet3/wallets/mine/wallet.dat</code>, and <code>listdescriptors true</code> prints the same keys in portable form. Treat that output like cash: never paste it anywhere, including to us.</p>
+<h2 id="restore-it">Restore it</h2>
+<p>A backup nobody has ever restored is a file you hope about. This page told you how to make one in three separate places and never once said how to use one, which was found on 8 September 2026 by the first person outside this project to actually do it — onto a machine whose operating system he had reinstalled that morning. These are his steps, not ours.</p>
+<pre><code>mkdir -p ~/.wam/testnet3/wallets/mine
+cp /path/to/your/backup.dat ~/.wam/testnet3/wallets/mine/wallet.dat
+./wam-cli -testnet loadwallet "mine"
+./wam-cli -testnet -rpcwallet=mine getbalance</code></pre>
+<p><strong>The rename is the part that catches people.</strong> Your backup may be called anything you like, but the file inside the folder must be called <code>wallet.dat</code>, and the folder must be named after the wallet you then pass to <code>loadwallet</code>. Neither is guessable, and getting either wrong gives you an error about a wallet that does not exist rather than one about a file that is misnamed.</p>
+<p>His balance was simply there, with no rescan, because that node was syncing from genesis: the blocks holding his coins arrived while the wallet was already open. A node that finished syncing weeks ago is the other case, and if the balance reads zero when you know it should not, ask the node to look again:</p>
+<pre><code>./wam-cli -testnet -rpcwallet=mine rescanblockchain</code></pre>
+<p>It reads the chain from the beginning and takes as long as it takes. <code>getwalletinfo</code> reports a <code>scanning</code> object while that is happening and <code>false</code> when it is done, so you are never left guessing whether it is still working.</p>
+<hr>
+<p><a href="https://discord.gg/Gxvmrjy9Qb">discord</a> · <a href="https://explorer.wamcoin.org">explorer</a> · <a href="https://pool.wamcoin.org">pool</a></p>
+<p class="foot">This page is generated from docs/MINE.md in the repository. It is the same text; nothing here is written twice.</p>
+</main>
+</body>
+</html>

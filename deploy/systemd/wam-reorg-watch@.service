@@ -1,0 +1,71 @@
+# ===========================================================================
+#  Watch one network for blocks that stop being blocks
+# ===========================================================================
+#
+#      systemctl enable --now wam-reorg-watch@testnet.timer
+#      systemctl enable --now wam-reorg-watch@mainnet.timer   # after launch
+#
+#  A new proof-of-work chain can be reorganised by anyone who can out-mine
+#  it for an hour, and WAM is RandomX, so the hardware that does it is CPU --
+#  rentable by the hour from every cloud on earth. This does not prevent
+#  that. Nothing a young chain can do prevents it. It makes sure we are not
+#  the last to know, which is the whole of the difference between one
+#  exchange losing one deposit and every exchange delisting.
+#
+#  A failure here is not a machine problem and must not be restarted away:
+#  the script leaves an ALARM file in /var/lib/wam-reorg that outlives the
+#  run, and the sweep reports it until a person deletes it.
+# ===========================================================================
+
+[Unit]
+Description=Watch the WAM %i chain for reorganisations
+Documentation=https://github.com/wam-coin-official/wam-coin/blob/main/scripts/check_reorg.py
+After=network-online.target
+
+# If this unit fails, say so. A timer stays active however often the
+# service under it fails, and every panel here was reading the timer:
+# wam-backup failed nightly from 23 August and looked fine, and
+# wam-reorg-watch failed from 03:11 UTC on 1 September and looked fine.
+# Both were found by a person going and looking.
+OnFailure=wam-alert@%n.service
+
+[Service]
+Type=oneshot
+
+# systemd sets no HOME for a service that names no User=, so wam-cli looks
+# for its data directory at /.wam and reports "could not locate RPC
+# credentials" -- which reads exactly like a node that is down, while the
+# node is up and answering everyone else.
+#
+# This is the second time. wam-backup.service failed the same way in August
+# and its backups were dead for three days before anyone noticed. Written
+# here rather than only in that file, because the note in that file did not
+# stop it happening again; scripts/test/test_service_home.sh is what stops
+# it now.
+Environment=HOME=/root
+
+# --local asks this machine's own node. Every node sees a reorganisation, so
+# each host watches itself and two hosts are two independent witnesses.
+ExecStart=/usr/bin/python3 /opt/wam/scripts/check_reorg.py --local --network %i --state-dir /var/lib/wam-reorg
+
+# Not Restart=on-failure. A detected reorganisation exits non-zero, and
+# retrying it two seconds later would only find the same thing and bury the
+# first report under a hundred identical ones.
+StateDirectory=wam-reorg
+StateDirectoryMode=0750
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/wam-reorg
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryMax=256M
+TasksMax=64

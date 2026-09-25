@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launch rehearsals — WAM Coin</title>
+<link rel="icon" href="/favicon.png" type="image/png">
+<meta name="description" content="One rehearsal a day until launch, and a published record of what each one found.">
+<link rel="canonical" href="https://wamcoin.org/rehearsals/">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="WAM Coin">
+<meta property="og:title" content="Launch rehearsals — WAM Coin">
+<meta property="og:description" content="What every launch rehearsal found, including the days that found nothing. The rate is the only honest measure of ready.">
+<meta property="og:image" content="https://wamcoin.org/og-card.png">
+<meta property="og:url" content="https://wamcoin.org/rehearsals/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@WAMCoinCore">
+<meta name="twitter:image" content="https://wamcoin.org/og-card.png">
+<style>
+:root{--bg:#faf9f7;--fg:#1a1a1a;--dim:#5c5a57;--rule:#e3e0db;--code:#f2f0ec;--accent:#8a6d1f}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0e1211;--fg:#eceae7;--dim:#9a9691;--rule:#242a29;--code:#171d1c;--accent:#c9a94a}}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);margin:0;padding:2.2rem 1.1rem 5rem;
+ font:16px/1.72 ui-serif,Georgia,"Times New Roman",serif;-webkit-text-size-adjust:100%}
+main{max-width:44rem;margin:0 auto}
+h1{font-size:1.85rem;line-height:1.25;margin:0 0 .4rem;letter-spacing:-.01em}
+h2{font-size:1.28rem;margin:2.6rem 0 .7rem;padding-top:1.1rem;border-top:1px solid var(--rule)}
+h3{font-size:1.06rem;margin:1.8rem 0 .5rem}
+p,li{margin:.75rem 0}
+a{color:inherit;text-decoration:underline;text-underline-offset:2px;text-decoration-color:var(--accent)}
+code{background:var(--code);padding:.12em .38em;border-radius:3px;
+ font:13.5px/1.5 ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;word-break:break-word}
+pre{background:var(--code);padding:.95rem 1.05rem;border-radius:6px;overflow-x:auto;
+ border:1px solid var(--rule)}
+pre code{background:none;padding:0;white-space:pre}
+blockquote{margin:1.1rem 0;padding:.1rem 0 .1rem 1rem;border-inline-start:3px solid var(--accent);color:var(--dim)}
+table{border-collapse:collapse;width:100%;margin:1.1rem 0;font-size:.94rem;display:block;overflow-x:auto}
+th,td{border-bottom:1px solid var(--rule);padding:.5rem .6rem;text-align:start}
+th{font-weight:600}
+hr{border:0;border-top:1px solid var(--rule);margin:2.2rem 0}
+/* The mark, on every page. A reader who meets WAM in a search result should
+   have seen the same coin four times before they read the name. */
+.mast{display:flex;align-items:center;gap:.7rem;margin-bottom:1.4rem}
+.mast img{width:44px;height:44px;flex:none;border-radius:50%}
+.mast .wordmark{font-weight:600;letter-spacing:-.01em;font-size:1.05rem}
+.mast .wordmark span{display:block;font-size:.8rem;font-weight:400;color:var(--dim);
+ letter-spacing:0}
+.top{display:flex;gap:1rem;flex-wrap:wrap;font-size:.9rem;color:var(--dim);
+ margin-bottom:2rem;padding-bottom:1rem;border-bottom:1px solid var(--rule)}
+.foot{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--rule);
+ font-size:.87rem;color:var(--dim)}
+[dir=rtl]{font-family:ui-serif,"Noto Naskh Arabic","Amiri",Georgia,serif}
+[dir=rtl] pre,[dir=rtl] code{direction:ltr;text-align:left}
+</style>
+</head>
+<body>
+<main>
+<a class="mast" href="/">
+  <img src="/wam-coin.png" alt="The WAM Coin mark" width="44" height="44">
+  <span class="wordmark">WAM Coin<span>A CPU-mineable proof-of-work currency</span></span>
+</a>
+<nav class="top">
+  <a href="/">wamcoin.org</a>
+  <a href="/start/">start</a>
+  <a href="/start-ar/">بالعربية</a>
+  <a href="/mine/">mine</a>
+  <a href="/whitepaper/">whitepaper</a>
+  <a href="/security/">security</a>
+  <a href="/build/">build</a>
+  <a href="/pool/">pool</a>
+  <a href="https://github.com/wam-coin-official/wam-coin/blob/main/docs/REHEARSALS.md">source</a>
+</nav>
+<h1 id="rehearsals">Rehearsals</h1>
+<p>One rehearsal a day until launch, decided on 4 September 2026.</p>
+<p>The reasoning is not that something is expected to be wrong. It is that every rehearsal so far has found something no amount of reading found, and the only honest measure of whether this is ready is <strong>how much a rehearsal still finds</strong>. A day that finds nothing is the first real evidence of solidity. Four findings in two hours, which is what Phase E gave on 4 September, is not.</p>
+<p>Three rules, or this becomes a ritual:</p>
+<ol><li><strong>Rotate the ground.</strong> Rehearsing the same phase twice finds the same thing twice. Each day covers something the last did not.</li><li><strong>Write down what it found, every time, including nothing.</strong> The rate is the measurement. Without a number per day, "it feels solid" is all anyone has, and this project has been wrong about that repeatedly.</li><li><strong>The heavy rehearsals go first.</strong> One on 14 September that finds a defect is a defect that launches with us. Front-load.</li></ol>
+<hr>
+<h2 id="the-schedule">The schedule</h2>
+<table><tr><th>Day</th><th>Rehearsal</th><th>Needs</th></tr><tr><td>4 Sep</td><td><strong>Phase E</strong> — Electrum, pool and explorer against a real mainnet node</td><td>done</td></tr><tr><td>5 Sep</td><td><strong>Restore a backup</strong> end to end, onto a clean machine</td><td>nothing</td></tr><tr><td>6 Sep</td><td><strong>A stranger follows START_HERE</strong> from nothing: download, verify, sync, mine</td><td>nothing</td></tr><tr><td>7 Sep</td><td><strong>Phases A→D</strong> in full on v0.1.6, from an empty directory</td><td>nothing</td></tr><tr><td>8 Sep</td><td><strong>Phase F</strong> — the announcer posting to mainnet</td><td>nothing</td></tr><tr><td>9 Sep → 11 Sep</td><td><strong>France dies.</strong> Does Singapore carry the network alone?</td><td>nothing</td></tr><tr><td>10 Sep → 11 Sep</td><td>The <strong>third seed</strong></td><td>done: Contabo US-east, not Vultr</td></tr><tr><td>11–12 Sep</td><td>Repeat whatever found a defect; publish the BitcoinTalk announcement</td><td>done 11 Sep</td></tr><tr><td>12 Sep</td><td><strong>Rewrite the 24 marked commit messages</strong> — on a mirror first, verified, then force-pushed</td><td>done 11 Sep, a day early</td></tr><tr><td>12 Sep</td><td><strong>Windows, end to end</strong> — cross-build, self-test, pool, a block</td><td>done 12 Sep</td></tr><tr><td>12 Sep</td><td><strong>Phase A and B again, on v0.1.8</strong> — the release that will create mainnet is not the one rehearsed on the 7th</td><td>done 12 Sep: right genesis on all three hosts, and Phase A step 1 was examining one archive in three</td></tr><tr><td>5 Sep</td><td><strong>Hash rate arriving and leaving</strong> — does DGW absorb it and recover?</td><td>done 5 Sep with Sparks60 on three machines: 7× the network, peak difficulty 6.26× the floor, the chain back in 79 min unattended. Extended on 12 Sep by a model checked against 8,838 real blocks</td></tr><tr><td>13 Sep</td><td><strong>Freeze.</strong> No change but a critical fix</td><td></td></tr><tr><td>14 Sep</td><td>Full sweep, and read LAUNCH_DAY.md line by line</td><td></td></tr><tr><td>15 Sep</td><td>Launch</td><td></td></tr></table>
+<p>Nothing on this schedule depends on anybody else any more. The third seed arrived on 11 September and the Contabo panel is answering.</p>
+<h3 id="why-5-september-is-first">Why 5 September is first</h3>
+<p><code>there is something to restore from</code> checks that a file exists. It has never checked that the file <strong>opens</strong>. There are nineteen GPG-encrypted archives on the two servers and not one has ever been decrypted and restored.</p>
+<p>An untested backup is not a backup. It is a belief, and the day it is tested is the day it is needed.</p>
+<hr>
+<h2 id="what-each-rehearsal-found">What each rehearsal found</h2>
+<table><tr><th>Date</th><th>Rehearsal</th><th>Found</th><th>Fixed</th></tr><tr><td>27 Aug</td><td>Genesis values, v0.1.5</td><td>consensus values verified</td><td>—</td></tr><tr><td>28 Aug</td><td>Phase A/B from an empty directory</td><td>a pre-launch mainnet node cannot survive a restart</td><td><code>genesis_gate.sh</code></td></tr><tr><td>29 Aug</td><td>Phase E, ElectrumX</td><td>mainnet node had no fixed RPC credentials; ElectrumX does not index genesis; <strong>ports 50001–50004 collided</strong></td><td>per-network instances, testnet moved to 51xxx</td></tr><tr><td>30 Aug</td><td>Phase D, the pool wallet</td><td>wallets are not under <code>wallets/</code> unless it already exists</td><td>wallet created and proved to survive the wipe</td></tr><tr><td>4 Sep</td><td><strong>Phase E against a real mainnet node</strong></td><td><strong>six checks asked about mainnet and answered about testnet</strong>; the pool's testnet and mainnet configs claim the same four ports; the gate printed an override that does nothing; <code>check_explorer</code> called a height-0 chain a fault</td><td><code>scripts/wamcli.py</code>, <code>move_testnet_pool.sh</code>, gate message, treasury check</td></tr></table>
+<p>| 4 Sep | <strong>The announcement, written against the running system</strong> | <strong><code>verify_release.sh</code> told a first-time reader a good release was forged</strong>; the release page ships no key and no checker; <code>v0.1.6</code> is a pre-release, so <code>/releases/latest</code> skips it | <code>SELF_DIR</code> resolved before the <code>cd</code>; the drafts link the tag and clone the checker |</p>
+<p>| 5 Sep | <strong>Cutting v0.1.7 and installing it</strong> | <strong>the release notes were the commit message, not the tag</strong> — a wrapped <code>MANDATORY:</code> in prose made the announcer post UPDATE REQUIRED for a release that changes nothing; the four commands in <code>RELEASING.md</code> needed <code>gh</code>, which is not on the machine holding the key, and signed <code>SHA256SUMS</code> unread; <strong><code>install_release.sh</code> checked the checksums and never the signature</strong>; <code>check_docs_version.py</code> audited <code>site/index.html</code>, the one page with no download instruction, and skipped the three that have eleven; the release page told readers to run <code>sha256sum -c</code> alone | <code>git cat-file tag</code>, MANDATORY only as the first line, and the mirror of the consensus check; <code>sign_release.sh</code>; the installer now calls <code>verify_release.sh</code>; <code>scripts/lib/docversion.py</code> |</p>
+<p>| 5 Sep | <strong>Restore a backup, end to end</strong> | nothing in the backup; <strong>the node restart lost block 5783</strong> — the pool read "Loading wallet…" as a rejection and threw a valid block away | <code>jobManager</code> retries only where no daemon answered |</p>
+<p>| 5 Sep | <strong>A stress test run by someone outside the project</strong> — Sparks60 | <strong>difficulty reached the floor for the first time</strong>: it fell to 0.00024414, the same value as block 1, and stopped. DGW spent its entire 3× range on one drop and we had never seen it reach the bottom. <strong>And our own first account of it was wrong</strong> | the floor and what it costs are written down below; the summary was corrected in the same channel |</p>
+<p>| 6 Sep | <strong>A stranger verifies a release, unprompted</strong> — Sparks60 again | <strong>three faults in our own published instructions</strong>, none of them his: it never said to download the release, only to clone and verify; the corrected form still assumed the clone sat beside the downloads, and his was at <code>/root/wam-coin</code> while his files were in <code>/root/Downloads</code>; and the failure message said "download it from the release page" without saying which of four files | the instruction has no clone in it now — five downloads and one command, wherever the reader is standing; the message prints the commands with the version filled in |</p>
+<p>| 6 Sep | <strong>The fixed seeds are exercised for the first time</strong> — Sparks60, cold start with <code>-dnsseed=0</code> | <strong>they work.</strong> <code>Added 2 fixed seeds from reachable networks</code>, both peers connected one second later, with DNS disabled and no <code>peers.dat</code>. Also: our DNS seed answered a stranger's own network from another country, which had never been tested outside our servers | nothing to fix — the feature shipped in v0.1.7 had never once run, here or anywhere |</p>
+<p>| 7 Sep | <strong>Phases A→D</strong>, and Phase D's one open item | <strong>the nightly backup could not have covered the mainnet pool wallet, in three ways and two of them silent</strong>: the datadir defaulted to <code>/root/.wam</code> whatever the network, so a mainnet run would have encrypted the <em>testnet</em> chain and reported success; the archive name carried no network; and rotation counted both networks' archives against one <code>KEEP=14</code>, so each would have kept about seven. Also: <code>START_HERE</code> promises Windows and macOS builds are "planned" and nothing anywhere is the plan | <code>wam-backup@.service</code>/<code>@.timer</code>, one instance per network, migrated on both hosts; <code>ROADMAP.md</code> §7 |</p>
+<p>| 7 Sep | <strong>Build the node for Windows and macOS</strong> — asked for by the founder, against my own judgement that it should wait | <strong><code>nMinimumChainWork</code> stops every new node syncing.</strong> Setting it turns on Core's presync path, which enforces Bitcoin's 2016-block retarget rule, which DarkGravityWave violates at height 1: <code>invalid difficulty transition at height=1 (presync phase)</code>. Published releases carry zero, so the live network was never affected — but <code>check_min_chain_work.py</code> instructs setting it on mainnet <strong>after launch</strong>. Also: macOS was built against Homebrew's boost, which is newer than Core v28 accepts; three separate files hardcoded <code>wam-backup.timer</code> and I fixed two, leaving the panel red in the only one that is looked at; and the consensus gate assumed a free RPC port and a POSIX path, either of which would have failed the Windows runner | <code>PermittedDifficultyTransition</code> patched; macOS moved to <code>depends</code>; the unit lists discover; the gate picks a free port and converts the path. <strong>Windows then synced 6,029 blocks from genesis and matched all four known blocks</strong> |</p>
+<p>| 11 Sep | <strong>A third seed node</strong>, on a clean machine | <strong>five defects, all in paths that run rarely</strong>: <code>harden_server.sh</code> called a function it never defines and died one line early, so the git HTTP/1.1 setting never applied; <code>install_release.sh</code> resolved its own directory after a <code>cd</code> and aborted after downloading the release; it also ran <code>wamd -version</code> with <code>2&gt;/dev/null</code>, so a missing-library failure exited 127 and printed nothing; <strong>both production servers were carrying a v0.1.5 <code>wam-wallet</code> in PATH beside a v0.1.7 node</strong>, because the installer linked three binaries and stopped; and the runtime library line this project publishes <strong>names a package that does not exist on Ubuntu 24.04</strong>, with <code>libevent-pthreads</code> missing from both releases' lists | all five fixed; <code>seed3.wamcoin.org</code> now answers with a machine, and all three nodes report byte-identical binaries |</p>
+<p>| 11 Sep | <strong>France dies</strong> — every WAM service stopped on the France host for eight minutes | <strong>the chain stopped.</strong> Height held at 8,307 across four block times, because the only miner runs on France. The <em>network</em> survived — Singapore and the new seed stayed up, agreed, and kept peers — but nothing was added to the chain. Explorer and pool returned 502 for the whole outage; wamcoin.org was unaffected, being on GitHub Pages. One alert did arrive, and <strong>it named the wrong event</strong>: it reported <code>wam-reorg-watch@testnet.service FAILED</code>, not that a seed node had died. <strong>Everything that alerted ran on the dying machine</strong>, so a real power cut would have been silent. And the new seed had no alerting at all | alerting wired on the new seed and proved end to end; the miner and the cross-machine watch are decisions, recorded below |</p>
+<p>Five in one evening, in a phase that had been rehearsed once already. That is the number to watch.</p>
+<h3 id="7-september-the-value-of-building-for-a-platform-we-were-not-going-to-ship">7 September: the value of building for a platform we were not going to ship</h3>
+<p>The founder asked for Windows and macOS and I argued for waiting. He was right, and not for the reason either of us gave.</p>
+<p>The argument was about audience: RandomX was chosen so an ordinary desktop competes, and most ordinary desktops are Windows. That argument stands. But what the exercise actually bought was a <strong>defect that no amount of reading would have found</strong>, because it only appears in a binary built from current main, and every binary this project has ever published predates the change that causes it.</p>
+<p>Four days of rehearsals had not found it. A full sweep does not find it: the checks all pass, because they run against the deployed v0.1.7 binaries, which carry <code>nMinimumChainWork = 0</code> and never enter the path. It would have been found on 15 September or shortly after, by newcomers who could not sync and had no way to say why.</p>
+<p>The lesson is not "build for more platforms". It is that <strong>a check running against yesterday's binary cannot see today's source</strong>, and this project's sweep is entirely of that kind. That gap is now the most valuable thing on this page and it does not have an answer yet.</p>
+<p>The last one was not found by a rehearsal on the schedule. It was found by writing the announcement and refusing to publish a command without running it first — from a clean directory with an empty keyring, which is the only place the bug exists. Every previous run was from inside the repo, where it cannot happen.</p>
+<p>That is worth a rule of its own: <strong>a check is only tested from where its audience stands.</strong> <code>verify_release.sh</code> exists for somebody who has no reason to trust us, and it had never once been run by anybody in that position.</p>
+<h3 id="5-september-the-backup-was-fine-and-the-rehearsal-still-found-something">5 September: the backup was fine, and the rehearsal still found something</h3>
+<p>The archive decrypts, the pool wallet opens as sqlite, the redis ledger is valid, all 65 config files are there, every one of the fourteen retained archives at least opens, and the newest is now on a machine the server cannot address. That is the first rehearsal on the schedule that found <strong>nothing in the thing it was rehearsing</strong>.</p>
+<p>It found something anyway, in the step taken to reach it. Upgrading the node to v0.1.7 restarted it while a miner was working, block 5783 was solved inside that window, and the pool discarded it because <code>submitblock</code> came back <code>Loading wallet…</code>. One second later the daemon was fine.</p>
+<p>Both halves are worth recording. A day that finds nothing in its own subject is the evidence of solidity this page was made to measure; and the defect that did turn up came from <em>doing an ordinary operation</em>, not from testing one. Restarting the node is not rare — it is how every upgrade works, and there is one ten days before launch, when a discarded block is a miner's reward.</p>
+<hr>
+<h2 id="the-history-rewrite-and-why-it-is-a-rehearsal-rather-than-a-chore">The history rewrite, and why it is a rehearsal rather than a chore</h2>
+<p>Twenty-four commit messages between 24 August and 5 September carry an assistant attribution the founder asked to have removed. It is in commit messages only: no tracked file, no tag message, no release page and no binary carries one, and check_attribution.py in the sweep makes a new one impossible.</p>
+<p>Removing them rewrites 217 commits -- 138 when this was written, and 121 have been added since. v0.1.0 to v0.1.5 are untouched; v0.1.6 and v0.1.7 move.</p>
+<p>What that does NOT break, measured rather than assumed: verify_release.sh compares a signature to the binaries and never looks at a commit, so every published download still verifies exactly as before. What it does break is one informational line on each of two release pages -- "Built by GitHub Actions from &lt;sha&gt;" -- and every clone anyone has taken, which then needs a forced fetch.</p>
+<p>It is scheduled, and rehearsed on a mirror, because it is irreversible and because doing it as the tail end of a long night is how an operation that costs a line of text ends up costing a repository. The order:</p>
+<ol><li><code>git clone --mirror</code> to a scratch directory. Everything below happens there first, and nothing is pushed until it passes.</li><li>Rewrite the messages. Confirm: 138 new hashes, the same trees -- <code>git diff &lt;old-tip&gt; &lt;new-tip&gt;</code> must be empty, because nothing about the content is changing.</li><li><code>check_attribution.py</code> reports zero, including the backlog.</li><li>Only then force-push, and immediately edit the two release bodies to name the new commits.</li><li>Say so in the channels, once: anyone with a clone needs <code>git fetch --all --prune</code> and a reset. A public history that changes without a word is how a project looks compromised.</li></ol>
+<p>If step 2 or 3 does not come out clean, nothing is pushed and the 24 stay. They cost the system nothing where they are.</p>
+<h3 id="6-september-the-day-s-rehearsal-was-performed-by-somebody-else">6 September: the day's rehearsal was performed by somebody else</h3>
+<p>The schedule said <em>a stranger follows START_HERE from nothing: download, verify, sync, mine</em>. Nobody here ran it. Sparks60 did, without being asked, and it failed three times before it worked — every time because of what we had written, and never because of anything he did.</p>
+<p>Then it passed:</p>
+<p>    ok    signed by the key published in SECURITY.md     ok    1 file(s) match the signed list, byte for byte</p>
+<p>    this is the WAM release, unmodified since it was signed</p>
+<p>That is the first time anyone outside this project has verified a WAM release and been told the truth by the tooling. On 4 September the same script told a first-time reader that a perfectly good release was forged. This morning the instructions around it were incomplete in two more ways.</p>
+<p>"1 file(s)" is correct and worth explaining rather than leaving to be noticed: he downloaded the node package and not the miner, and the check reports what it actually verified instead of implying it checked everything. A count that could not be less than the number of files listed would be a count that means nothing.</p>
+<p>The rule this keeps proving, in a new place each time: <strong>a check is only tested from where its audience stands.</strong> We had tested verify_release.sh from a clean directory with an empty keyring — and with the files already downloaded and the repository already cloned, because the person testing it had just built them both.</p>
+<h3 id="6-september-v0-1-7-s-headline-feature-ran-for-the-first-time-in-somebody-else-s-hands">6 September: v0.1.7's headline feature ran for the first time, in somebody else's hands</h3>
+<p>The release notes said a node can now find the network when DNS cannot be trusted. That was true of the code and unproven in the world. Every node this project runs already knows its peers, so the fallback had never been reached -- not once, on any machine, since it shipped.</p>
+<p>Two of his runs did not exercise it either, and the log said so honestly both times: <code>Added 0 fixed seeds</code>, because DNS had already worked and the seeds were not needed. The third run disabled DNS:</p>
+<p>    Command-line arg: dnsseed=0     Creating peers.dat because the file was not found     DNS seeding disabled     Adding fixed seeds as -dnsseed=0 ... and neither -addnode nor -seednode are provided     Added 2 fixed seeds from reachable networks     New outbound-full-relay peer connected: version: 70016, blocks=6137, peer=0</p>
+<p>One second from an empty address book to a connected peer, with the only route in being the two addresses compiled into the binary.</p>
+<p>The other half is worth as much and is easier to overlook: the cold start before it showed <code>2 addresses found from DNS seeds</code> from <code>testnet-seed.wamcoin.org</code> -- on a stranger's machine, on his connection, in his country. Every previous test of that seed was from our own servers, or from Google and Cloudflare, which answer for reasons that need not apply to anybody else.</p>
+<p>Neither of those facts could have been established from inside this project, and both were established in an afternoon by somebody who was told what to watch for and why.</p>
+<h2 id="still-open">Still open</h2>
+<table><tr><th></th><th>Blocked on</th></tr><tr><td>~~TCP 13333–13336 in the Contabo panel, then <code>scripts/move_testnet_pool.sh</code>~~</td><td><strong>done 11 September.</strong> The four rules are ACTIVE in the panel, the testnet pool listens on 13333–13336, 3333–3336 answer nothing, and all of that was measured from outside on the 13th</td></tr><tr><td>~~The third server, so <code>seed3.wamcoin.org</code> stops being a name with no machine~~</td><td>done 11 Sep, at Contabo. Vultr took the money and never delivered a server, and refunded it</td></tr></table>
+<p><strong>This table said the first row was open for two days after it was closed</strong>, and on 13 September the founder was told a finished task was what remained. He had done it himself and had the screenshots. The fault is not the stale row -- rows go stale -- it is that the answer to "what is left" was read out of a document instead of measured on the machines, which is the one thing this project does not do anywhere else.</p>
+<p><code>scripts/launch_ready.sh</code> is the correction: every pre-launch condition asked of the three hosts directly, with nothing remembered. What it prints is the list.</p>
+<h3 id="the-functional-tests-exist-and-have-never-been-run">The functional tests exist and have never been run</h3>
+<p><code>test/functional/feature_wam_devfee.py</code>, <code>feature_wam_genesis.py</code>, <code>feature_wam_pow.py</code> and <code>feature_wam_randomx_epoch.py</code>: 627 lines and 80 assertions, written 11 August, installed into the upstream tree by <code>patch_upstream.py</code>. Nothing has ever executed them. They need a configured Core build tree, which exists only inside CI, and CI builds releases.</p>
+<p>This is stated rather than ticked, and it is not the same as those rules being unexercised:</p>
+<table><tr><th>the rule</th><th>what has actually tested it</th></tr><tr><td>genesis, all three chains</td><td>every node start since 15 August, and <code>check_release_matches.sh</code> reading the hashes out of all three published archives</td></tr><tr><td>proof of work and DGW</td><td>8,861 blocks, and <code>dgw_model.py</code> reproducing every one of 8,838 retargets exactly</td></tr><tr><td>the RandomX epoch</td><td>two rotations crossed on testnet, 256 blocks apart, item 2.6</td></tr><tr><td>the dev fee</td><td><code>consensus_floor.py</code>, and the founder and treasury addresses verified inside every published binary</td></tr><tr><td>all of it, on three platforms</td><td><code>test_platform_consensus.sh</code> syncing the chain from genesis on Windows and macOS in CI</td></tr></table>
+<p>So the suite is a regression net for the changes that come after launch, not a gate that launch is missing. It belongs to Phase 3, with a build environment that can run it, and writing that here is the only honest way to leave it.</p>
+<hr>
+<h2 id="11-september-france-dies">11 September: France dies</h2>
+<p>Two days late, and worth the wait only because it was run properly: every WAM service on the France host stopped at 13:37:24 UTC and started again at 13:45:02. Eight minutes. The machine and its SSH stayed up, so the simulation is of a <strong>service death, not a power cut</strong> — and the difference turned out to be the most important thing it found.</p>
+<h3 id="the-chain-stopped">The chain stopped</h3>
+<pre><code>T+2min  h=8307     T+5min  h=8307
+T+3min  h=8307     T+6min  h=8307
+T+4min  h=8307     T+7min  h=8307</code></pre>
+<p>Four block times, no block. Singapore and the new seed stayed up, stayed connected, and agreed with each other throughout — the network was never in danger. But <strong>the only miner on this chain runs on France</strong>, so nothing was being added to the thing the network was faithfully agreeing about.</p>
+<p>The question in the schedule was "does Singapore carry the network alone?" The answer is: it carries the network and it does not carry the chain. Those are different things and the schedule line did not distinguish them.</p>
+<p>This is not a defect to fix in software. It is a decision to take before 15 September, and it is the founder's: either a second machine mines, or the chain is known to stop when one machine does.</p>
+<h3 id="the-alert-named-the-wrong-event">The alert named the wrong event</h3>
+<p>One message arrived, and it said:</p>
+<pre><code>ALARM  wam-reorg-watch@testnet.service FAILED on vmi3500463</code></pre>
+<p>A watcher failed. That is true, and it is the smallest true thing that could have been said. A seed node had died, the explorer and the pool were returning 502 to the public, and the chain had stopped — and the alarm reported a helper script exiting non-zero.</p>
+<p><code>wamd</code> itself has <code>OnFailure=</code>, but a <code>systemctl stop</code> is not a failure, so it said nothing. What spoke was the collateral: another unit noticed its node was gone and died of it. The alarm we heard was an accident of dependency.</p>
+<h3 id="everything-that-alerted-was-on-the-machine-that-died">Everything that alerted was on the machine that died</h3>
+<p>The reorg watcher that noticed, the alert unit that fired, and the credentials it sent with are all on France. This message arrived because France was alive enough to send it.</p>
+<p><strong>A power cut would have been silent.</strong> Singapore does not watch France. The new seed watches nothing. The only thing that polls all three is the operations panel on a laptop that is not always on.</p>
+<p>That is the finding with the longest reach, and like the miner it is a decision rather than a patch: something off-machine has to watch each machine, or a dead host is discovered by somebody noticing.</p>
+<h3 id="and-the-new-seed-could-not-have-spoken-at-all">And the new seed could not have spoken at all</h3>
+<p>It had no <code>OnFailure=</code> and no <code>wam-alert@.service</code>, because its unit was written by hand during the install instead of taken from <code>deploy/systemd/</code>. Wired, and then proved rather than assumed: a probe unit was failed deliberately and the alert path ran to completion from that host.</p>
+<h3 id="the-one-thing-that-did-notice-spoke-only-when-it-came-back">The one thing that did notice spoke only when it came back</h3>
+<p>At 13:50 UTC, five minutes after the services were restarted, this arrived:</p>
+<pre><code>notice  vmi3500463: now listening on port(s) 19554, 19555, 19556, 3333,
+3334, 3335, 3336, 51001, 51002, 51004, 8001, 8080, 8081, which were closed
+before.</code></pre>
+<p>Thirteen ports had gone and come back, and that is the only message in the whole exercise that was about the ports at all. It reported the <strong>recovery</strong>.</p>
+<p><code>scripts/login_watch.py</code> compares what is listening now against what was listening last time and speaks about the difference in one direction only:</p>
+<pre><code>if state.get("ports") and ports - set(state["ports"]):</code></pre>
+<p>Newly opened ports, never newly closed ones. That is correct for what it is — a security watch, where a port appearing means somebody may have opened a way in, and a port disappearing means a service stopped. It is not a defect in login_watch.</p>
+<p>The consequence is still worth writing down: <strong>a closing port is not an event anywhere in this system.</strong> Thirteen of them went silent on a seed node and the only machine that could tell was the one they went silent on.</p>
+<hr>
+<h2 id="11-september-the-history-rewrite-performed">11 September: the history rewrite, performed</h2>
+<p>Done a day early, and the mirror earned its place twice before anything was pushed.</p>
+<p><strong>What was removed:</strong> one line -- a <code>Co-Authored-By:</code> trailer naming the assistant, not written out here for the same reason it was removed -- from 24 commit messages between 24 August and 4 September. Nothing else in any message changed, which was checked rather than hoped: every subject line identical and in the same order, and every body equal to the old body minus that trailer — zero exceptions across 338 commits.</p>
+<p><strong>What moved:</strong> 217 commits, <code>v0.1.6</code> and <code>v0.1.7</code>. <code>v0.1.0</code> through <code>v0.1.5</code> kept their exact hashes, as the plan required.</p>
+<p><strong>What did not move:</strong> any file. <code>git diff &lt;old tip&gt; &lt;new tip&gt;</code> was empty.</p>
+<h3 id="the-first-attempt-moved-all-eight-tags-and-it-was-wrong">The first attempt moved all eight tags, and it was wrong</h3>
+<p>Run over <code>--all</code> with a message filter that normalised trailing whitespace, it rewrote every commit in the repository — including the five releases that had no attribution anywhere near them.</p>
+<p>Two causes, and only one was mine. The filter called <code>rstrip()</code> on every message, touched or not, which is enough to move a hash. And the root commit carries a <code>gpgsig</code> header — GitHub signs the commit it creates when a repository is made through the web UI — and <code>filter-branch</code> strips signatures when it recreates a commit, so the very first hash changed and the change cascaded through all 338.</p>
+<p>Measured before deciding anything: <strong>one commit in 338 is signed</strong>, by GitHub's web-flow key, on "Initial commit". Losing it costs nothing. But the cascade it caused would have broken a promise in this plan, and the fix was to rewrite only <code>4a97de8^..main</code> and to return untouched messages byte for byte.</p>
+<p>That is what a mirror is for. Both attempts took three minutes each; the wrong one would have taken the repository.</p>
+<h3 id="pushing-the-tags-re-ran-the-release-workflow-which-the-plan-did-not-say">Pushing the tags re-ran the release workflow, which the plan did not say</h3>
+<p><code>v0.1.7</code> re-ran and succeeded. <code>v0.1.6</code> re-ran and failed, at the step called <em>Publish the release</em> — it built for thirteen minutes and then refused to publish over a release that already exists.</p>
+<p>Neither replaced an asset. Checked against the API rather than assumed: every <code>updated_at</code> on both releases still reads August or 5 September. And the published v0.1.7 was downloaded again afterwards, on a clean machine over a fast link, and <code>verify_release.sh</code> said what it has always said:</p>
+<pre><code>this is the WAM release, unmodified since it was signed</code></pre>
+<p>Which was the load-bearing promise of the whole exercise: a signature covers bytes, not commits.</p>
+<h3 id="the-check-that-guards-this-had-to-be-told">The check that guards this had to be told</h3>
+<p><code>check_attribution.py</code> carries a <code>BASELINE</code> commit, and that commit was one of the 217. It kept resolving on the machine that did the rewrite — git holds unreachable objects for weeks — so the check went on reporting a backlog of 24 that no longer existed, and on a fresh clone it would have failed outright.</p>
+<p>The script predicts this, in a line a few rows under the constant: <em>"If history was rewritten, update BASELINE in this file."</em> It was right, and it is the only reason the stale count was noticed at all.</p>
+<h3 id="and-it-left-an-unsigned-draft-release-behind">And it left an unsigned draft release behind</h3>
+<p>The <code>v0.1.7</code> run that succeeded did what the workflow is written to do:</p>
+<pre><code>gh release create "$VERSION" ... --draft</code></pre>
+<p>That <code>--draft</code> is deliberate, and <code>release.yml</code> argues for it at length — the runner cannot sign, the key is on a USB stick, and without the draft every release went public unsigned until a person noticed. It waits for someone to sign SHA256SUMS by hand and publish.</p>
+<p>What nobody had considered is what happens when a tag is pushed for a release that is <strong>already published and signed</strong>. A second <code>v0.1.7</code> appeared in the list — a draft, carrying binaries built that afternoon and no signature at all — sitting one click away from replacing a good release with an uncheckable one.</p>
+<p>It was invisible to the check that went looking. Asked for the releases, the unauthenticated API returned eight and no duplicates, because <strong>it does not return drafts</strong>. The founder saw it in the web interface; the measurement could not. Deleted.</p>
+<p>The rule that follows, and it matters on 15 September: <strong>pushing or moving a tag re-runs the release workflow and creates a fresh unsigned draft.</strong> After any tag push, look at the releases list in the browser — not through the API — and delete what the run left behind.</p>
+<h3 id="and-git-subtree-push-stopped-working">And <code>git subtree push</code> stopped working</h3>
+<p>Publishing the site is <code>git subtree push --prefix site origin gh-pages</code>, and after the rewrite it was rejected:</p>
+<pre><code>828241d -&gt; gh-pages (non-fast-forward)
+hint: a pushed branch tip is behind its remote counterpart</code></pre>
+<p>Nothing was behind. <code>subtree push</code> derives a synthetic history from <code>site/</code>, one commit per commit that touched it, and every one of those commits had a new hash — so the branch it computed shared no ancestry with the <code>gh-pages</code> that was already there.</p>
+<p>The fix is one line and it is not a workaround:</p>
+<pre><code>git subtree split --prefix site -b gh-pages-new
+git push --force origin gh-pages-new:refs/heads/gh-pages</code></pre>
+<p><code>gh-pages</code> carries generated output and no history anybody builds on, so forcing it loses nothing. It was checked before pushing rather than after: the split branch had the site at its root, the signed channel list with Bluesky in it, and the new pool port on the start page.</p>
+<p>Third consequence of the rewrite that the plan did not name, after the signature cascade and the re-run release workflow. None of the three was dangerous; all three cost time at the moment of least patience, which is the argument for writing them down here.</p>
+<hr>
+<h2 id="12-september-windows-and-the-antivirus-nobody-had-asked">12 September: Windows, and the antivirus nobody had asked</h2>
+<p>Not on the schedule. It was put there on the 12th, three days out, because the founder said the thing the schedule had got wrong: RandomX was chosen so an ordinary desktop can compete for blocks, most ordinary desktops run Windows, and somebody who arrives on launch day and finds nothing he can run does not come back later to check. The roadmap had Windows as the first item <em>after</em> launch. That was the wrong side of the date.</p>
+<p>The rehearsal was: build the whole Windows release, run it on a real Windows machine, and mine with it against the live pool. Not "does it compile".</p>
+<h3 id="what-it-found-before-it-found-anything-else">What it found before it found anything else</h3>
+<p>The node had cross-compiled since 7 September and the miner had never been built for Windows at all. <code>build_windows.sh</code> copied five node binaries and stopped. So the release that was about to be assembled would have given a Windows user a wallet and a node and no way to mine — the one thing the platform was wanted for.</p>
+<p>The reason it had gone unnoticed is worth naming: every previous check asked "does this build" and "does this agree with the chain", and both were true. Nothing asked "is this a release somebody can use".</p>
+<p>Of the miner's 2,600 lines, forty were not portable — a TCP socket in <code>stratum.h</code>, one <code>localtime_r</code>, and the assumption that an ANSI escape colours a terminal. They are now in <code>miner/src/platform.h</code>, the only file in the miner that knows what an operating system is.</p>
+<p>Two of the six Winsock differences would have failed silently:</p>
+<ul><li><code>SO_RCVTIMEO</code> takes a <code>DWORD</code> of milliseconds, not a <code>struct timeval</code>. Pass a <code>timeval</code> and Winsock reads its first four bytes: a one-second timeout becomes one millisecond, and the I/O loop spins a thousand times a second burning a core that should be hashing.</li><li>A receive timeout reports <code>WSAETIMEDOUT</code>, where POSIX reports <code>EAGAIN</code>. <code>stratum.h</code> sets a one-second receive timeout deliberately so the loop always returns and <code>CheckSilence()</code> gets to run — so on Windows that timeout fires every single second of normal operation. Tested the POSIX way it is not "nothing to read", it is an error: the miner would tear down a healthy connection once a second, forever, and report a read failure each time. It would have looked like a broken pool.</li></ul>
+<h3 id="measured-on-windows-11-03-04-03-09">Measured on Windows 11, 03:04–03:09</h3>
+<pre><code>--self-test     SHA-256, byte order, targets, both official RandomX vectors
+connected       pool.wamcoin.org:13333, subscribed, authorized
+randomx         full memory (2 GiB dataset) built in 5.52 s
+1.88 kH/s       8 of 24 cores
+shares          10 accepted, 0 rejected
+block 8478      solved at 03:05:46</code></pre>
+<p>and on the pool, on France:</p>
+<pre><code>01:05:47  *** BLOCK CANDIDATE at height 8478 by twam1qzrjw…win11 ***
+01:05:48  *** BLOCK 8478 ACCEPTED *** reward 50.00010138 WAM
+01:05:48  block 8478 recorded: 47.02510037 WAM to 7 workers</code></pre>
+<p><code>.win11</code> was the worker suffix given to the Windows binary; blocks 8479, 8480 and 8481 came from <code>.rig1</code>, the Linux miner on the same pool. So the attribution is from the pool's own log and not inferred from timing.</p>
+<p><strong>Zero rejected shares is the measurement that matters.</strong> One byte-order mistake in the header, the nonce or the target comparison gives ten rejected and no error message — a miner that hashes correctly and finds nothing, which is the most expensive way to be wrong.</p>
+<h3 id="and-then-windows-deleted-it">And then Windows deleted it</h3>
+<p>Fourteen seconds into the first run, before any of the above:</p>
+<pre><code>Windows Defender  02:53:21
+  Trojan:Win32/Bearfoos.A!ml     SeverityID 5 (Severe)
+  file:    wam-miner.exe
+  process: pid 35700</code></pre>
+<p>It terminated the process and removed the file. The first run looked, from the log, like a miner that connected, took a job at height 8474, hashed for thirty seconds and then stopped for no reason.</p>
+<p>This has no clean fix and pretending otherwise would be the failure. A program that opens a socket and then uses every core is behaviourally identical to the cryptojacking malware that infects people without asking; the difference is consent, which no scanner can see. A publisher certificate is the only thing that removes the warning, and it costs money and a registered company.</p>
+<p>What was in reach was done, in four parts:</p>
+<ol><li><strong><code>miner/wam-miner.rc</code>.</strong> The binary carried no company, no product, no description and no version — a property shared by almost nothing a person installs on purpose. The node binaries have all of it because Core's build system adds it; the miner was one <code>g++</code> invocation and never had it. With the resource, the same binary mined for five minutes untouched and an on-demand scan passed. One trial is not a guarantee and this file does not claim to be a fix.</li><li><strong>Documented, not defeated</strong> — <code>docs/MINE.md</code>, both START_HERE pages, and the <code>RELEASE.txt</code> inside the archive. What the message looks like, why a miner triggers it, that the answer is the SHA256 and the signature rather than an opinion, that an exclusion should name one file and never the machine, and that anyone asking a user to switch their antivirus off entirely is not us.</li><li><strong>A CI step that asks Defender first.</strong> <code>windows-latest</code> has it, so the workflow scans every binary before packaging and writes the verdict into the run summary. It never fails the build — a false positive must not be able to block a release — but it can never again be a surprise.</li><li><strong>The node is offered separately.</strong> <code>wamd.exe</code> is not a miner and is not normally flagged, so a Windows user who does not want to argue with his antivirus can still run a node and hold a wallet.</li></ol>
+<h3 id="197-mb">197 MB</h3>
+<p><code>platform-build #10</code> uploaded <code>out/windows/</code> raw: five unstripped executables. <code>package_release.sh</code> has stripped the Linux binaries since the first release — its own comment reads "Debug symbols are most of the size and none of the use. 339 MB -&gt; ~30 MB" — and nothing in the Windows path ever did. On the connection that had to download it, measured at about 16 KB/s, that artifact is three and a half hours. The release could not be assembled at all, and the first two hours of the night went on looking for a file that had never been downloaded.</p>
+<p><code>build_windows.sh</code> now strips <strong>before</strong> the consensus gate rather than after. That ordering is the point: the gate unpacks the archive and syncs the chain from genesis with the exact bytes a stranger will download, so <code>RELEASE.txt</code>'s claim that these binaries were tested stays literally true. Strip afterwards and the tested file and the shipped file are different files.</p>
+<h3 id="the-release-would-not-publish-and-the-thing-that-stopped-it-was-right">The release would not publish, and the thing that stopped it was right</h3>
+<p><code>release.yml</code> refused v0.1.8. Everything up to the last step passed -- node, RandomX and miner built, packaged, and the artifact verified against its own checksums -- and then:</p>
+<pre><code>   ok       Verify the artifact before anyone can download it
+   FAILURE  Publish the release</code></pre>
+<p><code>consensus_floor.py</code> had reported that v0.1.8 changes a consensus value while the tag carried no <code>MANDATORY:</code> line, and the workflow stops for that on purpose. The reason it stops is written in its own comments: v0.1.5 moved the mainnet treasury address, shipped with no warning, and two independent operators stayed on v0.1.4 for two days.</p>
+<p>The change was real. v0.1.7 shipped <code>nMinimumChainWork</code> as <code>uint256{}</code> on all three networks; testnet now carries a value, set on 7 September so a fresh node cannot be walked onto a cheap fabricated history by the first peer it meets. Mainnet is still zero, so launch was never affected.</p>
+<p><strong>Both ways out were wrong, which is what made this worth writing down.</strong> Write a <code>MANDATORY:</code> line and every channel is told UPDATE REQUIRED for a release nobody needs to install -- spending, three days before launch, the one warning that has to be believed on the night. Or do not publish, and ship no Windows release at all.</p>
+<p>The answer was in the gate's own definition, one line above the patterns it matches: <em>a node disagreeing about any of these is a node on a different chain.</em> Exactly one field reached through <code>consensus.</code> fails that test. Two nodes with different <code>nMinimumChainWork</code> accept identical blocks; the value decides whether a node will begin to trust a header chain at all, which is liveness and anti-DoS, and <code>check_min_chain_work.py</code> already exists for it. A v0.1.7 node has zero there and follows this chain exactly as before.</p>
+<p>So the field is excluded by name, after matching rather than by narrowing the pattern -- <code>consensus.\w+</code> still catches every field by default and an exception has to be argued for, because a new consensus value must never be missed because a regular expression was tightened to exclude a different one. The floor moved to <strong>v0.1.5</strong>, which is what this project's own history records as the only consensus change since genesis.</p>
+<p>A guard that fires correctly and is classified wrongly looks exactly like a guard that is broken. The difference is whether you read it or silence it.</p>
+<h3 id="and-the-box-said-v0-1-8-while-the-binaries-said-v0-1-7">And the box said v0.1.8 while the binaries said v0.1.7</h3>
+<p>Found by running the finished artifact rather than by reading anything. <code>platform-build #11</code> produced <code>wam-coin-v0.1.9-x86_64-w64-mingw32.zip</code>, and the node inside it answered</p>
+<pre><code>WAM Coin version v0.1.7</code></pre>
+<p>because <code>--version</code> on that workflow is a string typed into a form and nothing compared it to anything. The archive was right in every other respect: PE32+, stripped, consensus-gated from genesis, miner self-tested on Windows. And the command a person runs to answer "am I on the version that moved a consensus rule?" would have told him the wrong thing.</p>
+<p><code>sign_release.sh</code> catches this from the other end -- it refuses to sign a list of v0.1.8 names from a v0.1.7 checkout -- and that guard would have held. But it holds at the last possible moment, on the machine with the offline key, at the end of a long night. <code>package_platform.sh</code> now asks before it packages anything: first <code>patch_upstream.py</code>, which is the authority the build stamps into the binaries, then the binaries themselves, by reading the version string out of the file rather than running it -- a PE cannot be executed on the Linux runner that cross-compiled it, and the same rule has to hold for both platforms.</p>
+<hr>
+<h2 id="12-september-phase-b-on-the-binaries-that-will-actually-do-it">12 September: Phase B, on the binaries that will actually do it</h2>
+<p>Phases A→D were rehearsed in full on 7 September, on v0.1.6. The release that will create mainnet is v0.1.8, and it is a different build of every binary — Windows and macOS were added to it, <code>depends</code> was rebuilt, and the Linux node was relinked. The genesis block is constructed by that code from <code>chainparams.cpp</code> at runtime, so the question "does this build produce the right genesis" has one honest answer and it is not "it did in v0.1.6".</p>
+<p>Asked on all three hosts, in a sandbox datadir, with no peers and no listening socket:</p>
+<pre><code>WAM Coin version v0.1.8
+  chain                                main
+  height                               0
+  genesis hash matches chainparams     d8d3debea987b62a...  yes
+  tip is genesis                       yes
+  second start refused                 "block which appears to be from the future"
+  genesis_gate.sh declines             exit 78
+  real datadirs untouched, sandbox removed</code></pre>
+<p>All three. The second-start refusal is the property from 28 August, and it still holds on v0.1.8 — which matters, because it is the thing that stops a mainnet node being left "ready" before the date and found crash-looping on the morning it counts.</p>
+<h3 id="and-two-things-the-sandbox-run-had-no-reason-to-find">And two things the sandbox run had no reason to find</h3>
+<p><strong>None of the three <code>/root/.wam-mainnet</code> datadirs holds a <code>blocks/</code> or a <code>chainstate/</code>.</strong> Launch night starts from nothing, which is what it should do, and now that is measured rather than assumed.</p>
+<p><strong>Singapore held a <code>txindex</code> from 28 August, for a chain that does not exist yet.</strong> 24 KB of LevelDB, written by a v0.1.6-era node during the Phase A/B rehearsal, sitting in the datadir that will be used at 00:00 UTC on the 15th. An index whose best block was recorded before the chain it indexes exists is not a thing to meet at 00:05 on launch night, and it is derivable from nothing, so it is now outside the datadir at <code>/root/mainnet-txindex-leftover-20260912T200839Z</code> rather than deleted.</p>
+<p><strong>France's mainnet pool wallet is there and it opens.</strong> Checked offline, on a copy, with <code>wam-wallet info</code> — because loading it in a node would mean starting a mainnet node, which is the one thing that must not happen before the date:</p>
+<pre><code>Name: pool        Format: sqlite      Descriptors: yes
+HD seed: yes      Keypool: 8000       Transactions: 0     Address Book: 1</code></pre>
+<p>Mode 600, one address, no transactions. It was created on 30 August through the gate's override and this is the first time since that it has been proved to still open.</p>
+<hr>
+<h2 id="12-september-phase-a-was-checking-one-archive-in-three">12 September: Phase A was checking one archive in three</h2>
+<p><code>check_release_matches.sh</code> is step 1 of Phase A, and the question it asks is the one that matters most to a stranger: <strong>is the file on the release page this network?</strong> It answered it for one architecture.</p>
+<p>It took the first release asset whose name starts with <code>wam-coin</code> and ends in <code>.tar.gz</code>. That was the Linux tarball for as long as Linux was the only platform. macOS joined the release this morning and sorts ahead of it alphabetically, so from that moment the single artifact the check examined was the <strong>arm64 Mac</strong> build — and the Linux tarball that every seed and every Linux miner downloads stopped being examined at all. No output changed. Nothing went red. The check kept passing, about a different file.</p>
+<p>It now walks every published archive. All three carry the right genesis and the right consensus addresses, and the Linux binaries carry zero AVX-512 — measured, on France, which is the first time that question has been answered about a published release rather than skipped.</p>
+<h3 id="three-defects-had-to-be-fixed-before-it-could-be">Three defects had to be fixed before it could be</h3>
+<p>Each of them was the same shape: <strong>something that could not be measured, reported as though it had been.</strong></p>
+<p><strong><code>check_isa_baseline.sh</code> printed the wrong tool's name.</strong> When GNU objdump cannot read a Mach-O file it said so and advised <code>OBJDUMP=llvm-objdump</code> — and then called <code>objdump</code> regardless. Advice that can be followed exactly and change nothing.</p>
+<p><strong>It exited 1 both for "AVX-512 found" and for "no binary was examined".</strong> Those are opposites. Callers read 1 as the finding, so a glob that matched no file produced <em>"the published binaries carry instructions many CPUs do not have"</em> in red, about binaries nobody had opened. Nothing examined is an exit 2 now, with a reason, which is what this project's convention has said since the sweep learned the difference.</p>
+<p><strong>And <code>file(1)</code> was missing on the Singapore seed.</strong> Without it, every argument fell through the format filter and was skipped in silence: the check examined nothing, exited 1, and Phase A step 1 went red on a clean release. One absent 100 KB utility, three links of chain, and a launch-stopping claim. Installing <code>file</code> fixes today; reading the magic bytes with <code>od</code> would remove the dependency, and that is written in the script as the thing to do after launch rather than three days before it.</p>
+<h3 id="the-line-that-reported-all-of-this-was-itself-unreadable">The line that reported all of this was itself unreadable</h3>
+<p>The warn quoted <code>head -1</code> of the check's output, which on any host with objdump is the box-drawing banner:</p>
+<pre><code>  warn   the CPU baseline was NOT checked: ==================================</code></pre>
+<p>Both scripts now print one <code>reason:</code> line when they cannot run, and the caller quotes that. A check that cannot say why it did not run is a check that gets ignored, and this one had been ignored all day.</p>
+<hr>
+<h2 id="5-september-and-12-september-hash-rate-arriving-and-leaving">5 September, and 12 September: hash rate arriving and leaving</h2>
+<p><strong>Correction first.</strong> This was written saying the rehearsal had never been run, because nothing in <code>docs/REHEARSALS.md</code> recorded it and I trusted the absence of a document over the founder. He said it had been done, with Sparks60, on three machines — and he was right. It is in the chain, which is a better record than this file, and no amount of missing paperwork erases it.</p>
+<p>Everything below is measured from our own blocks rather than remembered. Difficulty is quoted as a <strong>multiple of the testnet <code>powLimit</code> floor</strong>, because the raw numbers are unreadable: the floor is difficulty 0.000244, and the chain sits on it whenever nothing unusual is happening.</p>
+<h3 id="what-actually-happened-read-out-of-the-chain">What actually happened, read out of the chain</h3>
+<pre><code>04 Sep 22:49   h5248   difficulty leaves the floor -- 1.05x
+               ....    intermittent for fourteen hours, 1.6x the network overall
+05 Sep 12:20   h5586   the concentrated push: 5.8x for the final 39 minutes
+05 Sep 12:59   h5608   they stop
+05 Sep 13:35   h5609   the next block takes 35 minutes
+05 Sep 14:55   h5618   back on the floor -- 9 blocks, 79 minutes, unattended</code></pre>
+<p>Three machines against a network of about that size: <strong>7.0× the network</strong> over the fastest stretch and 5.8× across the final thirty-nine minutes, measured as <code>sum(difficulty) / sum(seconds)</code> and not from any one block, because block times are exponentially distributed and a single lucky four-second block means nothing. At six times the floor they were still finding a block every 84 seconds — at the floor that is one every fourteen.</p>
+<p>Difficulty peaked at <strong>6.26× the floor</strong> at height 5609. Across the chain's whole life the median is 1.00× and the 90th percentile 1.24×, so that peak is the largest excursion this network has ever had, and it was ours.</p>
+<p><strong>DGW absorbed it and gave the chain back in 79 minutes with nobody touching anything</strong> — and it did so under worse conditions than the question assumed, because the machines that stopped were also part of our ordinary hash rate. Through the recovery the network ran at about <strong>half</strong> its normal rate (0.0035 against a baseline of 0.0072 floor-units per second), which is exactly why the worst block was 35 minutes: 2.3 minutes × 6.26 difficulty × 2 for the missing half is about 29, and the rest is luck. That is what 2.7 was asking for, and it was already on disk.</p>
+<h3 id="then-the-part-that-could-not-be-bought-was-computed">Then the part that could not be bought was computed</h3>
+<p>Three machines is six or seven times this network. The roadmap asked about twenty, and a stranger renting RandomX by the hour can bring more than that, so the rest of the answer has to be arithmetic.</p>
+<p>We cannot rent twenty times our own network to find out. <code>scripts/dgw_model.py</code> mirrors <code>DarkGravityWave()</code> from <code>src/wam/pow.cpp</code> exactly: the 24-block window, the <code>(avg·n + t)/(n+1)</code> running mean walked backwards from the newest block, the <code>[target/3, target·3]</code> clamp, integer division throughout, and the compact encoding's own truncation.</p>
+<p>A Python reimplementation of a consensus rule is precisely the shape of thing this project distrusts — one fact in two places has bitten it three times. So the model is refused unless it can reproduce the past:</p>
+<pre><code>does the model reproduce the chain that already exists?
+  ok    8838 blocks, every one predicted exactly
+        heights 24 to 8861</code></pre>
+<p>Every block from height 24 to the tip, its nBits computed from its own 24 predecessors and compared with what the chain actually carries. Eight thousand independent comparisons against a chain the C++ produced. One mismatch and the file says so and stops.</p>
+<h3 id="what-it-says">What it says</h3>
+<table><tr><th>the visitor</th><th>difficulty rises</th><th>slowest block after they go</th><th>back to 2-minute blocks</th></tr><tr><td>20× for 1 hour</td><td>11.6×</td><td>23 min</td><td>~2 hours</td></tr><tr><td>50× for 1 hour</td><td>11.9×</td><td>24 min</td><td>~2 hours</td></tr><tr><td>100× for 1 hour</td><td>12.1×</td><td>24 min</td><td>~2 hours</td></tr><tr><td>20× for 6 hours</td><td>21.1×</td><td>42 min</td><td>~3 hours</td></tr><tr><td><strong>100× for 6 hours</strong></td><td><strong>105.7×</strong></td><td><strong>3 h 29 min</strong></td><td><strong>~14 hours</strong></td></tr></table>
+<p><strong>Duration matters far more than magnitude, and that was not obvious.</strong> A hundredfold burst for one hour is nearly harmless: only about thirty blocks can enter the 24-block window in that time, and the 3× clamp bounds how far one retarget can move, so difficulty gets nowhere near a hundredfold. Somebody who <em>stays</em> for six hours lets it climb the whole way, and their departure leaves a chain that needs most of a day to recover.</p>
+<p>So the thing to fear is not a spike. It is a guest.</p>
+<h3 id="held-against-the-real-episode">Held against the real episode</h3>
+<p>The only check that matters for a model of the future is whether it describes a past it was not fitted to. Asked for 7× for one hour, the closest setting to what actually happened, it says:</p>
+<pre><code>                          the model       5 September
+slowest block after       11 min 57 s     35 min
+back to 2-min blocks      ~96 min         79 min</code></pre>
+<p><strong>The recovery time is right.</strong> The slowest block is three times too optimistic, and the reason is in the measurement above: the model assumes our own hash rate keeps running after the visitor leaves, and on 5 September half of it left with them. Corrected for that, the model gives about 29 minutes against the 35 measured.</p>
+<p>So the table is honest about shape and about recovery, and <strong>optimistic about the worst single block by roughly the fraction of our own hash rate that stops at the same moment.</strong> On launch night, when the miners are other people's, that fraction is smaller than it was in the test.</p>
+<h3 id="the-more-common-failure-is-the-opposite-one-and-the-chain-is-emphatic">The more common failure is the opposite one, and the chain is emphatic</h3>
+<p>The ten longest gaps in the chain's history, ignoring the nineteen days between genesis and block 1, all happened at difficulty <strong>1.00× — the floor</strong>:</p>
+<pre><code>height 4900   203 min        height 6065   113 min
+height 4916   170 min        height  238   105 min
+height 5120   120 min        height 4297   103 min
+height  631   118 min        height 5186    96 min</code></pre>
+<p>Not one was a departing visitor. And the other side of the same measurement: difficulty has been above 1.5× the floor for only 4% of the chain's blocks, and <strong>the longest gap ever recorded while it was up there is 35 minutes</strong> — the 5 September block.</p>
+<p>Difficulty overhang has never cost this chain more than 35 minutes. Our own miners stopping has cost it 203. At the floor difficulty cannot fall any further, so a slow chain there means one thing only: <strong>something of ours is off</strong> — a power cut, a node restart, a laptop closed. It looks identical from outside to the thing we were afraid of, and it is far more likely.</p>
+<p>Which is why the first step of the launch-night response is to tell them apart, and the difficulty is what tells you.</p>
+<p>The ratios are what carry over to mainnet. The model starts from the chain's own tail, so the absolute hash rate is today's, but every number in that table is a multiple and a multiple does not care what the base is.</p>
+<h3 id="what-is-not-being-done-about-it">What is NOT being done about it</h3>
+<p><strong>No consensus change.</strong> Shortening the window would respond faster and oscillate more; an emergency-difficulty rule of the kind some chains carry is a consensus rule invented in a hurry two days before launch. Both are worse than the thing they fix. DGW's behaviour here is a known property of DGW, it is survivable, and every small chain lives with it.</p>
+<p>What is in our hands is arithmetic and a written response, and both are now.</p>
+<p class="foot">This page is generated from docs/REHEARSALS.md in the repository. It is the same text; nothing here is written twice.</p>
+</main>
+</body>
+</html>

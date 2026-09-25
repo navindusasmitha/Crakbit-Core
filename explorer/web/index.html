@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WAM Network Dashboard</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="/brand/png/wam-platform-32.png" type="image/png">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 120 120" width="40" height="40" aria-hidden="true">
+      <polygon points="85,16.7 110,60 85,103.3 35,103.3 10,60 35,16.7"
+               fill="#0B7C5C" stroke="#0B7C5C" stroke-width="10" stroke-linejoin="round"/>
+      <path d="M32 42 L46 82 L60 34 L74 82 L88 42" fill="none" stroke="#fff"
+            stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <h1>WAM Network</h1>
+      <p class="sub" id="chainLine">connecting to node…</p>
+    </div>
+  </div>
+  <div class="status" id="nodePill"><span class="dot"></span><span id="nodeText">…</span></div>
+</header>
+
+<div class="banner hidden" id="banner"></div>
+
+<main>
+
+  <section class="tiles">
+    <div class="tile">
+      <div class="label">Block height</div>
+      <div class="value" id="tHeight">—</div>
+      <div class="note" id="tHeightNote">&nbsp;</div>
+    </div>
+    <div class="tile">
+      <div class="label">Network hashrate</div>
+      <div class="value" id="tHashrate">—</div>
+      <div class="note" id="tDifficulty">&nbsp;</div>
+    </div>
+    <div class="tile">
+      <div class="label">Circulating supply</div>
+      <div class="value" id="tSupply">—</div>
+      <div class="note" id="tSupplyNote">&nbsp;</div>
+    </div>
+    <div class="tile">
+      <div class="label">Block reward</div>
+      <div class="value" id="tReward">—</div>
+      <div class="note" id="tRewardNote">&nbsp;</div>
+    </div>
+    <div class="tile">
+      <div class="label">Next halving</div>
+      <div class="value" id="tHalving">—</div>
+      <div class="note" id="tHalvingNote">&nbsp;</div>
+    </div>
+    <div class="tile">
+      <div class="label">Peers</div>
+      <div class="value" id="tPeers">—</div>
+      <div class="note" id="tMempool">&nbsp;</div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="split">
+
+    <div class="card">
+      <h2>Supply against the 22,000,000 cap</h2>
+      <div class="stackbar" id="supplyBar" role="img" aria-label="Supply breakdown">
+        <div class="seg mined"  id="segMined"></div>
+        <div class="seg vested" id="segVested"></div>
+        <div class="seg locked" id="segLocked"></div>
+        <div class="seg unmined" id="segUnmined"></div>
+      </div>
+      <table class="kv">
+        <tr><td><span class="sw mined"></span>Mined by the public</td><td class="num" id="sMined">—</td></tr>
+        <tr><td><span class="sw vested"></span>Founder — unlocked</td><td class="num" id="sVested">—</td></tr>
+        <tr><td><span class="sw locked"></span>Founder — time-locked</td><td class="num" id="sLocked">—</td></tr>
+        <tr><td><span class="sw unmined"></span>Not yet mined</td><td class="num" id="sUnmined">—</td></tr>
+        <tr class="total"><td>Maximum supply</td><td class="num" id="sMax">—</td></tr>
+      </table>
+      <p class="fine" id="supplySource">&nbsp;</p>
+    </div>
+
+    <div class="card">
+      <h2>Founder reserve vesting</h2>
+      <table class="data compact" id="vestTable">
+        <thead><tr><th>#</th><th>Amount</th><th>Unlocks</th><th>Status</th></tr></thead>
+        <tbody><tr><td colspan="4" class="empty">waiting for the node</td></tr></tbody>
+      </table>
+      <p class="fine">
+        Enforced by <code>OP_CHECKLOCKTIMEVERIFY</code> in the genesis block itself.
+        Verify independently with <code>wam-cli getblock &lt;genesis&gt; 2</code>.
+      </p>
+
+      <h2 class="mt">Treasury fee</h2>
+      <table class="kv">
+        <tr><td>Status</td><td class="num" id="trStatus">—</td></tr>
+        <tr><td>Share of subsidy</td><td class="num" id="trPercent">—</td></tr>
+        <tr><td>Ends at height</td><td class="num" id="trEnd">—</td></tr>
+        <tr><td>Blocks remaining</td><td class="num" id="trRemaining">—</td></tr>
+      </table>
+    </div>
+
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="split">
+
+    <div class="card">
+      <h2>RandomX epoch</h2>
+      <table class="kv">
+        <tr><td>Seed height</td><td class="num" id="rxSeedHeight">—</td></tr>
+        <tr><td>Seed hash</td><td class="num mono trunc" id="rxSeedHash">—</td></tr>
+        <tr><td>Epoch length</td><td class="num" id="rxEpoch">—</td></tr>
+        <tr><td>Next rotation</td><td class="num" id="rxRotation">—</td></tr>
+        <tr><td>Node RandomX memory</td><td class="num" id="rxMemory">—</td></tr>
+      </table>
+      <p class="fine">
+        On rotation every miner rebuilds its 2 GiB dataset. A brief hashrate dip is expected
+        and is not an incident.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Look up a block or transaction</h2>
+      <form class="lookup" id="searchForm">
+        <input type="text" id="searchInput" autocomplete="off" spellcheck="false"
+               placeholder="Block height, block hash, or txid">
+        <button type="submit">Search</button>
+      </form>
+      <div id="searchResult" class="result hidden"></div>
+
+      <h2 class="mt">Audit a block's treasury payment</h2>
+      <form class="lookup" id="auditForm">
+        <input type="text" id="auditInput" autocomplete="off" spellcheck="false"
+               placeholder="Block height or hash">
+        <button type="submit">Audit</button>
+      </form>
+      <div id="auditResult" class="result hidden"></div>
+    </div>
+
+  </section>
+
+  <!-- ----------------------------------------------------------------
+       The network, as seen from this node.
+
+       The pool dashboard answers "is anyone mining with me". This answers
+       the question that matters more at launch: is this a network, or one
+       person's machine? The measure is how many independent computers
+       validate the chain for themselves.
+
+       No peer address appears here. Someone running a WAM node is doing the
+       project a favour, and publishing where they are would turn that into a
+       target list. Only WAM's own seeds are named, and only by country,
+       because their addresses are already in public DNS.
+       ---------------------------------------------------------------- -->
+  <section class="card">
+    <h2>The network</h2>
+
+    <div class="netgrid">
+      <div class="netstat">
+        <div class="netnum" id="netKnown">—</div>
+        <div class="netlabel">addresses it will share</div>
+        <!-- Not a census, and not the address book either. getnodeaddresses
+             returns what Core is currently willing to gossip, which excludes
+             addresses it judges terrible this minute -- so the figure moves
+             while nobody joins or leaves. The founder distrusted it for
+             exactly that reason on 14 September and was right. The book
+             itself is on the line below, and the number that falls when a
+             node really goes away is the 24h one. -->
+        <div class="fine">what this node would hand a newcomer</div>
+        <div class="fine" id="netBook">&nbsp;</div>
+        <div class="fine" id="netKnownFine">&nbsp;</div>
+      </div>
+      <div class="netstat">
+        <div class="netnum" id="netConnected">—</div>
+        <div class="netlabel">connected now</div>
+        <div class="fine" id="netInOut">&nbsp;</div>
+      </div>
+      <div class="netstat">
+        <div class="netnum" id="netSeeds">—</div>
+        <div class="netlabel">WAM seed nodes</div>
+        <div class="fine" id="netSeedWhere">&nbsp;</div>
+      </div>
+    </div>
+
+    <!-- Published permanently, high or low. On the night mainnet opened one
+         address found 97.5% of the first 79 blocks, and the only people who
+         knew were miners who had won nothing and were leaving. A miner
+         deciding where to point needs to see which pool needs them. -->
+    <h3 class="sub">Who is writing the chain</h3>
+    <!-- Two windows on purpose, and deliberately NOT ranked. The short one is
+         what a miner refreshing this page wants; the seven-day one is what
+         the project's published condition is measured against, and the two
+         disagreed by twenty points on 17 September -- one naming this
+         project's own pool, the other naming somebody else's. Whichever line
+         came first was the one a reader remembered, and this project is an
+         interested party in that choice. Same grammar, same weight, no
+         order. -->
+    <p class="fine" id="concSeven">last seven days: reading…</p>
+    <p class="fine" id="concSummary">right now: reading…</p>
+    <p class="fine">
+      Neither of these is <em>the</em> number. The short window turns over in
+      an hour and a half, so three lucky blocks move it twenty points; the
+      seven-day window carries days that are already over and cannot be
+      undone. A safety rule should be quick to say &quot;danger&quot; and slow
+      to say &quot;safe&quot;, which is why the published condition is judged
+      on the long one and the short one is published beside it.
+    </p>
+    <table class="kv" id="concTable"></table>
+    <p class="fine">
+      Counted from the largest output of each coinbase, which is always the
+      miner's: the treasury takes 5% of the subsidy by consensus and the miner
+      takes the rest plus every fee. One address is not one person — a pool
+      pays itself and then distributes, so the coins spread while the hash
+      rate stays in one operator's hands, and it is the hash rate that decides
+      whether this chain can be rewritten.
+    </p>
+
+    <table class="kv" id="netTypes">
+      <tr><td>IPv4</td><td class="num" id="netIpv4">—</td></tr>
+      <tr><td>IPv6</td><td class="num" id="netIpv6">—</td></tr>
+      <tr><td>Tor</td><td class="num" id="netOnion">—</td></tr>
+      <tr><td>Software versions</td><td class="num mono" id="netVersions">—</td></tr>
+      <tr><td>Longest connection</td><td class="num" id="netLongest">—</td></tr>
+    </table>
+
+    <p class="fine">
+      Peer addresses are never published here. Running a node is a favour to
+      this project, and a list of who does it is a list of who to attack.
+      Only WAM's own seeds are named, by country, because they are already in
+      public DNS.
+    </p>
+    <p class="fine">
+      Run one yourself and this number goes up:
+      <code>./install.sh --network testnet</code>
+    </p>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="card">
+    <h2>Recent blocks</h2>
+    <div class="tablewrap">
+      <table class="data" id="blocksTable">
+        <thead><tr>
+          <th>Height</th><th>Age</th><th class="num">Txs</th><th class="num">Size</th>
+          <th class="num">Difficulty</th><th>Hash</th>
+        </tr></thead>
+        <tbody><tr><td colspan="6" class="empty">waiting for the node</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <span>WAM Coin &middot; 22,000,000 max supply &middot; 2-minute blocks &middot; RandomX &middot; DGWv3</span>
+  <span id="footerStatus"></span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
