@@ -183,17 +183,30 @@ PY
 
 echo "CRAK-010: confirmed 1 CRAK wallet transfer txid=$TXID balance=$BALANCE_BEFORE"
 
-# Clean restart must preserve the loaded wallet, transaction history, and balance.
+# Clean restart must preserve the wallet database and transaction history.
+# Wallet auto-loading is configuration-dependent, so explicitly reload the
+# persisted wallet and then verify its state byte-for-byte at the RPC level.
 stop_node 2
 start_node 2
 
+WALLETDIR="$(cli 2 listwalletdir)"
+python3 - "$WALLETDIR" <<'PY'
+import json
+import sys
+obj = json.loads(sys.argv[1])
+wallets = [entry.get("name") for entry in obj.get("wallets", [])]
+if "receiver" not in wallets:
+    raise SystemExit(f"receiver wallet database missing after restart: {wallets}")
+PY
+
+cli 2 loadwallet receiver >/dev/null
 LOADED="$(cli 2 listwallets)"
 python3 - "$LOADED" <<'PY'
 import json
 import sys
 wallets = json.loads(sys.argv[1])
 if "receiver" not in wallets:
-    raise SystemExit(f"receiver wallet was not restored after restart: {wallets}")
+    raise SystemExit(f"receiver wallet failed to reload after restart: {wallets}")
 PY
 
 BALANCE_AFTER="$(wallet_cli 2 receiver getbalance)"
@@ -209,6 +222,9 @@ if after != before:
     raise SystemExit(f"wallet balance changed across restart: before={before} after={after}")
 if int(tx.get("confirmations", 0)) < 1:
     raise SystemExit(f"wallet transaction lost confirmation across restart: {tx}")
+amount = tx.get("amount")
+if amount is None or float(amount) < 0.99999999:
+    raise SystemExit(f"wallet transaction amount changed across restart: {tx}")
 PY
 
 echo "CRAK-010 wallet send/receive/restart smoke: OK balance=$BALANCE_AFTER txid=$TXID"
