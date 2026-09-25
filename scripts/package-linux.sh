@@ -64,6 +64,9 @@ install -m 0644 "$ROOT/scripts/crakpool.py" "$STAGE/bin/crakpool-base.py"
 install -m 0755 "$ROOT/scripts/crakpool-accounting.py" "$STAGE/bin/crakpool"
 install -m 0755 "$ROOT/scripts/crakpool-stats.py" "$STAGE/bin/crakpool-stats"
 install -m 0755 "$ROOT/scripts/crakpool-payout.py" "$STAGE/bin/crakpool-payout"
+# CRAK-017 dynamically imports the CRAK-016 planner for its schema/RPC helpers.
+# Keep an internal .py copy beside the public extensionless command.
+install -m 0644 "$ROOT/scripts/crakpool-payout.py" "$STAGE/bin/crakpool-payout.py"
 install -m 0755 "$ROOT/scripts/crakpool-pay.py" "$STAGE/bin/crakpool-pay"
 install -m 0755 "$ROOT/scripts/crakminer-stratum.py" "$STAGE/bin/crakminer-stratum"
 install -m 0755 "$ROOT/scripts/install-package.sh" "$STAGE/install.sh"
