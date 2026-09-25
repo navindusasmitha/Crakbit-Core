@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREFIX="${1:-$HOME/.local}"
 
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-pay crakpool-base.py crakminer-stratum; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-payout.py crakpool-pay crakpool-base.py crakminer-stratum; do
   if [[ ! -f "$ROOT/bin/$file" ]]; then
     echo "missing package file: bin/$file" >&2
     exit 1
@@ -16,6 +16,7 @@ for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-
   install -m 0755 "$ROOT/bin/$file" "$PREFIX/bin/$file"
 done
 install -m 0644 "$ROOT/bin/crakpool-base.py" "$PREFIX/bin/crakpool-base.py"
+install -m 0644 "$ROOT/bin/crakpool-payout.py" "$PREFIX/bin/crakpool-payout.py"
 
 if [[ -d "$ROOT/share" ]]; then
   install -d "$PREFIX/share/crakbit-core"
