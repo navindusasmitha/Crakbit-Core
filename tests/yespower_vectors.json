@@ -1,0 +1,17 @@
+{
+  "profile": {
+    "algorithm": "yespower",
+    "version": "YESPOWER_1_0",
+    "N": 2048,
+    "r": 8,
+    "personalization": "Crakbit-Core-v0.1"
+  },
+  "vectors": [
+    {
+      "name": "sequential-80-byte-header",
+      "input_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f",
+      "raw_hash_hex": "5c768383c73df8a84b71bf7e20077bb016771eabeabd3e99c099b57f052b6a94",
+      "uint256_display_hex": "946a2b057fb599c0993ebdeaab1e7716b07b07207ebf714ba8f83dc78383765c"
+    }
+  ]
+}
