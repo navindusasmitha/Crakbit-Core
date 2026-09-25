@@ -9,6 +9,7 @@ lock = json.loads((ROOT / 'SOURCE_LOCK.json').read_text(encoding='utf-8'))
 params = json.loads((ROOT / 'consensus' / 'params.json').read_text(encoding='utf-8'))
 vectors = json.loads((ROOT / 'tests' / 'yespower_vectors.json').read_text(encoding='utf-8'))
 genesis_vectors = json.loads((ROOT / 'tests' / 'genesis_vectors.json').read_text(encoding='utf-8'))
+subsidy_vectors = json.loads((ROOT / 'tests' / 'subsidy_vectors.json').read_text(encoding='utf-8'))
 
 sha40 = re.compile(r'^[0-9a-f]{40}$')
 hex8 = re.compile(r'^[0-9a-f]{8}$')
@@ -71,10 +72,52 @@ if money['premine_coins'] != 0:
     errors.append('premine must be zero')
 if money['coinbase_maturity_blocks'] != 100:
     errors.append('coinbase maturity must be 100 blocks')
+if money.get('status') != 'implemented_testnet_v0.1':
+    errors.append('monetary consensus status must be implemented_testnet_v0.1')
 
 ideal_supply = 2 * money['initial_subsidy_coins'] * money['halving_interval_blocks']
 if ideal_supply != money['intended_max_supply_coins']:
     errors.append(f'intended supply mismatch: geometric target is {ideal_supply:,}')
+
+subsidy_profile = subsidy_vectors.get('profile', {})
+expected_subsidy_profile = {
+    'initial_subsidy_sats': 500_000_000,
+    'halving_interval_blocks': 2_100_000,
+    'coinbase_maturity_blocks': 100,
+    'premine_sats': 0,
+    'integer_rounded_max_subsidy_sats': 2_099_999_972_700_000,
+}
+if subsidy_profile != expected_subsidy_profile:
+    errors.append('frozen CRAK-008 subsidy profile mismatch')
+
+initial_sats = 500_000_000
+interval = 2_100_000
+calculated_total = 0
+for era in range(64):
+    subsidy = initial_sats >> era
+    if subsidy == 0:
+        break
+    calculated_total += subsidy * interval
+
+if calculated_total != expected_subsidy_profile['integer_rounded_max_subsidy_sats']:
+    errors.append(f'internal subsidy total calculation mismatch: {calculated_total}')
+if money.get('integer_rounded_max_subsidy_sats') != calculated_total:
+    errors.append('consensus params integer-rounded subsidy total mismatch')
+if money.get('integer_rounded_max_subsidy_coins') != '20999999.72700000':
+    errors.append('consensus params integer-rounded subsidy coin string mismatch')
+
+for vector in subsidy_vectors.get('vectors', []):
+    height = vector.get('height')
+    expected = vector.get('expected_sats')
+    if not isinstance(height, int) or height < 0 or not isinstance(expected, int) or expected < 0:
+        errors.append(f'invalid subsidy vector: {vector!r}')
+        continue
+    halvings = height // interval
+    actual = 0 if halvings >= 64 else initial_sats >> halvings
+    if actual != expected:
+        errors.append(
+            f"subsidy vector {vector.get('name', '<unnamed>')} mismatch: expected {expected}, got {actual}"
+        )
 
 networks = params.get('networks', {})
 required_networks = ('testnet4', 'regtest')
@@ -173,4 +216,4 @@ if errors:
         print(f'ERROR: {error}', file=sys.stderr)
     raise SystemExit(1)
 
-print('Crakbit source/consensus/vector/network/genesis lock: OK')
+print('Crakbit source/consensus/vector/network/genesis/monetary lock: OK')
