@@ -1,6 +1,6 @@
-# CRAK-014 Stratum Pool
+# Crakbit Pool — CRAK-014 / CRAK-015 / CRAK-016
 
-CRAK-014 adds the first external mining-pool layer for Crakbit Core without changing chain consensus.
+The Crakbit pool stack is an external mining layer. It does not change chain consensus, block validation, monetary policy, or the yespower proof-of-work rules enforced by `crakbitd`.
 
 ## Architecture
 
@@ -8,20 +8,28 @@ CRAK-014 adds the first external mining-pool layer for Crakbit Core without chan
 crakbitd
    │ localhost RPC
    ▼
-crakpool
+crakpool                         CRAK-014 protocol + CRAK-015 accounting
    │ Stratum TCP
-   ├──────── crakminer-stratum (PC / VPS / ARM64 later)
-   ├──────── crakminer-stratum (PC / VPS)
-   └──────── crakminer-stratum (...)
+   ├──────── crakminer-stratum
+   ├──────── crakminer-stratum
+   └──────── ...
+   │
+   ▼
+SQLite ledger                    shares / blocks / worker credits / vardiff
+   │
+   ▼
+crakpool-payout                  CRAK-016 reconciliation + payout planning
+   │
+   └──────── NO signing / NO transaction broadcast in CRAK-016
 ```
 
-`crakpool` obtains `getblocktemplate` from the node, constructs the BIP34 coinbase split, distributes a unique `extranonce1` to each connection and accepts miner-controlled `extranonce2` values. Workers build the transaction merkle root, scan the canonical 80-byte header with native yespower, and submit shares back to the pool. The pool independently verifies each share with the same pinned yespower scanner used by CRAK-013. Network-target shares are rebuilt into complete blocks and sent to `crakbitd` with `submitblock`.
+`crakpool` obtains `getblocktemplate` from the node, constructs the BIP34 coinbase split, distributes a unique `extranonce1` to each connection, and accepts miner-controlled `extranonce2` values. Workers build the transaction merkle root, scan the canonical 80-byte header with native yespower, and submit shares back to the pool. The pool independently verifies each share with the same pinned yespower scanner used by CRAK-013. Network-target shares are rebuilt into complete blocks and sent to `crakbitd` with `submitblock`.
 
 The node remains the final consensus authority.
 
-## Supported CRAK-014 methods
+## Stratum surface
 
-The current JSON-lines Stratum surface implements:
+The current JSON-lines Stratum subset implements:
 
 - `mining.subscribe`
 - `mining.authorize`
@@ -29,15 +37,15 @@ The current JSON-lines Stratum surface implements:
 - `mining.notify`
 - `mining.submit`
 
-`mining.extranonce.subscribe` and `mining.suggest_difficulty` are acknowledged for basic client tolerance, but CRAK-014 does not dynamically change extranonces or apply per-worker suggested difficulty.
+`mining.extranonce.subscribe` and `mining.suggest_difficulty` are acknowledged for basic client tolerance. CRAK-015 adds server-controlled per-worker vardiff. A submitted worker name must match the worker authorized on that connection before a share can be credited.
 
-The implementation is designed and CI-tested with `crakminer-stratum`. Compatibility with unrelated Stratum software is not yet guaranteed.
+The implementation is CI-tested with `crakminer-stratum`. Compatibility with unrelated Stratum software is not yet guaranteed.
 
-## Start a pool
+## Start an accounting pool
 
 The pool defaults to `127.0.0.1:3333` so an accidental install does not immediately expose a mining service.
 
-Example testnet pool:
+Example testnet pool using PPLNS accounting:
 
 ```bash
 crakpool \
@@ -45,18 +53,21 @@ crakpool \
   --wallet pool \
   --listen 127.0.0.1 \
   --port 3333 \
-  --share-difficulty 0.0001
+  --share-difficulty 0.0001 \
+  --payout-mode pplns \
+  --pplns-shares 1000 \
+  --pool-fee-bps 0
 ```
 
-The wallet is used at startup to obtain one payout address. You can instead use a fixed address:
+The block coinbase pays the pool address selected through `--wallet` or a fixed `--address`. Worker rewards are separate SQLite accounting credits; CRAK-015 does not send those credits on-chain.
 
-```bash
-crakpool \
-  --network testnet4 \
-  --address tcrak... \
-  --listen 127.0.0.1 \
-  --port 3333
+Default ledger location:
+
+```text
+~/.crakbit/crakpool-testnet4.sqlite3
 ```
+
+A custom path can be supplied with `--db`.
 
 ## Connect a worker
 
@@ -68,74 +79,125 @@ crakminer-stratum \
   --cpu-limit 50
 ```
 
-Useful worker controls:
+Useful worker controls include `--threads`, `--cpu-limit`, `--batch-hashes`, `--shares`, and `--blocks`. `--cpu-limit` is an approximate native-worker duty cycle rather than an operating-system enforced CPU quota.
 
-```text
---threads N
---cpu-limit 1..100
---batch-hashes N
---shares N
---blocks N
+## CRAK-015 accounting
+
+The SQLite WAL ledger persists:
+
+- worker identity and current share difficulty;
+- accepted/rejected share counters;
+- accepted share difficulty and timestamps;
+- found blocks;
+- proportional or difficulty-weighted PPLNS reward allocation;
+- accounting-only pool fees;
+- per-worker pending credits.
+
+Reward splitting uses deterministic integer-satoshi allocation and conserves every distributable satoshi. Vardiff is bounded by configured minimum/maximum values and by a maximum 4x increase or 0.25x decrease per retarget.
+
+Inspect the ledger with:
+
+```bash
+crakpool-stats --db ~/.crakbit/crakpool-testnet4.sqlite3 --json
 ```
 
-`--cpu-limit` is an approximate native-worker duty cycle rather than an operating-system enforced CPU quota.
+## CRAK-016 payout-address registration
 
-## Private LAN / testnet deployment
+A worker must have a payout address before mature credits can enter a payout plan. Registration validates the address using the selected Crakbit node/network.
 
-On the pool host, keep Crakbit RPC bound to localhost. Expose only the Stratum port to trusted miners.
+```bash
+crakpool-payout \
+  --db ~/.crakbit/crakpool-testnet4.sqlite3 \
+  register \
+  --network testnet4 \
+  --worker desktop-01 \
+  --address <CRAK_ADDRESS>
+```
+
+Changing a registered address affects future plans only. Existing stored plans keep the exact address that was frozen into that batch.
+
+## CRAK-016 chain reconciliation
+
+Before planning a payout, CRAK-016 compares every pool-found block with the canonical block hash at the recorded height:
+
+```bash
+crakpool-payout \
+  --db ~/.crakbit/crakpool-testnet4.sqlite3 \
+  reconcile \
+  --network testnet4
+```
+
+Credits are eligible only when their source block is still canonical. If a reorg removes a credited block:
+
+1. the block is marked non-canonical;
+2. its credits become `orphaned`;
+3. any unbroadcast `planned` batch linked to those credits becomes `invalidated`.
+
+If that block later becomes canonical again, its orphaned credits may return to `pending`, but an invalidated old payout batch is never silently reactivated.
+
+## CRAK-016 coinbase maturity and payout planning
+
+The default maturity gate is 100 confirmations, matching the current Crakbit coinbase-maturity consensus setting. The planner uses a fresh canonical-chain snapshot and only consumes credits whose source block satisfies the configured maturity.
 
 Example:
 
 ```bash
-crakpool \
+crakpool-payout \
+  --db ~/.crakbit/crakpool-testnet4.sqlite3 \
+  plan \
   --network testnet4 \
   --wallet pool \
-  --listen 0.0.0.0 \
-  --port 3333
+  --maturity 100 \
+  --minimum-sats 100000 \
+  --max-outputs 100
 ```
 
-Then on another machine:
+With `--wallet`, the planner also reads `getbalances().mine.trusted` and refuses a plan when trusted funds are below the selected worker total plus `--fee-reserve-sats`. Without `--wallet`, planning can still be used for reconciliation/audit, but wallet funding is not asserted.
+
+A plan freezes:
+
+- canonical tip height and hash;
+- maturity threshold;
+- worker payout address;
+- exact worker amount in satoshis;
+- the exact underlying credit rows.
+
+Selected credits move from `pending` to `planned`, preventing them from being included in another concurrent plan. A still-unbroadcast plan can be explicitly cancelled, which returns canonical credits to `pending`.
+
+Useful commands:
 
 ```bash
-crakminer-stratum \
-  --pool SERVER_IP:3333 \
-  --worker laptop-01 \
-  --threads 1 \
-  --cpu-limit 30
+crakpool-payout --db <DB> status
+crakpool-payout --db <DB> show --batch <BATCH_ID>
+crakpool-payout --db <DB> cancel --batch <BATCH_ID>
 ```
 
-Use firewall rules so only intended test miners can reach the Stratum port. Do not expose `crakbitd` RPC to the public Internet.
+## Payment safety boundary
 
-## Share difficulty
+**CRAK-016 never creates, signs, or broadcasts a payout transaction.** Its output is an auditable payout plan only. This is intentional: wallet transaction construction, fee selection, signing, broadcast, txid persistence, restart recovery, replacement/conflict handling, and paid-credit finalization require a separate reviewed milestone.
 
-CRAK-014 uses the conventional Bitcoin difficulty-1 target as the Stratum share-difficulty reference. Share difficulty controls how often workers submit proof to the pool; it does not change Crakbit network consensus difficulty.
+Do not treat a CRAK-016 `planned` batch as proof that an on-chain payment happened.
 
-A lower share difficulty produces more frequent pool shares and more verification overhead. A higher share difficulty produces fewer shares. The default is intended as a starting testnet value, not a production tuning recommendation.
+## Deployment boundary
 
-## Payout model in CRAK-014
+On a pool host, keep Crakbit RPC bound to localhost. Expose only the Stratum port to intended miners and protect it with network/firewall controls.
 
-There is intentionally no automated pool reward distribution yet.
+Current engineering limitations before public-value deployment include:
 
-The complete block coinbase currently pays the single address configured by `--wallet` or `--address`. Worker names are accounting labels only and passwords are not used as strong authentication credentials.
-
-Before a public-value pool is appropriate, a later milestone should add at least:
-
-- persistent accepted/rejected share database;
-- per-worker hashrate and difficulty accounting;
-- vardiff;
-- defined payout policy such as proportional or PPLNS;
-- payout maturity handling and transaction batching;
-- duplicate/replay/rate-limit hardening;
-- bounded share-verification workers;
-- TLS or a protected deployment layer;
-- monitoring and restart recovery;
-- third-party miner interoperability tests;
-- security review.
+- worker passwords are not strong authentication;
+- no TLS in the built-in Stratum listener;
+- no production-grade rate limiting / bounded verification queue yet;
+- duplicate-share persistence across reconnects still needs hardening;
+- automatic payouts are intentionally disabled;
+- broader third-party miner interoperability needs testing;
+- public monitoring, backup/recovery procedures, and security review remain gates.
 
 ## CI coverage
 
-`tests/stratum_protocol_unit.py` freezes protocol math for BIP34 height encoding, share targets, compact target decoding and coinbase merkle branches.
-
-`tests/stratum_pool_smoke.sh` starts a real Crakbit regtest node and pool, connects two separate worker sessions, proves distinct `extranonce1` values, mines blocks through both workers and verifies the active chain advances.
-
-`tests/package_smoke.sh` repeats the pool path using the extracted/installed Linux package.
+- `tests/stratum_protocol_unit.py`: protocol math and coinbase/merkle primitives.
+- `tests/stratum_pool_smoke.sh`: two real worker sessions against a Crakbit regtest node.
+- `tests/pool_accounting_unit.py`: satoshi allocation, proportional/PPLNS accounting, vardiff, restart persistence.
+- `tests/accounting_pool_smoke.sh`: real CRAK-015 SQLite accounting across a pool restart.
+- `tests/payout_planner_unit.py`: maturity, deterministic planning, cancellation, reorg invalidation and recovery state transitions.
+- `tests/payout_planner_smoke.sh`: real node address validation, 100-confirmation maturity, payout planning, and `invalidateblock` reorg fail-closed behavior.
+- `tests/package_smoke.sh`: extracted/installed Linux package mining, pool accounting, and CRAK-016 payout-tool availability.
