@@ -2,14 +2,45 @@
 
 ## Linux prerequisites
 
-Install Git, Python 3, CMake, a C/C++ toolchain, Ninja, and the normal Bitcoin Core build dependencies for your distribution.
+Install Git, Python 3, CMake, a C/C++ toolchain, pkg-config, libevent, Boost and SQLite development headers.
 
-For the minimal CI-style verification path on Ubuntu, the project currently installs `build-essential`, `cmake`, `pkg-config`, `libevent-dev`, and `libboost-dev`.
-
-## Fetch pinned upstreams
+For the Ubuntu CI path the project installs:
 
 ```bash
-./scripts/bootstrap.sh
+sudo apt-get update
+sudo apt-get install -y build-essential cmake pkg-config libevent-dev libboost-dev libsqlite3-dev
+```
+
+## One-command Linux build/package
+
+```bash
+bash scripts/build-linux.sh
+```
+
+Optional controls:
+
+```bash
+CRAKBIT_BUILD_JOBS=4 bash scripts/build-linux.sh
+CRAKBIT_BUILD_DIR=/tmp/crakbit-build CRAKBIT_OUT_DIR=/tmp/crakbit-dist bash scripts/build-linux.sh
+```
+
+The script fetches pinned upstreams, materializes Crakbit, configures a wallet-enabled daemon/CLI build, compiles `crakbitd` and `crakbit-cli`, then calls `scripts/package-linux.sh`.
+
+Current package naming is:
+
+```text
+crakbit-core-0.1.0-testnet-linux-x86_64.tar.gz
+crakbit-core-0.1.0-testnet-linux-x86_64.tar.gz.sha256
+```
+
+On an ARM64 Linux builder the same packager maps the architecture to `arm64`, but ARM64 compilation/runtime validation is still a separate gate.
+
+## Manual pinned-source workflow
+
+Fetch upstreams:
+
+```bash
+bash scripts/bootstrap.sh
 ```
 
 The script creates:
@@ -17,44 +48,94 @@ The script creates:
 - `.work/bitcoin` at the exact Bitcoin Core v31.1 commit locked in `SOURCE_LOCK.json`;
 - `.work/yespower` at the exact Openwall yespower commit locked in `SOURCE_LOCK.json`.
 
-It verifies both checked-out commit SHAs before returning success.
-
-## Materialize Crakbit consensus source
+Materialize Crakbit consensus/node source:
 
 ```bash
 bash scripts/materialize-locked.sh
 ```
 
-The materializer starts from the pinned Bitcoin Core tree and applies the reviewed Crakbit stages in order:
+The resulting tree is `.work/crakbit`. `.work/materialized-source.txt` records the locked upstream commits and active Crakbit consensus profile.
 
-1. yespower build integration and block-header hash path;
-2. Crakbit testnet/regtest identity and custom zero-reward genesis blocks;
-3. CRAK-007 integer ASERT difficulty;
-4. CRAK-008 monetary consensus (5 CRAK subsidy, 2,100,000-block halving, 100-block maturity, zero premine).
+Configure/build the daemon and CLI manually:
 
-The resulting source tree is written to `.work/crakbit`. `.work/materialized-source.txt` records the locked upstream commits and the active Crakbit consensus profile.
+```bash
+cmake -S .work/crakbit -B .work/crakbit-build \
+  -DENABLE_WALLET=ON \
+  -DENABLE_EXTERNAL_SIGNER=OFF \
+  -DENABLE_IPC=OFF \
+  -DWITH_ZMQ=OFF \
+  -DWITH_EMBEDDED_ASMAP=OFF \
+  -DBUILD_GUI=OFF \
+  -DBUILD_TESTS=OFF \
+  -DBUILD_BENCH=OFF \
+  -DBUILD_DAEMON=ON \
+  -DBUILD_CLI=ON \
+  -DBUILD_TX=OFF \
+  -DBUILD_UTIL=OFF \
+  -DBUILD_BITCOIN_BIN=OFF
 
-## Verify repository locks
+cmake --build .work/crakbit-build --target bitcoind bitcoin-cli --parallel 2
+```
+
+Package an existing build:
+
+```bash
+bash scripts/package-linux.sh .work/crakbit-build dist
+```
+
+## Package contents and install
+
+The Linux package includes the daemon, CLI, node launcher, CPU mining helper, install script, internal file checksums, project docs, Crakbit license, Bitcoin Core COPYING file when present, and the exact vendored yespower source/header material carrying the upstream redistribution notices.
+
+After extracting:
+
+```bash
+bash install.sh ~/.local
+```
+
+The installer copies binaries to `~/.local/bin` and documentation/license material to `~/.local/share/crakbit-core`.
+
+## Node/miner helpers
+
+Start regtest:
+
+```bash
+CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakbit-start regtest
+```
+
+Create a wallet and mine:
+
+```bash
+crakbit-cli -regtest -datadir="$HOME/.crakbit-regtest" createwallet miner
+CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakbit-mine miner 1 regtest
+```
+
+Start Crakbit testnet4:
+
+```bash
+crakbit-start testnet4
+```
+
+The launcher explicitly keeps RPC on `127.0.0.1`. Set `CRAKBIT_ADDNODE=host:port` to provide one explicit testnet peer; no Bitcoin seed is inherited.
+
+The current `crakbit-mine` helper uses the node's built-in yespower mining RPC in a single request/thread. Multi-thread standalone mining and explicit CPU-percentage limiting are not part of CRAK-011.
+
+## Verification
 
 ```bash
 python3 scripts/verify-lock.py
 python3 scripts/verify-asert-vectors.py
 ```
 
-`verify-lock.py` checks source pins, yespower vectors, network separation, frozen genesis data, monetary constants, subsidy boundary vectors, and the exact integer-rounded subsidy total.
-
-## CI compiled probes
-
-GitHub Actions configures a minimal Bitcoin Core build and compiles/runs dedicated probes for:
+CI covers:
 
 - pinned yespower output;
 - canonical 80-byte block-header hash;
 - frozen Crakbit genesis blocks;
-- CRAK-007 ASERT vectors and `GetNextWorkRequired()` routing;
-- CRAK-008 subsidy boundaries, exact supply sum, and 100-block coinbase maturity.
+- CRAK-007 ASERT vectors and chain routing;
+- CRAK-008 subsidy boundaries, exact supply sum and maturity;
+- CRAK-009 three-node sync/mining/reorg/invalid-block rejection;
+- CRAK-010 wallet send/receive/restart persistence;
+- CRAK-011 package checksum, extraction, install, packaged regtest startup and packaged CPU mining helper.
 
-The branch remains an engineering/testnet branch. Passing these probes does not mean the project is ready for mainnet.
-
-## Remaining development gates
-
-The next engineering work is full daemon/CLI/wallet build validation, local multi-node operation, CPU mining integration, reorg/invalid-chain testing, wallet send/receive/restart testing, and sustained public testnet operation. Mainnet parameters and a separate mainnet genesis remain disabled until those gates pass review.
+Passing these gates still does not make the project mainnet-ready. Independent public testnet operation, sustained mining/reorg testing, reproducible cross-platform builds, ARM64 validation and external review remain required.
