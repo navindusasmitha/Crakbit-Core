@@ -16,11 +16,12 @@ jobs:
         run: python3 scripts/verify-lock.py
       - name: Verify independent CRAK-007 ASERT vectors
         run: python3 scripts/verify-asert-vectors.py
-      - name: Syntax-check migration tools, vectors and node smoke
+      - name: Syntax-check migration tools, vectors and smoke tests
         run: |
           bash -n scripts/bootstrap.sh
           bash -n scripts/materialize-locked.sh
           bash -n tests/local_multinode_smoke.sh
+          bash -n tests/wallet_restart_smoke.sh
           python3 -m py_compile \
             scripts/materialize.py \
             scripts/finalize-genesis.py \
@@ -43,7 +44,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake pkg-config libevent-dev libboost-dev
+          sudo apt-get install -y build-essential cmake pkg-config libevent-dev libboost-dev libsqlite3-dev
       - name: Fetch exact pinned upstreams
         run: bash scripts/bootstrap.sh
       - name: Materialize locked Crakbit source tree
@@ -106,10 +107,10 @@ jobs:
             echo 'Bitcoin 50 BTC subsidy formula leaked into Crakbit consensus' >&2
             exit 1
           fi
-      - name: Configure full Crakbit node and CLI source tree
+      - name: Configure full Crakbit wallet node and CLI source tree
         run: |
           cmake -S .work/crakbit -B .work/crakbit-build \
-            -DENABLE_WALLET=OFF \
+            -DENABLE_WALLET=ON \
             -DENABLE_EXTERNAL_SIGNER=OFF \
             -DENABLE_IPC=OFF \
             -DWITH_ZMQ=OFF \
@@ -122,7 +123,7 @@ jobs:
             -DBUILD_TX=OFF \
             -DBUILD_UTIL=OFF \
             -DBUILD_BITCOIN_BIN=OFF
-      - name: Build full node, CLI, yespower and consensus probes
+      - name: Build full wallet node, CLI, yespower and consensus probes
         run: |
           cmake --build .work/crakbit-build \
             --target bitcoind bitcoin-cli crakbit_yespower crakbit_yespower_vector bitcoin_consensus crakbit_header_hash_vector crakbit_genesis_probe crakbit_asert_vector crakbit_subsidy_vector \
@@ -159,3 +160,5 @@ jobs:
         run: python3 scripts/check-subsidy-binary.py .work/crakbit-build/bin/crakbit_subsidy_vector
       - name: CRAK-009 three-node mining, invalid-block and reorg smoke
         run: bash tests/local_multinode_smoke.sh .work/crakbit-build
+      - name: CRAK-010 wallet send receive and restart smoke
+        run: bash tests/wallet_restart_smoke.sh .work/crakbit-build
