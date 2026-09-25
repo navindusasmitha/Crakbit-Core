@@ -1,0 +1,255 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NETWORK="testnet4"
+THREADS=1
+CPU_LIMIT=100
+BLOCKS=0
+MAXTRIES=250000
+WALLET=""
+ADDRESS=""
+DATADIR="${CRAKBIT_DATADIR:-$HOME/.crakbit}"
+RPCPORT=""
+
+usage() {
+  cat <<'EOF'
+Usage: crakminer [options]
+
+Options:
+  --network <testnet4|regtest>  Network to mine (default: testnet4)
+  --wallet <name>               Wallet used to obtain one mining address
+  --address <address>           Mine directly to this address
+  --threads <n>                 Concurrent RPC mining workers (default: 1)
+  --cpu-limit <1-100>           Approximate duty cycle per worker (default: 100)
+  --blocks <n>                  Stop after n accepted blocks; 0 = continuous
+  --maxtries <n>                Nonces tried per RPC attempt (default: 250000)
+  --datadir <path>              Crakbit data directory
+  --rpcport <port>              Optional node RPC port override
+  -h, --help                    Show this help
+
+Exactly one of --wallet or --address is required.
+
+The hashing work runs inside crakbitd through its yespower mining RPC. Multiple
+workers issue independent short mining requests so stale work is refreshed
+between attempts. --cpu-limit is a duty-cycle controller, not a hard OS quota.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --network) NETWORK="${2:-}"; shift 2 ;;
+    --wallet) WALLET="${2:-}"; shift 2 ;;
+    --address) ADDRESS="${2:-}"; shift 2 ;;
+    --threads) THREADS="${2:-}"; shift 2 ;;
+    --cpu-limit) CPU_LIMIT="${2:-}"; shift 2 ;;
+    --blocks) BLOCKS="${2:-}"; shift 2 ;;
+    --maxtries) MAXTRIES="${2:-}"; shift 2 ;;
+    --datadir) DATADIR="${2:-}"; shift 2 ;;
+    --rpcport) RPCPORT="${2:-}"; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+case "$NETWORK" in
+  testnet4) NETWORK_FLAG="-testnet4" ;;
+  regtest) NETWORK_FLAG="-regtest" ;;
+  *) echo "--network must be testnet4 or regtest" >&2; exit 2 ;;
+esac
+
+for value_name in THREADS CPU_LIMIT BLOCKS MAXTRIES; do
+  value="${!value_name}"
+  if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+    echo "$value_name must be an integer" >&2
+    exit 2
+  fi
+done
+
+if (( THREADS < 1 || THREADS > 256 )); then
+  echo "--threads must be between 1 and 256" >&2
+  exit 2
+fi
+if (( CPU_LIMIT < 1 || CPU_LIMIT > 100 )); then
+  echo "--cpu-limit must be between 1 and 100" >&2
+  exit 2
+fi
+if (( MAXTRIES < 1 )); then
+  echo "--maxtries must be greater than zero" >&2
+  exit 2
+fi
+if [[ -n "$WALLET" && -n "$ADDRESS" ]] || [[ -z "$WALLET" && -z "$ADDRESS" ]]; then
+  echo "exactly one of --wallet or --address is required" >&2
+  exit 2
+fi
+
+for cmd in flock date awk grep; do
+  command -v "$cmd" >/dev/null 2>&1 || { echo "missing required command: $cmd" >&2; exit 1; }
+done
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -x "$SCRIPT_DIR/crakbit-cli" ]]; then
+  CLI="$SCRIPT_DIR/crakbit-cli"
+elif command -v crakbit-cli >/dev/null 2>&1; then
+  CLI="$(command -v crakbit-cli)"
+else
+  echo "crakbit-cli not found next to crakminer or in PATH" >&2
+  exit 1
+fi
+
+RPC=("$CLI" "$NETWORK_FLAG" "-datadir=$DATADIR")
+if [[ -n "$RPCPORT" ]]; then
+  RPC+=("-rpcport=$RPCPORT")
+fi
+
+# Prove RPC is reachable before launching workers.
+"${RPC[@]}" getblockcount >/dev/null
+
+if [[ -n "$WALLET" ]]; then
+  ADDRESS="$("${RPC[@]}" "-rpcwallet=$WALLET" getnewaddress "" bech32)"
+fi
+
+# Validate the destination with the node before spending CPU time.
+VALID="$("${RPC[@]}" validateaddress "$ADDRESS")"
+if ! grep -Eq '"isvalid"[[:space:]]*:[[:space:]]*true' <<<"$VALID"; then
+  echo "invalid mining address for $NETWORK: $ADDRESS" >&2
+  exit 2
+fi
+
+STATE_DIR="$(mktemp -d)"
+STATE_FILE="$STATE_DIR/state"
+LOCK_FILE="$STATE_DIR/lock"
+printf '0 0\n' > "$STATE_FILE"  # accepted in_flight
+STOP_FILE="$STATE_DIR/stop"
+PIDS=()
+
+cleanup() {
+  touch "$STOP_FILE" 2>/dev/null || true
+  for pid in "${PIDS[@]:-}"; do
+    kill "$pid" >/dev/null 2>&1 || true
+  done
+  for pid in "${PIDS[@]:-}"; do
+    wait "$pid" >/dev/null 2>&1 || true
+  done
+  rm -rf "$STATE_DIR"
+}
+trap cleanup EXIT INT TERM
+
+read_state() {
+  read -r ACCEPTED IN_FLIGHT < "$STATE_FILE"
+}
+
+reserve_slot() {
+  local lockfd
+  exec {lockfd}>"$LOCK_FILE"
+  flock "$lockfd"
+  read_state
+  if (( BLOCKS > 0 )); then
+    if (( ACCEPTED >= BLOCKS )); then
+      flock -u "$lockfd"
+      exec {lockfd}>&-
+      return 2
+    fi
+    if (( ACCEPTED + IN_FLIGHT >= BLOCKS )); then
+      flock -u "$lockfd"
+      exec {lockfd}>&-
+      return 1
+    fi
+  fi
+  IN_FLIGHT=$((IN_FLIGHT + 1))
+  printf '%s %s\n' "$ACCEPTED" "$IN_FLIGHT" > "$STATE_FILE"
+  flock -u "$lockfd"
+  exec {lockfd}>&-
+  return 0
+}
+
+finish_slot() {
+  local success="$1" lockfd
+  exec {lockfd}>"$LOCK_FILE"
+  flock "$lockfd"
+  read_state
+  if (( IN_FLIGHT > 0 )); then
+    IN_FLIGHT=$((IN_FLIGHT - 1))
+  fi
+  if (( success == 1 )); then
+    ACCEPTED=$((ACCEPTED + 1))
+  fi
+  printf '%s %s\n' "$ACCEPTED" "$IN_FLIGHT" > "$STATE_FILE"
+  printf '%s\n' "$ACCEPTED"
+  flock -u "$lockfd"
+  exec {lockfd}>&-
+}
+
+worker() {
+  local id="$1"
+  while [[ ! -e "$STOP_FILE" ]]; do
+    local reservation_rc=0
+    reserve_slot || reservation_rc=$?
+    if (( reservation_rc == 2 )); then
+      return 0
+    elif (( reservation_rc == 1 )); then
+      sleep 0.05
+      continue
+    fi
+
+    local start_ns end_ns elapsed_ns result rc success hash accepted sleep_s
+    start_ns="$(date +%s%N)"
+    set +e
+    result="$("${RPC[@]}" generatetoaddress 1 "$ADDRESS" "$MAXTRIES" 2>&1)"
+    rc=$?
+    set -e
+    end_ns="$(date +%s%N)"
+    elapsed_ns=$((end_ns - start_ns))
+    success=0
+    hash=""
+    if (( rc == 0 )); then
+      hash="$(grep -Eo '[0-9a-fA-F]{64}' <<<"$result" | head -n 1 || true)"
+      if [[ -n "$hash" ]]; then
+        success=1
+      fi
+    fi
+
+    accepted="$(finish_slot "$success")"
+    if (( success == 1 )); then
+      printf 'crakminer worker=%s accepted=%s hash=%s\n' "$id" "$accepted" "$hash"
+    elif (( rc != 0 )); then
+      printf 'crakminer worker=%s rejected_or_stale=%q\n' "$id" "$result" >&2
+    fi
+
+    if (( BLOCKS > 0 && accepted >= BLOCKS )); then
+      return 0
+    fi
+
+    if (( CPU_LIMIT < 100 && elapsed_ns > 0 )); then
+      sleep_s="$(awk -v ns="$elapsed_ns" -v pct="$CPU_LIMIT" 'BEGIN { printf "%.6f", (ns / 1000000000.0) * ((100.0 - pct) / pct) }')"
+      sleep "$sleep_s"
+    fi
+  done
+}
+
+printf 'crakminer network=%s threads=%s cpu_limit=%s%% blocks=%s maxtries=%s address=%s\n' \
+  "$NETWORK" "$THREADS" "$CPU_LIMIT" "$BLOCKS" "$MAXTRIES" "$ADDRESS"
+
+for id in $(seq 1 "$THREADS"); do
+  worker "$id" &
+  PIDS+=("$!")
+done
+
+status=0
+for pid in "${PIDS[@]}"; do
+  if ! wait "$pid"; then
+    status=1
+  fi
+done
+PIDS=()
+
+read_state
+if (( status != 0 )); then
+  echo "crakminer: one or more workers failed" >&2
+  exit "$status"
+fi
+if (( BLOCKS > 0 && ACCEPTED != BLOCKS )); then
+  echo "crakminer: expected $BLOCKS accepted block(s), got $ACCEPTED" >&2
+  exit 1
+fi
+
+echo "crakminer complete accepted=$ACCEPTED"
