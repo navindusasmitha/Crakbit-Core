@@ -84,6 +84,15 @@ stop_node() {
   fi
 }
 
+ensure_wallet_loaded() {
+  local wallet="$1"
+  if "$CLI" -regtest "-datadir=$DATADIR" "-rpcport=$RPCPORT" -rpcwallet="$wallet" getwalletinfo >/dev/null 2>&1; then
+    return 0
+  fi
+  "$CLI" -regtest "-datadir=$DATADIR" "-rpcport=$RPCPORT" loadwallet "$wallet" >/dev/null
+  "$CLI" -regtest "-datadir=$DATADIR" "-rpcport=$RPCPORT" -rpcwallet="$wallet" getwalletinfo >/dev/null
+}
+
 start_node
 "$CLI" -regtest "-datadir=$DATADIR" "-rpcport=$RPCPORT" createwallet poolci >/dev/null
 "$CLI" -regtest "-datadir=$DATADIR" "-rpcport=$RPCPORT" createwallet workerci >/dev/null
@@ -217,6 +226,8 @@ PY
 # the SQLite-persisted raw transaction instead of building a different spend.
 stop_node
 start_node
+ensure_wallet_loaded poolci
+ensure_wallet_loaded workerci
 
 python3 "$PAY" --db "$DB" sync \
   --network regtest \
