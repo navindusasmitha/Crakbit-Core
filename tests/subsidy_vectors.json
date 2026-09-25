@@ -1,0 +1,24 @@
+{
+  "profile": {
+    "initial_subsidy_sats": 500000000,
+    "halving_interval_blocks": 2100000,
+    "coinbase_maturity_blocks": 100,
+    "premine_sats": 0,
+    "integer_rounded_max_subsidy_sats": 2099999972700000
+  },
+  "vectors": [
+    {"name": "genesis_formula", "height": 0, "expected_sats": 500000000},
+    {"name": "first_block", "height": 1, "expected_sats": 500000000},
+    {"name": "before_halving_1", "height": 2099999, "expected_sats": 500000000},
+    {"name": "halving_1", "height": 2100000, "expected_sats": 250000000},
+    {"name": "after_halving_1", "height": 2100001, "expected_sats": 250000000},
+    {"name": "before_halving_2", "height": 4199999, "expected_sats": 250000000},
+    {"name": "halving_2", "height": 4200000, "expected_sats": 125000000},
+    {"name": "halving_10", "height": 21000000, "expected_sats": 488281},
+    {"name": "before_last_nonzero_era", "height": 58799999, "expected_sats": 3},
+    {"name": "last_nonzero_era", "height": 58800000, "expected_sats": 1},
+    {"name": "last_nonzero_block", "height": 60899999, "expected_sats": 1},
+    {"name": "first_zero_subsidy", "height": 60900000, "expected_sats": 0},
+    {"name": "shift_guard", "height": 134400000, "expected_sats": 0}
+  ]
+}
