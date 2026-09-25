@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Materialize pinned Bitcoin Core with Crakbit yespower build wiring.
+"""Materialize pinned Bitcoin Core with Crakbit yespower consensus hashing.
 
-This stage intentionally does not change consensus hashing yet. It proves that
-exact pinned yespower source can be vendored and built as part of Bitcoin Core
-before CRAK-005 changes CBlockHeader::GetHash().
+CRAK-004 vendors and builds the exact pinned yespower source. CRAK-005 changes
+CBlockHeader::GetHash() to hash the canonical serialized 80-byte header using
+the consensus-locked Crakbit yespower profile. There is deliberately no
+SHA256d fallback on yespower failure.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ BTC = WORK / "bitcoin"
 YESPOWER = WORK / "yespower"
 OUT = WORK / "crakbit"
 VECTOR_PROBE = ROOT / "tests" / "yespower_vector.c"
+HEADER_PROBE = ROOT / "tests" / "block_hash_vector.cpp"
 
 YESPOWER_FILES = (
     "yespower-opt.c",
@@ -65,6 +67,63 @@ def replace_once(path: Path, old: str, new: str) -> None:
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
+def apply_block_hash_patch(tree: Path) -> None:
+    block_cpp = tree / "src" / "primitives" / "block.cpp"
+
+    replace_once(
+        block_cpp,
+        "#include <hash.h>\n#include <tinyformat.h>",
+        "#include <crypto/yespower/yespower.h>\n#include <streams.h>\n#include <tinyformat.h>",
+    )
+    replace_once(
+        block_cpp,
+        "#include <memory>\n#include <span>",
+        "#include <cstdlib>\n#include <memory>\n#include <span>",
+    )
+    replace_once(
+        block_cpp,
+        """uint256 CBlockHeader::GetHash() const
+{
+    return (HashWriter{} << *this).GetHash();
+}
+""",
+        """uint256 CBlockHeader::GetHash() const
+{
+    DataStream stream{};
+    stream << *this;
+
+    // Consensus invariant: a Bitcoin-style block header is exactly 80 bytes.
+    // Hash the canonical serialization, never the in-memory C++ object layout.
+    if (stream.size() != 80) {
+        std::abort();
+    }
+
+    static constexpr unsigned char PERS[] = "Crakbit-Core-v0.1";
+    const yespower_params_t params{
+        YESPOWER_1_0,
+        2048,
+        8,
+        reinterpret_cast<const uint8_t*>(PERS),
+        sizeof(PERS) - 1,
+    };
+
+    yespower_binary_t out{};
+    if (yespower_tls(
+            reinterpret_cast<const uint8_t*>(stream.data()),
+            stream.size(),
+            &params,
+            &out) != 0) {
+        // Consensus code must never silently fall back to another hash or a
+        // fabricated value. A local allocation/hash failure is fatal.
+        std::abort();
+    }
+
+    return uint256{std::span<const unsigned char>{out.uc, sizeof(out.uc)}};
+}
+""",
+    )
+
+
 def main() -> None:
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
     btc_lock = lock["upstreams"]["bitcoin_core"]
@@ -72,8 +131,9 @@ def main() -> None:
 
     require_pinned(BTC, btc_lock["commit_sha"], "Bitcoin Core")
     require_pinned(YESPOWER, yes_lock["commit_sha"], "yespower")
-    if not VECTOR_PROBE.is_file():
-        raise SystemExit(f"missing Crakbit vector probe: {VECTOR_PROBE}")
+    for probe in (VECTOR_PROBE, HEADER_PROBE):
+        if not probe.is_file():
+            raise SystemExit(f"missing Crakbit vector probe: {probe}")
 
     # bootstrap.sh intentionally uses a partial clone. A local clone of a
     # promisor/partial repository is not portable across Git versions, so use
@@ -103,6 +163,7 @@ def main() -> None:
             raise SystemExit(f"required yespower source is missing: {src}")
         shutil.copy2(src, vendor / name)
     shutil.copy2(VECTOR_PROBE, vendor / "crakbit-vector.c")
+    shutil.copy2(HEADER_PROBE, vendor / "crakbit-header-vector.cpp")
 
     yespower_cmake = "\n".join(
         [
@@ -137,18 +198,46 @@ def main() -> None:
         "    bitcoin_crypto\n    secp256k1\n",
         "    bitcoin_crypto\n    crakbit_yespower\n    secp256k1\n",
     )
+    replace_once(
+        src_cmake,
+        """target_link_libraries(bitcoin_consensus
+  PRIVATE
+    core_interface
+    bitcoin_crypto
+    crakbit_yespower
+    secp256k1
+)
+""",
+        """target_link_libraries(bitcoin_consensus
+  PRIVATE
+    core_interface
+    bitcoin_crypto
+    crakbit_yespower
+    secp256k1
+)
+
+add_executable(crakbit_header_hash_vector EXCLUDE_FROM_ALL
+  crypto/yespower/crakbit-header-vector.cpp
+)
+target_link_libraries(crakbit_header_hash_vector PRIVATE bitcoin_consensus)
+""",
+    )
+
+    apply_block_hash_patch(OUT)
 
     manifest = WORK / "materialized-source.txt"
     manifest.write_text(
         "\n".join(
             [
                 "project=Crakbit Core",
-                "stage=CRAK-004-yespower-build-wiring",
+                "stage=CRAK-005-yespower-block-identity",
                 f"bitcoin_core_commit={btc_lock['commit_sha']}",
                 f"yespower_commit={yes_lock['commit_sha']}",
                 "yespower_target=crakbit_yespower",
                 "yespower_vector_input=000102...4f",
-                "consensus_hash_changed=false",
+                "block_header_serialized_bytes=80",
+                "block_identity_hash=yespower",
+                "consensus_hash_changed=true",
                 "mainnet_enabled=false",
                 "",
             ]
@@ -159,7 +248,7 @@ def main() -> None:
     print(f"materialized: {OUT}")
     print(f"bitcoin:      {btc_lock['commit_sha']}")
     print(f"yespower:     {yes_lock['commit_sha']}")
-    print("stage:        build wiring only; consensus hash unchanged")
+    print("stage:        CRAK-005 yespower block identity enabled")
 
 
 if __name__ == "__main__":
