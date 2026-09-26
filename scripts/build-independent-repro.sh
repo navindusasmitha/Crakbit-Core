@@ -56,7 +56,7 @@ export LANG=C
 export TZ=UTC
 
 rm -rf "$BUILD_DIR" "$OUT_DIR" "$BUNDLE"
-mkdir -p "$BUILD_DIR" "$OUT_DIR" "$BUNDLE/bin"
+mkdir -p "$BUILD_DIR" "$OUT_DIR" "$BUNDLE"
 
 cmake -S "$ROOT/.work/crakbit" -B "$BUILD_DIR" \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -80,7 +80,6 @@ bash "$ROOT/scripts/build-native-miner.sh" "$BUILD_DIR/bin/crakminer-scan"
 for bin in crakbitd crakbit-cli crakminer-scan; do
   test -x "$BUILD_DIR/bin/$bin"
   file "$BUILD_DIR/bin/$bin" | grep -Eq 'ELF 64-bit.*x86-64|ELF 64-bit.*x86_64'
-  cp "$BUILD_DIR/bin/$bin" "$BUNDLE/bin/$bin"
 done
 
 CRAKBIT_VERSION="$VERSION" \
@@ -94,6 +93,10 @@ test -f "$ARCHIVE"
 test -f "$SIDECAR"
 cp "$ARCHIVE" "$SIDECAR" "$BUNDLE/"
 
+# repro-manifest.py opens the final package and hashes the release binaries
+# directly from the archive. This avoids uploading a second copy of large debug
+# binaries while still proving their byte identity independently from the tarball
+# hash itself.
 python3 "$ROOT/scripts/repro-manifest.py" create \
   --bundle "$BUNDLE" \
   --builder-id "$BUILDER_ID" \
