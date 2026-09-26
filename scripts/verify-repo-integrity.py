@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""CRAK-021/022/023/024 repository and release integrity gate.
+"""CRAK-021/022/023/024/025 repository and release integrity gate.
 
 This fast, dependency-free verifier keeps the default-branch engineering path
 coherent. It checks the official payout toolchain, docs, package wiring,
-reproducible-release contracts, native ARM64 runtime gate and CI workflows, and
-rejects known legacy/conflicting artifacts or migration-era branding from the
-tracked source surface.
+reproducible-release contracts, native ARM64 runtime, independent builders,
+release-trust policy and CI workflows, and rejects known legacy/conflicting
+artifacts, private release keys, or migration-era branding from the tracked
+source surface.
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -42,6 +44,7 @@ def require_text(path: str, needles: list[str]) -> None:
 REQUIRED_PATHS = [
     "README.md",
     "SOURCE_LOCK.json",
+    "release/RELEASE_POLICY.json",
     "docs/BUILD.md",
     "docs/CONSENSUS.md",
     "docs/POOL.md",
@@ -52,6 +55,7 @@ REQUIRED_PATHS = [
     "docs/CRAK-022.md",
     "docs/CRAK-023.md",
     "docs/CRAK-024.md",
+    "docs/CRAK-025.md",
     "docs/PROJECT_STATE.md",
     "scripts/crakpool-accounting.py",
     "scripts/crakpool-payout.py",
@@ -62,6 +66,7 @@ REQUIRED_PATHS = [
     "scripts/install-package.sh",
     "scripts/build-independent-repro.sh",
     "scripts/repro-manifest.py",
+    "scripts/release-trust.py",
     "tests/pool_accounting_unit.py",
     "tests/payout_planner_unit.py",
     "tests/paytx_unit.py",
@@ -73,6 +78,7 @@ REQUIRED_PATHS = [
     "tests/package_reproducibility_smoke.sh",
     "tests/arm64_runtime_smoke.sh",
     "tests/repro_manifest_unit.py",
+    "tests/release_trust_unit.py",
     ".github/workflows/verify-accounting.yml",
     ".github/workflows/verify-payout.yml",
     ".github/workflows/verify-paytx.yml",
@@ -83,6 +89,7 @@ REQUIRED_PATHS = [
     ".github/workflows/verify-release-repro.yml",
     ".github/workflows/verify-arm64.yml",
     ".github/workflows/verify-independent-repro.yml",
+    ".github/workflows/verify-release-trust.yml",
     ".github/workflows/verify.yml",
 ]
 
@@ -118,6 +125,7 @@ require_text(
         "docs/CRAK-022.md",
         "docs/CRAK-023.md",
         "docs/CRAK-024.md",
+        "docs/CRAK-025.md",
         "docs/PROJECT_STATE.md",
         "BUILD-MANIFEST.json",
         "CRAKBIT_SOURCE_COMMIT",
@@ -161,6 +169,7 @@ for workflow in (
     ".github/workflows/verify-release-repro.yml",
     ".github/workflows/verify-arm64.yml",
     ".github/workflows/verify-independent-repro.yml",
+    ".github/workflows/verify-release-trust.yml",
     ".github/workflows/verify.yml",
 ):
     require_text(workflow, ["push:\n    branches:\n      - main", "pull_request:"])
@@ -279,6 +288,81 @@ require_text(
     ],
 )
 
+# CRAK-025 adds a deterministic external release manifest, authenticated keyless
+# build provenance for main-branch testnet artifacts, and an offline Ed25519
+# signature protocol without ever storing the real operator private key in CI.
+require_text(
+    "release/RELEASE_POLICY.json",
+    [
+        '"repository": "navindusasmitha/Crakbit-Core"',
+        '"keyless_provenance": "github-artifact-attestation"',
+        '"algorithm": "ed25519"',
+        '"private_keys_must_never_be_committed": true',
+        '"offline_operator_signature_required": true',
+    ],
+)
+try:
+    release_policy = json.loads((ROOT / "release/RELEASE_POLICY.json").read_text(encoding="utf-8"))
+    if release_policy.get("channels", {}).get("testnet", {}).get("github_attestation_required") is not True:
+        fail("release/RELEASE_POLICY.json must require GitHub attestation for testnet")
+    if release_policy.get("channels", {}).get("mainnet", {}).get("offline_operator_signature_required") is not True:
+        fail("release/RELEASE_POLICY.json must require offline operator signatures for mainnet")
+except (OSError, json.JSONDecodeError) as exc:
+    fail(f"unable to parse release/RELEASE_POLICY.json: {exc}")
+
+require_text(
+    ".github/workflows/verify-release-trust.yml",
+    [
+        "tests/release_trust_unit.py",
+        "scripts/release-trust.py manifest",
+        "scripts/release-trust.py verify",
+        "actions/attest@v4",
+        "id-token: write",
+        "attestations: write",
+        "artifact-metadata: write",
+        "github.event_name == 'push' && github.ref == 'refs/heads/main'",
+        "RELEASE-MANIFEST.json",
+    ],
+)
+require_text(
+    "scripts/release-trust.py",
+    [
+        "RELEASE-MANIFEST.json",
+        "BUILD-MANIFEST.json",
+        "SHA256SUMS",
+        "release sidecar SHA256 mismatch",
+        "offline_operator_signature_required",
+        "openssl",
+        "pkeyutl",
+        "never a private key",
+    ],
+)
+require_text(
+    "tests/release_trust_unit.py",
+    [
+        "sidecar tampering",
+        "Archive mutation",
+        "ED25519",
+        "signature verification: OK",
+        "never a private key",
+    ],
+)
+
+# The release directory may contain policy and public-key material, but never a
+# private key. Reject common PEM private-key headers if one is accidentally
+# committed under the release trust surface.
+release_root = ROOT / "release"
+if release_root.is_dir():
+    for path in release_root.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        if re.search(r"-----BEGIN (?:ENCRYPTED |RSA |EC |OPENSSH )?PRIVATE KEY-----", text):
+            fail(f"private release key material must never be committed: {path.relative_to(ROOT)}")
+
 # Prevent migration-era branding from silently returning to maintained product
 # source/docs. The CRAK-021 policy files are excluded because they intentionally
 # document the term being prohibited. Git history and upstream material are not
@@ -314,14 +398,15 @@ for scan_root in scan_roots:
             fail(f"legacy migration branding found in maintained file {rel}: {match.group(0)!r}")
 
 if errors:
-    print("CRAK-021/022/023/024 repository integrity: FAILED", file=sys.stderr)
+    print("CRAK-021/022/023/024/025 repository integrity: FAILED", file=sys.stderr)
     for item in errors:
         print(f" - {item}", file=sys.stderr)
     raise SystemExit(1)
 
 print(
-    "CRAK-021/022/023/024 repository integrity: OK "
+    "CRAK-021/022/023/024/025 repository integrity: OK "
     "official_payout_path=planner+paytx+payguard+payops "
     "legacy_executor=absent package_wiring=ok payout_modules=installed workflows=ok branding=ok "
-    "release_reproducibility=required arm64_runtime=required independent_builders=required"
+    "release_reproducibility=required arm64_runtime=required independent_builders=required "
+    "release_trust=required private_release_keys=forbidden"
 )

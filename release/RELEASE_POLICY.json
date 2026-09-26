@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "project": "Crakbit Core",
+  "repository": "navindusasmitha/Crakbit-Core",
+  "trusted_builder": {
+    "provider": "github-actions",
+    "workflow": ".github/workflows/verify-release-trust.yml",
+    "required_ref": "refs/heads/main",
+    "keyless_provenance": "github-artifact-attestation"
+  },
+  "operator_signing": {
+    "algorithm": "ed25519",
+    "private_keys_must_never_be_committed": true,
+    "public_key_registry_status": "provisioning-required-before-mainnet"
+  },
+  "channels": {
+    "engineering": {
+      "github_attestation_required": false,
+      "offline_operator_signature_required": false,
+      "require_mainnet_disabled": true
+    },
+    "testnet": {
+      "github_attestation_required": true,
+      "offline_operator_signature_required": false,
+      "require_mainnet_disabled": true
+    },
+    "mainnet": {
+      "github_attestation_required": true,
+      "offline_operator_signature_required": true,
+      "require_mainnet_disabled": false
+    }
+  }
+}
