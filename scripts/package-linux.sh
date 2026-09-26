@@ -21,7 +21,7 @@ for bin in crakbitd crakbit-cli; do
   [[ -x "$BUILD_DIR/bin/$bin" ]] || { echo "missing executable: $BUILD_DIR/bin/$bin" >&2; exit 1; }
 done
 
-for helper in crakbit-start crakbit-mine crakminer crakminer-native.py crakpool.py crakpool-accounting.py crakpool-stats.py crakpool-payout.py crakpool-paytx.py crakpool-payguard.py crakminer-stratum.py build-native-miner.sh install-package.sh; do
+for helper in crakbit-start crakbit-mine crakminer crakminer-native.py crakpool.py crakpool-accounting.py crakpool-stats.py crakpool-payout.py crakpool-paytx.py crakpool-payguard.py crakpool-payops.py crakminer-stratum.py build-native-miner.sh install-package.sh; do
   [[ -f "$ROOT/scripts/$helper" ]] || { echo "missing helper: scripts/$helper" >&2; exit 1; }
 done
 
@@ -53,6 +53,7 @@ install -m 0755 "$ROOT/scripts/crakpool-stats.py" "$STAGE/bin/crakpool-stats"
 install -m 0755 "$ROOT/scripts/crakpool-payout.py" "$STAGE/bin/crakpool-payout"
 install -m 0755 "$ROOT/scripts/crakpool-paytx.py" "$STAGE/bin/crakpool-paytx"
 install -m 0755 "$ROOT/scripts/crakpool-payguard.py" "$STAGE/bin/crakpool-payguard"
+install -m 0755 "$ROOT/scripts/crakpool-payops.py" "$STAGE/bin/crakpool-payops"
 install -m 0755 "$ROOT/scripts/crakminer-stratum.py" "$STAGE/bin/crakminer-stratum"
 install -m 0755 "$ROOT/scripts/install-package.sh" "$STAGE/install.sh"
 
@@ -61,6 +62,7 @@ cp "$ROOT/docs/BUILD.md" "$STAGE/share/doc/crakbit-core/BUILD.md"
 cp "$ROOT/docs/CONSENSUS.md" "$STAGE/share/doc/crakbit-core/CONSENSUS.md"
 [[ -f "$ROOT/docs/POOL.md" ]] && cp "$ROOT/docs/POOL.md" "$STAGE/share/doc/crakbit-core/POOL.md"
 [[ -f "$ROOT/docs/CRAK-018.md" ]] && cp "$ROOT/docs/CRAK-018.md" "$STAGE/share/doc/crakbit-core/CRAK-018.md"
+[[ -f "$ROOT/docs/CRAK-019.md" ]] && cp "$ROOT/docs/CRAK-019.md" "$STAGE/share/doc/crakbit-core/CRAK-019.md"
 cp "$ROOT/LICENSE" "$STAGE/share/licenses/crakbit-core/LICENSE"
 [[ -f "$ROOT/.work/crakbit/COPYING" ]] && cp "$ROOT/.work/crakbit/COPYING" "$STAGE/share/licenses/bitcoin-core/COPYING"
 
