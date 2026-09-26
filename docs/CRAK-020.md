@@ -19,11 +19,11 @@ The CRAK-020 workflow performs the following sequence from a clean temporary reg
 9. Run the CRAK-018 preflight and verify source maturity, exact recipient output, and fee cap.
 10. Sign and broadcast the PSBT inside the isolated regtest CI only.
 11. Attach the txid through CRAK-018 `guarded-attach`.
-12. Confirm CRAK-019 reports the payment as waiting for confirmations.
+12. Confirm CRAK-019 reports `refresh_confirmations` for the newly attached, not-yet-checked broadcast.
 13. Mine six confirmation blocks.
 14. Refresh the payment through CRAK-019 and verify it becomes settlement-ready.
 15. Settle through CRAK-017 with the six-confirmation gate.
-16. Verify the payout batch is `paid`, the linked credit is paid, and the worker wallet received exactly 5 CRAK.
+16. Verify the payout batch is `paid`, the linked credit is paid, CRAK-019 reports terminal action `none`, and the worker wallet received exactly 5 CRAK.
 
 ## Safety boundary
 
