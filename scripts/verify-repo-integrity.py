@@ -117,17 +117,29 @@ INSTALLED_COMMANDS = [
 ]
 require_text("scripts/install-package.sh", INSTALLED_COMMANDS)
 
-# Keep the expensive full payout E2E workflow from running twice on feature
-# branch updates. Feature work is tested by pull_request; push is main-only.
-require_text(
+# Keep expensive workflows from running twice on feature branch updates.
+# Feature work is tested by pull_request; push is main-only.
+for workflow in (
     ".github/workflows/verify-payout-e2e.yml",
-    ["push:\n    branches:\n      - main", "pull_request:"],
-)
-
-# CRAK-021 itself follows the same no-duplicate branch convention.
-require_text(
     ".github/workflows/verify-repo-integrity.yml",
-    ["push:\n    branches:\n      - main", "pull_request:"],
+    ".github/workflows/verify.yml",
+):
+    require_text(workflow, ["push:\n    branches:\n      - main", "pull_request:"])
+
+# The full v0.1 gate must fail fast on the current payout state-machine tests
+# and repository-integrity policy before spending time on a full node build.
+require_text(
+    ".github/workflows/verify.yml",
+    [
+        "python3 scripts/verify-repo-integrity.py",
+        "scripts/crakpool-paytx.py",
+        "scripts/crakpool-payguard.py",
+        "scripts/crakpool-payops.py",
+        "tests/paytx_unit.py",
+        "tests/payguard_unit.py",
+        "tests/payops_unit.py",
+        "tests/payout_e2e_smoke.sh",
+    ],
 )
 
 # Prevent migration-era branding from silently returning to maintained product
