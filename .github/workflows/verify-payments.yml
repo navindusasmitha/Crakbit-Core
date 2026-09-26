@@ -1,0 +1,47 @@
+name: Verify Crakbit Signed Payouts
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  payment-state-vectors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check CRAK-017 payment tools
+        run: |
+          python3 -m py_compile \
+            scripts/crakpool.py \
+            scripts/crakpool-accounting.py \
+            scripts/crakpool-payout.py \
+            scripts/crakpool-pay.py \
+            tests/payment_pipeline_unit.py
+          bash -n tests/payment_pipeline_smoke.sh
+          bash -n scripts/package-linux.sh
+          bash -n scripts/install-package.sh
+      - name: Run CRAK-017 signed payout state vectors
+        run: python3 tests/payment_pipeline_unit.py
+
+  signed-payout-regtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libevent-dev libboost-dev libsqlite3-dev
+      - name: Build packaged Crakbit wallet node and native scanner
+        env:
+          CRAKBIT_BUILD_JOBS: "2"
+          CRAKBIT_OUT_DIR: ${{ runner.temp }}/crakbit-dist
+        run: bash scripts/build-linux.sh
+      - name: CRAK-017 prepare restart recover broadcast confirm and finalize
+        run: bash tests/payment_pipeline_smoke.sh .work/crakbit-build

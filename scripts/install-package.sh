@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREFIX="${1:-$HOME/.local}"
 
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakminer-stratum; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-payout.py crakpool-pay crakpool-base.py crakminer-stratum; do
   if [[ ! -f "$ROOT/bin/$file" ]]; then
     echo "missing package file: bin/$file" >&2
     exit 1
@@ -12,9 +12,11 @@ for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-
 done
 
 install -d "$PREFIX/bin"
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakminer-stratum; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-pay crakminer-stratum; do
   install -m 0755 "$ROOT/bin/$file" "$PREFIX/bin/$file"
 done
+install -m 0644 "$ROOT/bin/crakpool-base.py" "$PREFIX/bin/crakpool-base.py"
+install -m 0644 "$ROOT/bin/crakpool-payout.py" "$PREFIX/bin/crakpool-payout.py"
 
 if [[ -d "$ROOT/share" ]]; then
   install -d "$PREFIX/share/crakbit-core"
@@ -31,15 +33,30 @@ Start a local regtest node:
 Start the Crakbit testnet node:
   $PREFIX/bin/crakbit-start testnet4
 
-CRAK-012 RPC-controller mining example:
-  $PREFIX/bin/crakminer --network testnet4 --wallet miner --threads 1 --cpu-limit 50
-
 CRAK-013 native yespower mining example:
   $PREFIX/bin/crakminer-native --network testnet4 --wallet miner --threads 1 --cpu-limit 50
 
-CRAK-014 localhost Stratum pool example:
-  $PREFIX/bin/crakpool --network testnet4 --wallet pool --listen 127.0.0.1 --port 3333
+CRAK-015 accounting/vardiff pool example:
+  $PREFIX/bin/crakpool --network testnet4 --wallet pool --listen 127.0.0.1 --port 3333 --payout-mode pplns
 
-CRAK-014 worker example:
+CRAK-014/015 worker example:
   $PREFIX/bin/crakminer-stratum --pool 127.0.0.1:3333 --worker worker1 --threads 1 --cpu-limit 50
+
+Inspect the pool ledger:
+  $PREFIX/bin/crakpool-stats --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\"
+
+CRAK-016 register a worker payout address:
+  $PREFIX/bin/crakpool-payout --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" register --network testnet4 --worker worker1 --address <CRAK_ADDRESS>
+
+CRAK-016 reconcile and create a non-broadcast payout plan:
+  $PREFIX/bin/crakpool-payout --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" plan --network testnet4 --wallet pool --minimum-sats 100000
+
+CRAK-017 prepare a signed transaction without broadcasting:
+  $PREFIX/bin/crakpool-pay --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" prepare --network testnet4 --batch <BATCH_ID> --wallet pool --fee-rate 1.0
+
+CRAK-017 explicitly broadcast a reviewed prepared transaction:
+  $PREFIX/bin/crakpool-pay --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" broadcast --network testnet4 --batch <BATCH_ID>
+
+CRAK-017 recover/confirm persisted payouts:
+  $PREFIX/bin/crakpool-pay --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" sync --network testnet4
 EOF

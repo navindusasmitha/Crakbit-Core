@@ -27,7 +27,7 @@ for bin in crakbitd crakbit-cli; do
   fi
 done
 
-for helper in crakbit-start crakbit-mine crakminer crakminer-native.py crakpool.py crakminer-stratum.py build-native-miner.sh install-package.sh; do
+for helper in crakbit-start crakbit-mine crakminer crakminer-native.py crakpool.py crakpool-accounting.py crakpool-stats.py crakpool-payout.py crakpool-pay.py crakminer-stratum.py build-native-miner.sh install-package.sh; do
   if [[ ! -f "$ROOT/scripts/$helper" ]]; then
     echo "missing helper: scripts/$helper" >&2
     exit 1
@@ -39,7 +39,7 @@ if [[ ! -d "$ROOT/.work/crakbit/src/crypto/yespower" ]]; then
   exit 1
 fi
 
-# CRAK-013/014 hash block headers outside crakbitd. Build the standalone scanner
+# CRAK-013+ hash block headers outside crakbitd. Build the standalone scanner
 # from the same exact pinned yespower checkout used by the node materializer.
 bash "$ROOT/scripts/build-native-miner.sh" "$BUILD_DIR/bin/crakminer-scan" >/dev/null
 
@@ -58,13 +58,25 @@ install -m 0755 "$ROOT/scripts/crakbit-start" "$STAGE/bin/crakbit-start"
 install -m 0755 "$ROOT/scripts/crakbit-mine" "$STAGE/bin/crakbit-mine"
 install -m 0755 "$ROOT/scripts/crakminer" "$STAGE/bin/crakminer"
 install -m 0755 "$ROOT/scripts/crakminer-native.py" "$STAGE/bin/crakminer-native"
-install -m 0755 "$ROOT/scripts/crakpool.py" "$STAGE/bin/crakpool"
+# CRAK-014 remains the internal protocol/base module. CRAK-015 is the public
+# `crakpool` command; CRAK-016 plans payouts and CRAK-017 moves reviewed funds.
+install -m 0644 "$ROOT/scripts/crakpool.py" "$STAGE/bin/crakpool-base.py"
+install -m 0755 "$ROOT/scripts/crakpool-accounting.py" "$STAGE/bin/crakpool"
+install -m 0755 "$ROOT/scripts/crakpool-stats.py" "$STAGE/bin/crakpool-stats"
+install -m 0755 "$ROOT/scripts/crakpool-payout.py" "$STAGE/bin/crakpool-payout"
+# CRAK-017 dynamically imports the CRAK-016 planner for its schema/RPC helpers.
+# Keep an internal .py copy beside the public extensionless command.
+install -m 0644 "$ROOT/scripts/crakpool-payout.py" "$STAGE/bin/crakpool-payout.py"
+install -m 0755 "$ROOT/scripts/crakpool-pay.py" "$STAGE/bin/crakpool-pay"
 install -m 0755 "$ROOT/scripts/crakminer-stratum.py" "$STAGE/bin/crakminer-stratum"
 install -m 0755 "$ROOT/scripts/install-package.sh" "$STAGE/install.sh"
 
 cp "$ROOT/README.md" "$STAGE/share/doc/crakbit-core/README.md"
 cp "$ROOT/docs/BUILD.md" "$STAGE/share/doc/crakbit-core/BUILD.md"
 cp "$ROOT/docs/CONSENSUS.md" "$STAGE/share/doc/crakbit-core/CONSENSUS.md"
+if [[ -f "$ROOT/docs/POOL.md" ]]; then
+  cp "$ROOT/docs/POOL.md" "$STAGE/share/doc/crakbit-core/POOL.md"
+fi
 cp "$ROOT/LICENSE" "$STAGE/share/licenses/crakbit-core/LICENSE"
 
 if [[ -f "$ROOT/.work/crakbit/COPYING" ]]; then

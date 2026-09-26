@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -31,6 +35,8 @@ jobs:
           bash -n tests/wallet_restart_smoke.sh
           bash -n tests/native_miner_smoke.sh
           bash -n tests/stratum_pool_smoke.sh
+          bash -n tests/accounting_pool_smoke.sh
+          bash -n tests/payout_planner_smoke.sh
           bash -n tests/package_smoke.sh
           python3 -m py_compile \
             scripts/materialize.py \
@@ -40,11 +46,18 @@ jobs:
             scripts/apply-node.py \
             scripts/crakminer-native.py \
             scripts/crakpool.py \
+            scripts/crakpool-accounting.py \
+            scripts/crakpool-stats.py \
+            scripts/crakpool-payout.py \
             scripts/crakminer-stratum.py \
             scripts/verify-asert-vectors.py \
             scripts/check-asert-binary.py \
             scripts/check-subsidy-binary.py \
-            tests/native_scanner_vector.py
+            tests/native_scanner_vector.py \
+            tests/pool_accounting_unit.py \
+            tests/payout_planner_unit.py
+          python3 tests/pool_accounting_unit.py
+          python3 tests/payout_planner_unit.py
           python3 -m json.tool tests/yespower_vectors.json >/dev/null
           python3 -m json.tool tests/genesis_vectors.json >/dev/null
           python3 -m json.tool tests/asert_vectors.json >/dev/null
@@ -184,5 +197,9 @@ jobs:
         run: bash tests/native_miner_smoke.sh .work/crakbit-build
       - name: CRAK-014 two-worker Stratum pool smoke
         run: bash tests/stratum_pool_smoke.sh .work/crakbit-build
-      - name: CRAK-011/012/013/014 package mining smoke
+      - name: CRAK-015 persistent accounting pool smoke
+        run: bash tests/accounting_pool_smoke.sh .work/crakbit-build
+      - name: CRAK-016 maturity, payout-plan and reorg smoke
+        run: bash tests/payout_planner_smoke.sh .work/crakbit-build
+      - name: CRAK-011/012/013/014/015/016 package mining smoke
         run: bash tests/package_smoke.sh .work/crakbit-build
