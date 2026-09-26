@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "network": "testnet4",
+  "minimum_public_nodes": 2,
+  "minimum_failure_domains": 2,
+  "nodes": [
+    {
+      "name": "seed-a",
+      "endpoint": "seed-a.example.invalid:48333",
+      "region": "replace-me-a",
+      "provider": "replace-me-a",
+      "enabled": false
+    },
+    {
+      "name": "seed-b",
+      "endpoint": "seed-b.example.invalid:48333",
+      "region": "replace-me-b",
+      "provider": "replace-me-b",
+      "enabled": false
+    }
+  ],
+  "security": {
+    "rpc_bind": "127.0.0.1",
+    "rpc_public": false,
+    "p2p_public": true
+  }
+}
