@@ -1,0 +1,136 @@
+name: Verify Crakbit Independent Reproducibility
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'README.md'
+      - 'SOURCE_LOCK.json'
+      - 'consensus/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'docs/**'
+      - 'tests/repro_manifest_unit.py'
+      - '.github/workflows/verify-independent-repro.yml'
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'SOURCE_LOCK.json'
+      - 'consensus/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'docs/**'
+      - 'tests/repro_manifest_unit.py'
+      - '.github/workflows/verify-independent-repro.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  manifest-unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: CRAK-024 manifest/parser unit tests
+        run: |
+          python3 -m py_compile scripts/repro-manifest.py tests/repro_manifest_unit.py
+          bash -n scripts/build-independent-repro.sh
+          python3 tests/repro_manifest_unit.py
+
+  independent-builders:
+    name: ${{ matrix.id }} on ${{ matrix.runner }} host
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: builder-a
+            runner: ubuntu-22.04
+          - id: builder-b
+            runner: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: ubuntu:24.04
+    steps:
+      - name: Install controlled Ubuntu 24.04 build toolchain
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update
+          apt-get install -y \
+            build-essential \
+            ca-certificates \
+            cmake \
+            file \
+            git \
+            gzip \
+            libboost-dev \
+            libevent-dev \
+            libsqlite3-dev \
+            pkg-config \
+            python3 \
+            tar
+          cc --version | head -n1
+          cmake --version | head -n1
+          python3 --version
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify builder lane and CRAK-024 tooling
+        run: |
+          test "$(uname -m)" = "x86_64"
+          python3 -m py_compile scripts/repro-manifest.py
+          bash -n scripts/build-independent-repro.sh
+          python3 scripts/verify-repo-integrity.py
+      - name: Fetch exact pinned upstreams
+        run: bash scripts/bootstrap.sh
+      - name: Materialize locked Crakbit source tree
+        run: bash scripts/materialize-locked.sh
+      - name: Build controlled reproducibility bundle
+        env:
+          CRAKBIT_REPRO_BUILDER_ID: ${{ matrix.id }}
+          CRAKBIT_REPRO_RUNNER_LABEL: ${{ matrix.runner }}
+          CRAKBIT_REPRO_BUNDLE_ROOT: ${{ github.workspace }}/repro-output
+          CRAKBIT_REPRO_JOBS: '2'
+        run: bash scripts/build-independent-repro.sh "${CRAKBIT_REPRO_BUILDER_ID}"
+      - name: Inspect deterministic manifest
+        run: |
+          cat "repro-output/${{ matrix.id }}/REPRODUCIBILITY-MANIFEST.json"
+          cat "repro-output/${{ matrix.id }}/BUILDER-INFO.json"
+      - name: Upload independent builder result
+        uses: actions/upload-artifact@v4
+        with:
+          name: crakbit-repro-${{ matrix.id }}
+          path: repro-output/${{ matrix.id }}/
+          if-no-files-found: error
+          retention-days: 7
+
+  compare-independent-builders:
+    runs-on: ubuntu-24.04
+    needs:
+      - manifest-unit
+      - independent-builders
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download both independent builder bundles
+        uses: actions/download-artifact@v4
+        with:
+          pattern: crakbit-repro-*
+          path: repro-artifacts
+      - name: CRAK-024 prove byte-identical independent builds
+        run: |
+          python3 scripts/repro-manifest.py compare \
+            --left repro-artifacts/crakbit-repro-builder-a \
+            --right repro-artifacts/crakbit-repro-builder-b | tee CRAK-024-RESULT.txt
+          cat CRAK-024-RESULT.txt >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload CRAK-024 proof summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: crakbit-repro-proof
+          path: CRAK-024-RESULT.txt
+          if-no-files-found: error
+          retention-days: 14
