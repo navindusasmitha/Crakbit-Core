@@ -62,4 +62,4 @@ CRAK-026 does not add DNS seeds to consensus/network source, hard-code third-par
 
 ## Exit condition
 
-The code milestone is complete when the bootstrap control plane, policy, package wiring and CI are green. The *deployment* gate is satisfied only after operators provision real nodes in at least two failure domains, replace the placeholder manifest entries, pass `--require-public-ready`, and record a healthy public reachability check. Sustained multi-node soak is CRAK-027.
+The code milestone is complete when the bootstrap control plane, policy, runbook and dedicated CI are green. The *deployment* gate is satisfied only after operators provision real nodes in at least two failure domains, replace the placeholder manifest entries, pass `--require-public-ready`, and record a healthy public reachability check. Sustained multi-node soak is CRAK-027.
