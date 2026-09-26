@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREFIX="${1:-$HOME/.local}"
 
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-paytx crakpool-payguard crakpool-payops crakpool-base.py crakminer-stratum; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-paytx crakpool-payguard crakpool-payops crakpool-base.py crakpool-payout.py crakpool-paytx.py crakpool-payguard.py crakminer-stratum; do
   [[ -f "$ROOT/bin/$file" ]] || { echo "missing package file: bin/$file" >&2; exit 1; }
 done
 
@@ -12,7 +12,11 @@ install -d "$PREFIX/bin"
 for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-paytx crakpool-payguard crakpool-payops crakminer-stratum; do
   install -m 0755 "$ROOT/bin/$file" "$PREFIX/bin/$file"
 done
-install -m 0644 "$ROOT/bin/crakpool-base.py" "$PREFIX/bin/crakpool-base.py"
+# Internal Python modules used by CRAK-017/018/019 dynamic loading. Public CLI
+# entry points remain the extensionless commands installed above.
+for file in crakpool-base.py crakpool-payout.py crakpool-paytx.py crakpool-payguard.py; do
+  install -m 0644 "$ROOT/bin/$file" "$PREFIX/bin/$file"
+done
 
 if [[ -d "$ROOT/share" ]]; then
   install -d "$PREFIX/share/crakbit-core"
