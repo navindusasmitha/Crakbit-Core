@@ -25,6 +25,10 @@ for helper in crakbit-start crakbit-mine crakminer crakminer-native.py crakpool.
   [[ -f "$ROOT/scripts/$helper" ]] || { echo "missing helper: scripts/$helper" >&2; exit 1; }
 done
 
+for doc in README.md docs/BUILD.md docs/CONSENSUS.md docs/POOL.md docs/CRAK-018.md docs/CRAK-019.md docs/CRAK-020.md docs/CRAK-021.md docs/PROJECT_STATE.md; do
+  [[ -f "$ROOT/$doc" ]] || { echo "missing package documentation: $doc" >&2; exit 1; }
+done
+
 if [[ ! -d "$ROOT/.work/crakbit/src/crypto/yespower" ]]; then
   echo "materialized yespower source not found; run scripts/bootstrap.sh and scripts/materialize-locked.sh first" >&2
   exit 1
@@ -60,9 +64,12 @@ install -m 0755 "$ROOT/scripts/install-package.sh" "$STAGE/install.sh"
 cp "$ROOT/README.md" "$STAGE/share/doc/crakbit-core/README.md"
 cp "$ROOT/docs/BUILD.md" "$STAGE/share/doc/crakbit-core/BUILD.md"
 cp "$ROOT/docs/CONSENSUS.md" "$STAGE/share/doc/crakbit-core/CONSENSUS.md"
-[[ -f "$ROOT/docs/POOL.md" ]] && cp "$ROOT/docs/POOL.md" "$STAGE/share/doc/crakbit-core/POOL.md"
-[[ -f "$ROOT/docs/CRAK-018.md" ]] && cp "$ROOT/docs/CRAK-018.md" "$STAGE/share/doc/crakbit-core/CRAK-018.md"
-[[ -f "$ROOT/docs/CRAK-019.md" ]] && cp "$ROOT/docs/CRAK-019.md" "$STAGE/share/doc/crakbit-core/CRAK-019.md"
+cp "$ROOT/docs/POOL.md" "$STAGE/share/doc/crakbit-core/POOL.md"
+cp "$ROOT/docs/CRAK-018.md" "$STAGE/share/doc/crakbit-core/CRAK-018.md"
+cp "$ROOT/docs/CRAK-019.md" "$STAGE/share/doc/crakbit-core/CRAK-019.md"
+cp "$ROOT/docs/CRAK-020.md" "$STAGE/share/doc/crakbit-core/CRAK-020.md"
+cp "$ROOT/docs/CRAK-021.md" "$STAGE/share/doc/crakbit-core/CRAK-021.md"
+cp "$ROOT/docs/PROJECT_STATE.md" "$STAGE/share/doc/crakbit-core/PROJECT_STATE.md"
 cp "$ROOT/LICENSE" "$STAGE/share/licenses/crakbit-core/LICENSE"
 [[ -f "$ROOT/.work/crakbit/COPYING" ]] && cp "$ROOT/.work/crakbit/COPYING" "$STAGE/share/licenses/bitcoin-core/COPYING"
 
