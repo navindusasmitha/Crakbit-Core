@@ -3,7 +3,8 @@
 
 Builds and persists an unsigned/fundable PSBT for a CRAK-016 planned batch,
 allows an operator to attach the txid after external signing/broadcast, tracks
-confirmations, and settles linked credits only after the confirmation gate.
+confirmations, verifies the observed wallet transaction still pays the planned
+recipients, and settles linked credits only after the confirmation gate.
 This tool never signs or broadcasts funds.
 """
 from __future__ import annotations
@@ -146,6 +147,8 @@ class PaymentLedger(PAYOUT.PayoutLedger):
             raise RuntimeError("unknown payment")
         if required_confirmations < 1:
             raise ValueError("required confirmations must be positive")
+        if row["state"] == "paid":
+            return row
         if row["state"] != "confirmed" or int(row["confirmations"]) < required_confirmations:
             raise RuntimeError(f"payment has {row['confirmations']} confirmations; need {required_confirmations}")
         with self.db:
@@ -182,6 +185,31 @@ def rpc_call(rpc: Any, method: str, *params: Any, wallet: str | None = None, par
 
 def batch_outputs(batch: dict[str, Any]) -> list[dict[str, str]]:
     return [{str(item["address"]): sats_to_coins(int(item["amount_sats"]))} for item in batch["outputs"]]
+
+
+def expected_outputs(batch: dict[str, Any]) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for item in batch["outputs"]:
+        address = str(item["address"])
+        result[address] = result.get(address, 0) + int(item["amount_sats"])
+    return result
+
+
+def verify_observed_outputs(batch: dict[str, Any], decoded: dict[str, Any]) -> None:
+    actual: dict[str, int] = {}
+    for vout in decoded.get("vout", []):
+        spk = vout.get("scriptPubKey", {}) if isinstance(vout, dict) else {}
+        address = spk.get("address") if isinstance(spk, dict) else None
+        if not address:
+            continue
+        amount = PAYOUT.coins_to_sats(vout.get("value", 0))
+        actual[str(address)] = actual.get(str(address), 0) + amount
+    for address, amount in expected_outputs(batch).items():
+        if actual.get(address) != amount:
+            raise RuntimeError(
+                f"attached transaction does not match payout batch output {address}: "
+                f"expected {amount} sats, observed {actual.get(address, 0)}"
+            )
 
 
 def build_psbt(ledger: PaymentLedger, rpc: Any, batch_id: str, wallet: str, fee_rate: Decimal) -> dict[str, Any]:
@@ -224,6 +252,15 @@ def check_payment(ledger: PaymentLedger, rpc: Any, batch_id: str, wallet: str) -
         return ledger.get_payment(batch_id)  # type: ignore[return-value]
     if not isinstance(info, dict):
         raise RuntimeError("unexpected gettransaction response")
+
+    raw_hex = info.get("hex")
+    if not isinstance(raw_hex, str) or not raw_hex:
+        raise RuntimeError("wallet transaction response has no raw transaction hex")
+    decoded = rpc_call(rpc, "decoderawtransaction", raw_hex)
+    if not isinstance(decoded, dict):
+        raise RuntimeError("decoderawtransaction returned no object")
+    verify_observed_outputs(ledger.get_batch(batch_id), decoded)
+
     confirmations = max(0, int(info.get("confirmations", 0)))
     height = None
     blockhash = info.get("blockhash")
@@ -254,11 +291,11 @@ def main() -> int:
     attach.add_argument("--batch", required=True)
     attach.add_argument("--txid", required=True)
 
-    check = sub.add_parser("check", help="refresh confirmations for an attached txid")
+    check = sub.add_parser("check", help="refresh confirmations for an attached txid and verify recipient outputs")
     add_rpc_args(check)
     check.add_argument("--batch", required=True)
 
-    settle = sub.add_parser("settle", help="mark linked credits paid after confirmation gate")
+    settle = sub.add_parser("settle", help="mark linked credits paid after verified confirmation gate")
     add_rpc_args(settle)
     settle.add_argument("--batch", required=True)
     settle.add_argument("--confirmations", type=int, default=6)
@@ -286,9 +323,13 @@ def main() -> int:
         elif args.command == "check":
             result = check_payment(ledger, rpc, args.batch, args.wallet)
         elif args.command == "settle":
-            result = check_payment(ledger, rpc, args.batch, args.wallet)
+            result = ledger.get_payment(args.batch)
+            if result is None:
+                raise RuntimeError("unknown payment")
             if result["state"] != "paid":
-                result = ledger.settle(args.batch, args.confirmations)
+                result = check_payment(ledger, rpc, args.batch, args.wallet)
+                if result["state"] != "paid":
+                    result = ledger.settle(args.batch, args.confirmations)
         else:
             raise RuntimeError("unknown command")
         print(json.dumps(result, sort_keys=True, indent=2))
