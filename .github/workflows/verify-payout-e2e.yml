@@ -1,0 +1,65 @@
+name: Verify Crakbit Payout E2E
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  payout-e2e-regtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail fast on payout scripts and CRAK-019 state contract
+        run: |
+          bash -n tests/payout_e2e_smoke.sh
+          python3 -m py_compile \
+            scripts/crakpool-accounting.py \
+            scripts/crakminer-stratum.py \
+            scripts/crakpool-payout.py \
+            scripts/crakpool-paytx.py \
+            scripts/crakpool-payguard.py \
+            scripts/crakpool-payops.py \
+            tests/payops_unit.py
+          python3 tests/payops_unit.py
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libevent-dev libboost-dev libsqlite3-dev
+      - name: Fetch exact pinned upstreams
+        run: bash scripts/bootstrap.sh
+      - name: Materialize locked Crakbit source tree
+        run: bash scripts/materialize-locked.sh
+      - name: Configure wallet node and CLI
+        run: |
+          cmake -S .work/crakbit -B .work/crakbit-build \
+            -DENABLE_WALLET=ON \
+            -DENABLE_EXTERNAL_SIGNER=OFF \
+            -DENABLE_IPC=OFF \
+            -DWITH_ZMQ=OFF \
+            -DWITH_EMBEDDED_ASMAP=OFF \
+            -DBUILD_GUI=OFF \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_BENCH=OFF \
+            -DBUILD_DAEMON=ON \
+            -DBUILD_CLI=ON \
+            -DBUILD_TX=OFF \
+            -DBUILD_UTIL=OFF \
+            -DBUILD_BITCOIN_BIN=OFF
+      - name: Build node, CLI and native scanner
+        run: |
+          cmake --build .work/crakbit-build --target bitcoind bitcoin-cli --parallel 2
+          bash scripts/build-native-miner.sh .work/crakbit-build/bin/crakminer-scan
+          test -x .work/crakbit-build/bin/crakbitd
+          test -x .work/crakbit-build/bin/crakbit-cli
+          test -x .work/crakbit-build/bin/crakminer-scan
+      - name: CRAK-020 full payout lifecycle on isolated regtest
+        run: bash tests/payout_e2e_smoke.sh .work/crakbit-build
