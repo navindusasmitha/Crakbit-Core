@@ -117,7 +117,7 @@ def main() -> None:
         good = run(["python3", str(TOOL), "verify", "--manifest", str(manifest), "--bundle", str(bundle)])
         assert "release verification: OK" in good.stdout
 
-        # Sidecar tampering must fail even when archive bytes are untouched.
+        # sidecar tampering must fail even when archive bytes are untouched.
         original_sidecar = sidecar.read_bytes()
         sidecar.write_text(f"{'0' * 64}  {ARCHIVE_NAME}\n", encoding="utf-8")
         bad_sidecar = run(
