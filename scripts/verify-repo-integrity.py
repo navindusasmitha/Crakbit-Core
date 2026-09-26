@@ -4,8 +4,8 @@
 This fast, dependency-free verifier keeps the default-branch engineering path
 coherent. It checks that the current official payout toolchain, docs, package
 wiring and CI workflows stay present, and rejects known legacy/conflicting
-artifacts or old WAM branding from being reintroduced into the tracked source
-surface.
+artifacts or migration-era branding from being reintroduced into the tracked
+source surface.
 """
 from __future__ import annotations
 
@@ -57,11 +57,13 @@ REQUIRED_PATHS = [
     "scripts/crakpool-payops.py",
     "scripts/package-linux.sh",
     "scripts/install-package.sh",
-    "tests/accounting_unit.py",
-    "tests/payout_unit.py",
+    "tests/pool_accounting_unit.py",
+    "tests/payout_planner_unit.py",
     "tests/paytx_unit.py",
     "tests/payguard_unit.py",
     "tests/payops_unit.py",
+    "tests/accounting_pool_smoke.sh",
+    "tests/payout_planner_smoke.sh",
     "tests/payout_e2e_smoke.sh",
     ".github/workflows/verify-accounting.yml",
     ".github/workflows/verify-payout.yml",
@@ -122,16 +124,22 @@ require_text(
     ["push:\n    branches:\n      - main", "pull_request:"],
 )
 
-# CRAK-021 itself must follow the same no-duplicate full-branch convention.
+# CRAK-021 itself follows the same no-duplicate branch convention.
 require_text(
     ".github/workflows/verify-repo-integrity.yml",
     ["push:\n    branches:\n      - main", "pull_request:"],
 )
 
-# Prevent migration-era branding from silently returning to the maintained
-# source/docs surface. Git history and external/upstream material are not
-# scanned; this gate only checks files maintained in this repository.
+# Prevent migration-era branding from silently returning to maintained product
+# source/docs. The CRAK-021 policy files are excluded because they intentionally
+# document the term being prohibited. Git history and upstream material are not
+# scanned; this gate checks the maintained proposed-main tree only.
 legacy_brand = re.compile(r"(?i)(?:\bwamcoin\b|\bwam\s+coin\b|wam-coin|\bwam\b)")
+policy_exclusions = {
+    Path("scripts/verify-repo-integrity.py"),
+    Path("docs/CRAK-021.md"),
+    Path("docs/PROJECT_STATE.md"),
+}
 scan_roots = [ROOT / p for p in ("README.md", "docs", "scripts", "tests", ".github/workflows", "consensus", "src")]
 text_suffixes = {".md", ".py", ".sh", ".yml", ".yaml", ".json", ".txt", ".cmake", ".cpp", ".cc", ".c", ".h", ".hpp"}
 
@@ -143,6 +151,9 @@ for scan_root in scan_roots:
     else:
         continue
     for path in candidates:
+        rel = path.relative_to(ROOT)
+        if rel in policy_exclusions:
+            continue
         if path.suffix.lower() not in text_suffixes and path.name not in {"README", "CMakeLists.txt"}:
             continue
         try:
@@ -151,8 +162,7 @@ for scan_root in scan_roots:
             continue
         match = legacy_brand.search(text)
         if match:
-            rel = path.relative_to(ROOT)
-            fail(f"legacy WAM branding found in maintained file {rel}: {match.group(0)!r}")
+            fail(f"legacy migration branding found in maintained file {rel}: {match.group(0)!r}")
 
 if errors:
     print("CRAK-021 repository integrity: FAILED", file=sys.stderr)
