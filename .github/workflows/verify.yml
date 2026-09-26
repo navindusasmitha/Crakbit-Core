@@ -2,6 +2,8 @@ name: Verify Crakbit v0.1
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 concurrency:
@@ -16,11 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify repository and release integrity
+        run: python3 scripts/verify-repo-integrity.py
       - name: Verify source, consensus, vectors, network, genesis and monetary lock
         run: python3 scripts/verify-lock.py
       - name: Verify independent CRAK-007 ASERT vectors
         run: python3 scripts/verify-asert-vectors.py
-      - name: Syntax-check migration tools, miners, pool and smoke tests
+      - name: Syntax-check current migration, mining, pool, payout and smoke tooling
         run: |
           bash -n scripts/bootstrap.sh
           bash -n scripts/materialize-locked.sh
@@ -37,6 +41,7 @@ jobs:
           bash -n tests/stratum_pool_smoke.sh
           bash -n tests/accounting_pool_smoke.sh
           bash -n tests/payout_planner_smoke.sh
+          bash -n tests/payout_e2e_smoke.sh
           bash -n tests/package_smoke.sh
           python3 -m py_compile \
             scripts/materialize.py \
@@ -49,15 +54,25 @@ jobs:
             scripts/crakpool-accounting.py \
             scripts/crakpool-stats.py \
             scripts/crakpool-payout.py \
+            scripts/crakpool-paytx.py \
+            scripts/crakpool-payguard.py \
+            scripts/crakpool-payops.py \
             scripts/crakminer-stratum.py \
+            scripts/verify-repo-integrity.py \
             scripts/verify-asert-vectors.py \
             scripts/check-asert-binary.py \
             scripts/check-subsidy-binary.py \
             tests/native_scanner_vector.py \
             tests/pool_accounting_unit.py \
-            tests/payout_planner_unit.py
+            tests/payout_planner_unit.py \
+            tests/paytx_unit.py \
+            tests/payguard_unit.py \
+            tests/payops_unit.py
           python3 tests/pool_accounting_unit.py
           python3 tests/payout_planner_unit.py
+          python3 tests/paytx_unit.py
+          python3 tests/payguard_unit.py
+          python3 tests/payops_unit.py
           python3 -m json.tool tests/yespower_vectors.json >/dev/null
           python3 -m json.tool tests/genesis_vectors.json >/dev/null
           python3 -m json.tool tests/asert_vectors.json >/dev/null
@@ -201,5 +216,5 @@ jobs:
         run: bash tests/accounting_pool_smoke.sh .work/crakbit-build
       - name: CRAK-016 maturity, payout-plan and reorg smoke
         run: bash tests/payout_planner_smoke.sh .work/crakbit-build
-      - name: CRAK-011/012/013/014/015/016 package mining smoke
+      - name: Package/install smoke for current main tooling
         run: bash tests/package_smoke.sh .work/crakbit-build
