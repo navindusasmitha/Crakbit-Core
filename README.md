@@ -2,6 +2,8 @@
 
 Crakbit Core is a Bitcoin-style UTXO Proof-of-Work blockchain project focused on CPU mining.
 
+> **Engineering status:** this repository is still a v0.1 testnet/regtest project. It is not mainnet-ready and does not claim production custody or network safety. See `docs/PROJECT_STATE.md` for the maintained default-branch path and release policy.
+
 ## v0.1 consensus profile
 
 - Upstream base: **Bitcoin Core v31.1** (pinned commit)
@@ -30,10 +32,15 @@ Crakbit Core is a Bitcoin-style UTXO Proof-of-Work blockchain project focused on
 - CRAK-010: wallet send/receive/restart persistence smoke
 - CRAK-011: Linux package builder, installer, safe node launcher, checksums and package smoke
 - CRAK-012: packaged RPC mining controller with worker and CPU-duty-cycle controls
-- CRAK-013: native external yespower miner using `getblocktemplate` → native nonce scanning → `submitblock`
+- CRAK-013: native external yespower miner using `getblocktemplate` -> native nonce scanning -> `submitblock`
 - CRAK-014: Stratum V1 subset pool + external CPU workers, unique extranonces, share verification and block submission
-- CRAK-015: persistent SQLite share/block/credit accounting, proportional and PPLNS reward accounting, worker statistics/hashrate estimates, persisted per-worker difficulty and vardiff
-- CRAK-016: canonical-chain reward reconciliation, worker payout-address registration, 100-confirmation maturity gating, deterministic non-broadcast payout batches and reorg invalidation
+- CRAK-015: persistent SQLite share/block/credit accounting, proportional/PPLNS rewards, worker statistics and vardiff
+- CRAK-016: canonical reward reconciliation, payout-address registration, 100-confirmation maturity, deterministic non-broadcast batches and reorg invalidation
+- CRAK-017: operator-controlled funded **unsigned PSBT** lifecycle, txid attachment, confirmation verification and settlement; normal use does not sign or broadcast
+- CRAK-018: immediate preflight/recovery guard for source canonicality, maturity, recipient outputs, fee caps, fresh attach and safe unbroadcast cancellation
+- CRAK-019: payout operations monitor with list/show/summary, next-action classification, stale detection and explicit confirmation refresh
+- CRAK-020: isolated regtest end-to-end proof from mature payout plan through PSBT, preflight, CI-only sign/broadcast, confirmations and final paid state
+- CRAK-021: repository/release integrity gate, maintained project-state policy, package-doc alignment and legacy/conflicting-path protection
 
 ## Build a Linux testnet package
 
@@ -54,6 +61,9 @@ bin/crakminer-scan
 bin/crakpool
 bin/crakpool-stats
 bin/crakpool-payout
+bin/crakpool-paytx
+bin/crakpool-payguard
+bin/crakpool-payops
 bin/crakminer-stratum
 install.sh
 SHA256SUMS
@@ -67,7 +77,7 @@ Install an extracted package:
 bash install.sh ~/.local
 ```
 
-Python 3 handles template/RPC/Stratum/accounting/reconciliation orchestration. yespower hashing itself runs in the native `crakminer-scan` binary.
+Python 3 handles template/RPC/Stratum/accounting/reconciliation/payout orchestration. yespower hashing itself runs in the native `crakminer-scan` binary.
 
 ## Node and native CPU mining
 
@@ -96,9 +106,9 @@ crakminer-native \
 
 `--cpu-limit` is an approximate per-worker duty cycle, not a kernel-enforced quota.
 
-## Pool mining — CRAK-014 / CRAK-015 / CRAK-016
+## Pool mining and accounting
 
-CRAK-015 makes `crakpool` the persistent accounting/vardiff pool command. The CRAK-014 protocol engine remains packaged internally as `crakpool-base.py`. CRAK-016 adds a separate `crakpool-payout` reconciliation/planning tool so ledger review is isolated from the live Stratum process.
+`crakpool` is the persistent CRAK-015 accounting/vardiff pool command. The CRAK-014 protocol engine remains packaged internally as `crakpool-base.py`.
 
 Start a localhost PPLNS pool:
 
@@ -114,17 +124,6 @@ crakpool \
   --pool-fee-bps 0
 ```
 
-Or use proportional accounting:
-
-```bash
-crakpool \
-  --network testnet4 \
-  --wallet pool \
-  --port 3333 \
-  --share-difficulty 0.0001 \
-  --payout-mode proportional
-```
-
 Connect another CPU machine:
 
 ```bash
@@ -135,55 +134,23 @@ crakminer-stratum \
   --cpu-limit 30
 ```
 
-For LAN/testnet deployment, expose only the Stratum port to miners and keep the Crakbit node RPC private.
+For LAN/testnet deployment, expose only the Stratum port to miners and keep Crakbit node RPC private.
 
-### CRAK-015 accounting
-
-By default the ledger is stored under the selected node datadir as:
+The default pool ledger is stored under the selected node datadir as:
 
 ```text
 crakpool-testnet4.sqlite3
 ```
 
-A custom path can be supplied with `--db`.
-
-The SQLite ledger persists:
-
-- workers and their current share difficulty;
-- accepted/rejected share counts;
-- accepted share difficulty and hashes;
-- found blocks;
-- pool accounting fee amounts;
-- deterministic per-worker pending reward credits.
-
-Reward accounting modes:
-
-- `proportional`: difficulty-weighted shares since the previous found block;
-- `pplns`: difficulty-weighted last-N accepted shares, controlled by `--pplns-shares`.
-
-`--pool-fee-bps` is an **accounting-only** fee. `100` means 1%. The default is `0`.
-
-Inspect the ledger:
+Inspect accounting state:
 
 ```bash
-crakpool-stats \
-  --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" \
-  --window 600
+crakpool-stats --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" --window 600
 ```
 
-JSON output:
+Reward modes are `proportional` and `pplns`. `--pool-fee-bps` is accounting-only; `100` means 1%, and the default is `0`.
 
-```bash
-crakpool-stats --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" --json
-```
-
-The hashrate value is an estimate derived from accepted share difficulty over the selected time window.
-
-### Vardiff
-
-Vardiff is enabled by default. It aims for roughly one accepted share every 15 seconds per worker, persists the worker difficulty, uses hysteresis, and limits each adjustment to between 0.25x and 4x.
-
-Useful controls:
+Vardiff is enabled by default and targets roughly one accepted share every 15 seconds per worker. Useful controls include:
 
 ```text
 --no-vardiff
@@ -193,9 +160,15 @@ Useful controls:
 --vardiff-retarget-seconds 90
 ```
 
-### CRAK-016 payout address + reconciliation
+## Official payout lifecycle — CRAK-016 through CRAK-020
 
-Register a known worker payout address. The selected node validates that address for the requested network:
+The maintained default-branch flow deliberately separates accounting, transaction construction, preflight and operations monitoring:
+
+```text
+plan -> build PSBT -> preflight -> external sign/broadcast -> guarded attach -> confirmations -> settle
+```
+
+### 1. Register a worker payout address
 
 ```bash
 crakpool-payout \
@@ -206,20 +179,7 @@ crakpool-payout \
   --address <CRAK_ADDRESS>
 ```
 
-Reconcile pool-found blocks against the current canonical chain:
-
-```bash
-crakpool-payout \
-  --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" \
-  reconcile \
-  --network testnet4
-```
-
-If a reorg removes a credited block, CRAK-016 marks that block non-canonical, moves its unpaid credits to `orphaned`, and invalidates any unbroadcast payout plan that depended on those credits.
-
-### CRAK-016 mature payout planning
-
-Create an auditable payout batch after canonical source blocks reach the maturity threshold:
+### 2. Reconcile and create a mature non-broadcast plan
 
 ```bash
 crakpool-payout \
@@ -232,25 +192,110 @@ crakpool-payout \
   --max-outputs 100
 ```
 
-When `--wallet` is supplied, the planner checks the wallet's trusted balance against the selected payout amount plus the configured fee reserve. Selected credits atomically move from `pending` to `planned`, so they cannot enter two active plans.
+Selected credits atomically move from `pending` to `planned`. Reorg reconciliation can orphan unpaid credits and invalidate an unbroadcast plan whose source block is no longer canonical.
 
-Inspect or cancel an unbroadcast plan:
+### 3. Build an unsigned funded PSBT
 
 ```bash
-crakpool-payout --db <DB> status
-crakpool-payout --db <DB> show --batch <BATCH_ID>
-crakpool-payout --db <DB> cancel --batch <BATCH_ID>
+crakpool-paytx \
+  --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" \
+  build-psbt \
+  --network testnet4 \
+  --wallet pool \
+  --batch <BATCH_ID> \
+  --fee-rate 1.0
 ```
 
-### Important payout boundary
+CRAK-017 does not sign or broadcast in normal operator use.
 
-CRAK-016 still does **not** construct, sign, or broadcast worker payout transactions. Block coinbase continues to pay the configured pool wallet/address. A CRAK-016 batch is an accounting/reconciliation plan, not proof of an on-chain payment.
+### 4. Run the CRAK-018 preflight
 
-Transaction construction, fee selection, signing, broadcast, txid persistence, crash recovery, conflict/replacement handling and final `paid` credit transitions belong to a separate reviewed milestone so an accounting or reorg bug cannot directly move funds.
+Run immediately before external signing/broadcast:
 
-The pool remains testnet engineering infrastructure. Worker passwords are not production-grade authentication, TLS/rate limiting/bounded verification work and broader third-party Stratum compatibility still need hardening.
+```bash
+crakpool-payguard \
+  --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" \
+  preflight \
+  --network testnet4 \
+  --wallet pool \
+  --batch <BATCH_ID> \
+  --max-fee-sats <MAX_FEE_SATS>
+```
+
+After signing and broadcasting with separate wallet/operator tooling, attach the resulting txid through the fresh-preflight guard:
+
+```bash
+crakpool-payguard \
+  --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" \
+  guarded-attach \
+  --batch <BATCH_ID> \
+  --txid <TXID>
+```
+
+Cancellation is restricted to a PSBT the operator has explicitly verified was never signed or broadcast:
+
+```bash
+crakpool-payguard \
+  --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" \
+  cancel \
+  --network testnet4 \
+  --wallet pool \
+  --batch <BATCH_ID> \
+  --confirm-not-broadcast
+```
+
+### 5. Monitor and refresh confirmations
+
+```bash
+crakpool-payops --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" summary
+crakpool-payops --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" list
+```
+
+Explicit refresh:
+
+```bash
+crakpool-payops \
+  --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" \
+  refresh \
+  --network testnet4 \
+  --wallet pool \
+  --batch <BATCH_ID>
+```
+
+`crakpool-payops` never signs, broadcasts or auto-settles.
+
+### 6. Settle after the confirmation gate
+
+```bash
+crakpool-paytx \
+  --db "$HOME/.crakbit/crakpool-testnet4.sqlite3" \
+  settle \
+  --network testnet4 \
+  --wallet pool \
+  --batch <BATCH_ID> \
+  --confirmations 6
+```
+
+CRAK-020 proves the complete lifecycle on isolated regtest CI, including a CI-only sign/broadcast step and exact worker-wallet receipt. That automated test does not change the normal external-signing custody boundary.
+
+## Repository and release integrity — CRAK-021
+
+Run the fast default-branch integrity gate locally:
+
+```bash
+python3 scripts/verify-repo-integrity.py
+```
+
+It verifies the official payout scripts/tests/workflows/docs, package/install wiring, current E2E CI trigger policy, absence of a competing legacy signed payout executor, and absence of migration-era branding in maintained product source/docs.
+
+See:
+
+- `docs/PROJECT_STATE.md` — official integration, payout and network boundary
+- `docs/CRAK-021.md` — integrity-gate details
 
 ## Verification
+
+Fast checks:
 
 ```bash
 python3 scripts/verify-lock.py
@@ -258,9 +303,13 @@ python3 scripts/verify-asert-vectors.py
 python3 tests/stratum_protocol_unit.py
 python3 tests/pool_accounting_unit.py
 python3 tests/payout_planner_unit.py
+python3 tests/paytx_unit.py
+python3 tests/payguard_unit.py
+python3 tests/payops_unit.py
+python3 scripts/verify-repo-integrity.py
 ```
 
-CI covers consensus vectors, three-node/reorg behavior, wallet persistence, native mining, CRAK-014 two-worker Stratum mining, CRAK-015 accounting/vardiff and SQLite restart persistence, CRAK-016 maturity/reorg payout planning, reward-credit conservation, and installed-package pool/mining/planner paths.
+Dedicated CI also covers three-node/reorg behavior, wallet persistence, native mining, Stratum mining, accounting/vardiff persistence, payout maturity/reorg planning, CRAK-017/018/019 unit contracts, Linux package smoke and CRAK-020 full regtest payout E2E.
 
 ## Network status
 
@@ -278,7 +327,7 @@ The custom testnet and regtest genesis blocks have a **zero CRAK reward**, so th
 
 This repository is still a **v0.1 engineering/testnet project**. It is **not mainnet-ready** and does not claim production safety.
 
-Remaining major gates include independent public testnet nodes, sustained mining/reorg operation, reproducible cross-platform builds, ARM64 runtime validation, transaction payout execution hardening, public-pool security controls, broader miner interoperability, and external security/code review.
+Remaining major gates include independent public testnet nodes, sustained mining/reorg operation, reproducible cross-platform builds, ARM64 runtime validation, public-pool security controls, broader miner interoperability, external security/code review, and a separate explicit mainnet activation milestone.
 
 No mainnet genesis block will be finalized until those gates pass review.
 
