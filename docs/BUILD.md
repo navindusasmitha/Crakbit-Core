@@ -33,7 +33,7 @@ crakbit-core-0.1.0-testnet-linux-x86_64.tar.gz
 crakbit-core-0.1.0-testnet-linux-x86_64.tar.gz.sha256
 ```
 
-ARM64 is mapped by the packager, but ARM64 compile/runtime validation remains a release gate.
+The packager supports x86_64 and ARM64. CRAK-023 separately proves the native Ubuntu 24.04 ARM64 compile/package/install/runtime path.
 
 ## Manual pinned-source workflow
 
@@ -82,9 +82,49 @@ Package an existing build:
 bash scripts/package-linux.sh .work/crakbit-build dist
 ```
 
+## CRAK-022 deterministic package reproducibility
+
+Given identical build binaries, source commit, version and `SOURCE_DATE_EPOCH`, the package layer must emit a byte-identical archive. Run the package-level smoke after preparing release binaries:
+
+```bash
+bash tests/package_reproducibility_smoke.sh .work/crakbit-build
+```
+
+Each archive includes `share/doc/crakbit-core/BUILD-MANIFEST.json` and internal `SHA256SUMS`.
+
+## CRAK-024 independent cross-builder reproducibility
+
+CRAK-024 goes beyond rebuilding the archive from one binary set. It performs clean independent compilation and packaging in two CI builder lanes, then compares the final release bytes.
+
+Prepare pinned sources for a local builder lane:
+
+```bash
+bash scripts/bootstrap.sh
+bash scripts/materialize-locked.sh
+bash scripts/build-independent-repro.sh local-a
+```
+
+The builder normalizes checkout-root paths with GCC file/debug/macro prefix maps and uses the checked-out source commit time as `SOURCE_DATE_EPOCH`. It emits a release archive, sidecar, deterministic `REPRODUCIBILITY-MANIFEST.json` and separate `BUILDER-INFO.json` under `.work/repro-bundles/<builder-id>/` by default.
+
+Compare two independently produced bundles:
+
+```bash
+python3 scripts/repro-manifest.py compare \
+  --left /path/to/builder-a \
+  --right /path/to/builder-b
+```
+
+Fast parser/tamper regression test:
+
+```bash
+python3 tests/repro_manifest_unit.py
+```
+
+The official `Verify Crakbit Independent Reproducibility` workflow uses different GitHub host-image generations for the two builders while keeping the Ubuntu 24.04 container userland/toolchain controlled. This proves the maintained Linux x86_64 controlled-toolchain path; it is not a claim about arbitrary compilers or distributions.
+
 ## Installed commands
 
-The CRAK-015 Linux package contains:
+The Linux package contains:
 
 ```text
 crakbitd
@@ -96,10 +136,14 @@ crakminer-native
 crakminer-scan
 crakpool
 crakpool-stats
+crakpool-payout
+crakpool-paytx
+crakpool-payguard
+crakpool-payops
 crakminer-stratum
 ```
 
-`crakpool-base.py` is installed beside them as the internal CRAK-014 Stratum protocol module used by the CRAK-015 accounting wrapper.
+`crakpool-base.py` is installed beside them as the internal CRAK-014 Stratum protocol module used by the CRAK-015 accounting wrapper. Private `.py` copies required by the CRAK-017/018/019 payout dynamic-import chain are also installed beside the extensionless public commands.
 
 Install:
 
@@ -202,7 +246,7 @@ Controls:
 
 ### Payment safety boundary
 
-CRAK-015 does **not** send worker payments. Credits remain `pending` ledger entries while the complete coinbase is paid to the configured pool wallet/address. Creating/signing/broadcasting payment transactions is deliberately a separate milestone requiring reconciliation and wallet-safety review.
+The normal payout path does not sign or broadcast automatically. CRAK-016 through CRAK-019 separate reconciliation/planning, PSBT construction, preflight/recovery and operations monitoring. CRAK-020 signs/broadcasts only inside isolated regtest CI to prove the complete state machine.
 
 ## Verification
 
@@ -213,9 +257,15 @@ python3 scripts/verify-lock.py
 python3 scripts/verify-asert-vectors.py
 python3 tests/stratum_protocol_unit.py
 python3 tests/pool_accounting_unit.py
+python3 tests/payout_planner_unit.py
+python3 tests/paytx_unit.py
+python3 tests/payguard_unit.py
+python3 tests/payops_unit.py
+python3 tests/repro_manifest_unit.py
+python3 scripts/verify-repo-integrity.py
 ```
 
-Full CI additionally covers:
+Full/dedicated CI additionally covers:
 
 - pinned yespower + canonical header vectors;
 - custom genesis and ASERT/subsidy gates;
@@ -226,8 +276,10 @@ Full CI additionally covers:
 - CRAK-015 SQLite accounting across a pool-process restart;
 - proportional/PPLNS reward allocation and satoshi conservation;
 - worker hashrate/stat reporting;
-- installed-package CRAK-015 pool + ledger stats path.
+- installed-package pool + ledger/payout operations paths;
+- CRAK-020 end-to-end regtest payout state machine;
+- CRAK-022 byte-identical deterministic archive packaging;
+- CRAK-023 native ARM64 package/runtime operation;
+- CRAK-024 two-builder Linux x86_64 binary and release-archive equality.
 
-Separate fast workflows verify the native miner, Stratum protocol and accounting/vardiff logic without waiting for the full Bitcoin node build.
-
-Passing these gates still does not make the project mainnet-ready. Independent public testnet operation, sustained mining/reorg tests, reproducible cross-platform builds, ARM64 runtime validation, payout/reconciliation hardening, production pool authentication/TLS/rate limiting, third-party miner interoperability and external review remain required.
+Passing these gates still does not make the project mainnet-ready. Independent public testnet operation, sustained mining/reorg tests, release signing/key custody, production pool authentication/TLS/rate limiting, broader third-party miner interoperability and external security/code review remain required.
