@@ -1,0 +1,72 @@
+name: Verify Crakbit Reproducible Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/package-linux.sh'
+      - 'scripts/build-native-miner.sh'
+      - 'tests/package_reproducibility_smoke.sh'
+      - 'docs/CRAK-022.md'
+      - 'SOURCE_LOCK.json'
+      - '.github/workflows/verify-release-repro.yml'
+  pull_request:
+    paths:
+      - 'scripts/package-linux.sh'
+      - 'scripts/build-native-miner.sh'
+      - 'tests/package_reproducibility_smoke.sh'
+      - 'docs/CRAK-022.md'
+      - 'SOURCE_LOCK.json'
+      - '.github/workflows/verify-release-repro.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  reproducible-linux-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check CRAK-022 release tooling
+        run: |
+          bash -n scripts/package-linux.sh
+          bash -n tests/package_reproducibility_smoke.sh
+          python3 -m json.tool SOURCE_LOCK.json >/dev/null
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libevent-dev libboost-dev libsqlite3-dev
+      - name: Fetch exact pinned upstreams
+        run: bash scripts/bootstrap.sh
+      - name: Materialize locked Crakbit source tree
+        run: bash scripts/materialize-locked.sh
+      - name: Configure wallet node and CLI
+        run: |
+          cmake -S .work/crakbit -B .work/crakbit-build \
+            -DENABLE_WALLET=ON \
+            -DENABLE_EXTERNAL_SIGNER=OFF \
+            -DENABLE_IPC=OFF \
+            -DWITH_ZMQ=OFF \
+            -DWITH_EMBEDDED_ASMAP=OFF \
+            -DBUILD_GUI=OFF \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_BENCH=OFF \
+            -DBUILD_DAEMON=ON \
+            -DBUILD_CLI=ON \
+            -DBUILD_TX=OFF \
+            -DBUILD_UTIL=OFF \
+            -DBUILD_BITCOIN_BIN=OFF
+      - name: Build release input binaries
+        run: |
+          cmake --build .work/crakbit-build --target bitcoind bitcoin-cli --parallel 2
+          bash scripts/build-native-miner.sh .work/crakbit-build/bin/crakminer-scan
+          test -x .work/crakbit-build/bin/crakbitd
+          test -x .work/crakbit-build/bin/crakbit-cli
+          test -x .work/crakbit-build/bin/crakminer-scan
+      - name: CRAK-022 prove byte-identical Linux archives
+        run: bash tests/package_reproducibility_smoke.sh .work/crakbit-build

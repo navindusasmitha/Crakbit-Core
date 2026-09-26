@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""CRAK-021 repository/release integrity gate.
+"""CRAK-021/022 repository and release integrity gate.
 
 This fast, dependency-free verifier keeps the default-branch engineering path
-coherent. It checks that the current official payout toolchain, docs, package
-wiring and CI workflows stay present, and rejects known legacy/conflicting
-artifacts or migration-era branding from being reintroduced into the tracked
-source surface.
+coherent. It checks the official payout toolchain, docs, package wiring,
+reproducible-release contract and CI workflows, and rejects known
+legacy/conflicting artifacts or migration-era branding from the tracked source
+surface.
 """
 from __future__ import annotations
 
@@ -49,6 +49,7 @@ REQUIRED_PATHS = [
     "docs/CRAK-019.md",
     "docs/CRAK-020.md",
     "docs/CRAK-021.md",
+    "docs/CRAK-022.md",
     "docs/PROJECT_STATE.md",
     "scripts/crakpool-accounting.py",
     "scripts/crakpool-payout.py",
@@ -65,6 +66,7 @@ REQUIRED_PATHS = [
     "tests/accounting_pool_smoke.sh",
     "tests/payout_planner_smoke.sh",
     "tests/payout_e2e_smoke.sh",
+    "tests/package_reproducibility_smoke.sh",
     ".github/workflows/verify-accounting.yml",
     ".github/workflows/verify-payout.yml",
     ".github/workflows/verify-paytx.yml",
@@ -72,6 +74,7 @@ REQUIRED_PATHS = [
     ".github/workflows/verify-payops.yml",
     ".github/workflows/verify-payout-e2e.yml",
     ".github/workflows/verify-repo-integrity.yml",
+    ".github/workflows/verify-release-repro.yml",
     ".github/workflows/verify.yml",
 ]
 
@@ -104,7 +107,15 @@ require_text(
         "docs/CRAK-019.md",
         "docs/CRAK-020.md",
         "docs/CRAK-021.md",
+        "docs/CRAK-022.md",
         "docs/PROJECT_STATE.md",
+        "BUILD-MANIFEST.json",
+        "CRAKBIT_SOURCE_COMMIT",
+        "SOURCE_DATE_EPOCH",
+        "--sort=name",
+        "--owner=0",
+        "--group=0",
+        "gzip -n -9",
     ],
 )
 
@@ -122,6 +133,7 @@ require_text("scripts/install-package.sh", INSTALLED_COMMANDS)
 for workflow in (
     ".github/workflows/verify-payout-e2e.yml",
     ".github/workflows/verify-repo-integrity.yml",
+    ".github/workflows/verify-release-repro.yml",
     ".github/workflows/verify.yml",
 ):
     require_text(workflow, ["push:\n    branches:\n      - main", "pull_request:"])
@@ -139,6 +151,28 @@ require_text(
         "tests/payguard_unit.py",
         "tests/payops_unit.py",
         "tests/payout_e2e_smoke.sh",
+    ],
+)
+
+# CRAK-022 must have an actual package-reproducibility execution path, not just
+# documentation or deterministic-looking tar flags.
+require_text(
+    ".github/workflows/verify-release-repro.yml",
+    [
+        "tests/package_reproducibility_smoke.sh",
+        "Build release input binaries",
+        "CRAK-022 prove byte-identical Linux archives",
+    ],
+)
+require_text(
+    "tests/package_reproducibility_smoke.sh",
+    [
+        "cmp -s",
+        "BUILD-MANIFEST.json",
+        "gzip header timestamp is not zero",
+        "member.uid == 0",
+        "member.gid == 0",
+        "member.mtime == epoch",
     ],
 )
 
@@ -177,13 +211,14 @@ for scan_root in scan_roots:
             fail(f"legacy migration branding found in maintained file {rel}: {match.group(0)!r}")
 
 if errors:
-    print("CRAK-021 repository integrity: FAILED", file=sys.stderr)
+    print("CRAK-021/022 repository integrity: FAILED", file=sys.stderr)
     for item in errors:
         print(f" - {item}", file=sys.stderr)
     raise SystemExit(1)
 
 print(
-    "CRAK-021 repository integrity: OK "
+    "CRAK-021/022 repository integrity: OK "
     "official_payout_path=planner+paytx+payguard+payops "
-    "legacy_executor=absent package_wiring=ok workflows=ok branding=ok"
+    "legacy_executor=absent package_wiring=ok workflows=ok branding=ok "
+    "release_reproducibility=required"
 )
