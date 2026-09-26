@@ -82,6 +82,13 @@ install -m 0755 "$ROOT/scripts/crakpool-payout.py" "$STAGE/bin/crakpool-payout"
 install -m 0755 "$ROOT/scripts/crakpool-paytx.py" "$STAGE/bin/crakpool-paytx"
 install -m 0755 "$ROOT/scripts/crakpool-payguard.py" "$STAGE/bin/crakpool-payguard"
 install -m 0755 "$ROOT/scripts/crakpool-payops.py" "$STAGE/bin/crakpool-payops"
+# CRAK-017/018/019 dynamically load their lower-layer Python modules by the
+# source filenames. Keep private sibling module copies beside the public,
+# extensionless commands so the installed package has the same dependency graph
+# as the development tree without changing the operator-facing CLI names.
+install -m 0644 "$ROOT/scripts/crakpool-payout.py" "$STAGE/bin/crakpool-payout.py"
+install -m 0644 "$ROOT/scripts/crakpool-paytx.py" "$STAGE/bin/crakpool-paytx.py"
+install -m 0644 "$ROOT/scripts/crakpool-payguard.py" "$STAGE/bin/crakpool-payguard.py"
 install -m 0755 "$ROOT/scripts/crakminer-stratum.py" "$STAGE/bin/crakminer-stratum"
 install -m 0755 "$ROOT/scripts/install-package.sh" "$STAGE/install.sh"
 
