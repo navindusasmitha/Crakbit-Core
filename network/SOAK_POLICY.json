@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "network": "testnet4",
+  "minimum_nodes": 2,
+  "minimum_failure_domains": 2,
+  "minimum_availability_ratio": 0.99,
+  "maximum_consecutive_failures": 3,
+  "maximum_tip_height_spread": 2,
+  "maximum_header_lag": 2,
+  "minimum_peer_connections": 1,
+  "minimum_verification_progress": 0.999,
+  "maximum_reorg_depth": 6,
+  "qualification": {
+    "smoke": {
+      "minimum_window_seconds": 0,
+      "require_restart_recovery": false,
+      "require_reorg_observation": false
+    },
+    "candidate": {
+      "minimum_window_seconds": 86400,
+      "require_restart_recovery": true,
+      "require_reorg_observation": false
+    },
+    "launch": {
+      "minimum_window_seconds": 259200,
+      "require_restart_recovery": true,
+      "require_reorg_observation": true
+    }
+  }
+}
