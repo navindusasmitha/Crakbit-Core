@@ -246,12 +246,14 @@ assert j['state'] == 'broadcast', j
 assert j['txid'] == sys.argv[2], j
 PY
 
+# A freshly attached broadcast has not been checked yet, so CRAK-019 should
+# explicitly ask the operator to refresh confirmations first.
 python3 "$PAYOPS" --db "$DB" show --batch "$BATCH_ID" >"$TMP/show-broadcast.json"
 python3 - "$TMP/show-broadcast.json" <<'PY'
 import json, sys
 j = json.load(open(sys.argv[1], encoding='utf-8'))
 assert j['state'] == 'broadcast', j
-assert j['next_action'] == 'wait_confirmations', j
+assert j['next_action'] == 'refresh_confirmations', j
 PY
 
 for _ in $(seq 1 6); do
@@ -297,7 +299,7 @@ import json, sys
 j = json.load(open(sys.argv[1], encoding='utf-8'))
 assert j['batches'] == 1, j
 assert j['states'].get('paid') == 1, j
-assert j['next_actions'].get('done') == 1, j
+assert j['next_actions'].get('none') == 1, j
 PY
 
 WORKER_BALANCE="$("$CLI" -regtest "-datadir=$DATADIR" "-rpcport=$RPCPORT" -rpcwallet=workerci getbalance)"
