@@ -1,0 +1,22 @@
+name: Verify Crakbit Payout Operations
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  payout-operations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check CRAK-019 payout operations
+        run: python3 -m py_compile scripts/crakpool.py scripts/crakpool-accounting.py scripts/crakpool-payout.py scripts/crakpool-paytx.py scripts/crakpool-payguard.py scripts/crakpool-payops.py tests/payops_unit.py
+      - name: Run CRAK-019 payout operations vectors
+        run: python3 tests/payops_unit.py
