@@ -57,6 +57,7 @@ CRAK-021 adds `scripts/verify-repo-integrity.py` and a dedicated CI workflow. Th
 - Linux package and install scripts still expose the official payout toolchain;
 - current milestone documentation is included in the Linux package;
 - the full payout E2E workflow is pull-request driven and only push-triggered on `main`;
+- deterministic-release, ARM64-runtime and independent-builder gates cannot silently disappear;
 - a conflicting `scripts/crakpool-pay.py` executor is absent from the official path;
 - migration-era WAM branding is not reintroduced into maintained source/docs/workflows.
 
@@ -65,7 +66,7 @@ It validates the maintained tree that is proposed for `main`.
 
 ## Release reproducibility policy
 
-CRAK-022 defines the first reproducible release-packaging contract for the Linux engineering package.
+CRAK-022 defines the deterministic release-packaging contract for the Linux engineering package.
 For identical input binaries, source commit, version and `SOURCE_DATE_EPOCH`, `scripts/package-linux.sh`
 must produce byte-for-byte identical `.tar.gz` archives and matching SHA256 sidecars.
 
@@ -77,8 +78,11 @@ The archive layer normalizes tar ordering, mtimes, uid/gid and gzip timestamp me
 `Verify Crakbit Reproducible Release` workflow builds the release inputs and runs
 `tests/package_reproducibility_smoke.sh` to prove the archive contract on Linux CI.
 
-This is not yet a claim of compiler-level reproducibility across independent machines, distributions or
-architectures. Cross-platform reproducible builds, release signing/key custody, public testnet operations
+CRAK-024 extends that contract to independent compiler/build jobs for the controlled Linux x86_64 path.
+It does not replace CRAK-022; CRAK-022 proves packaging determinism for one input set, while CRAK-024
+proves two clean builders independently regenerate the same release inputs and final archive.
+
+Cross-distribution/compiler-family reproducibility, release signing/key custody, public testnet operations
 and mainnet activation remain separate gates.
 
 ## Native ARM64 runtime policy
@@ -94,8 +98,32 @@ pool, Stratum worker and payout/operations entry points on isolated regtest.
 
 A cross-compile-only or qemu-only result does not satisfy CRAK-023. Passing this gate proves the current
 Ubuntu 24.04 ARM64 package path on native hosted hardware; it does not prove every Linux distribution or
-ARM board, independent cross-builder compiler reproducibility, public-testnet readiness, release signing,
-internet-facing pool security or mainnet readiness.
+ARM board, release signing, public-testnet readiness, internet-facing pool security or mainnet readiness.
+
+## Independent cross-builder policy
+
+CRAK-024 adds a dedicated `Verify Crakbit Independent Reproducibility` workflow for Linux x86_64.
+Two clean builder jobs run on different GitHub-hosted Ubuntu host generations (`ubuntu-22.04` and
+`ubuntu-24.04`) while using the same controlled Ubuntu 24.04 container userland/toolchain.
+
+Each builder independently:
+
+- fetches the pinned upstreams;
+- materializes the locked Crakbit source tree;
+- normalizes source/debug/macro paths relative to the checkout;
+- derives one `SOURCE_DATE_EPOCH` from the checked-out Crakbit commit;
+- compiles `crakbitd`, `crakbit-cli` and the native yespower scanner;
+- creates the normal deterministic Linux package;
+- records a deterministic reproducibility manifest plus separate builder provenance.
+
+A third job downloads both builder results and fails unless the final archive, SHA sidecar, packaged
+binaries, internal package checksum file and CRAK-022 build manifest all agree. It also re-hashes each
+uploaded artifact against its own manifest so stale or modified proof files cannot pass by JSON equality
+alone.
+
+Passing CRAK-024 proves controlled-toolchain independent-builder reproducibility for the current Linux
+x86_64 path. It does not claim arbitrary compiler/distribution reproducibility and does not imply release
+signing, public-testnet operational readiness, pool perimeter security or mainnet readiness.
 
 ## Experimental work
 
