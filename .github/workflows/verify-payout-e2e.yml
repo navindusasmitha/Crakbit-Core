@@ -2,6 +2,8 @@ name: Verify Crakbit Payout E2E
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 concurrency:
@@ -16,6 +18,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Fail fast on payout scripts and CRAK-019 state contract
+        run: |
+          bash -n tests/payout_e2e_smoke.sh
+          python3 -m py_compile \
+            scripts/crakpool-accounting.py \
+            scripts/crakminer-stratum.py \
+            scripts/crakpool-payout.py \
+            scripts/crakpool-paytx.py \
+            scripts/crakpool-payguard.py \
+            scripts/crakpool-payops.py \
+            tests/payops_unit.py
+          python3 tests/payops_unit.py
       - name: Install build dependencies
         run: |
           sudo apt-get update
@@ -47,15 +61,5 @@ jobs:
           test -x .work/crakbit-build/bin/crakbitd
           test -x .work/crakbit-build/bin/crakbit-cli
           test -x .work/crakbit-build/bin/crakminer-scan
-      - name: Syntax-check CRAK-020 payout smoke
-        run: |
-          bash -n tests/payout_e2e_smoke.sh
-          python3 -m py_compile \
-            scripts/crakpool-accounting.py \
-            scripts/crakminer-stratum.py \
-            scripts/crakpool-payout.py \
-            scripts/crakpool-paytx.py \
-            scripts/crakpool-payguard.py \
-            scripts/crakpool-payops.py
       - name: CRAK-020 full payout lifecycle on isolated regtest
         run: bash tests/payout_e2e_smoke.sh .work/crakbit-build
