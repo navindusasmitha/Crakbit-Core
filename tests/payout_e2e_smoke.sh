@@ -142,14 +142,25 @@ python3 "$PAYOUT" --db "$DB" register \
   --address "$WORKER_ADDRESS" \
   >"$TMP/register.json"
 
-# Mine 99 descendants: height-2 pool coinbase reaches 100 confirmations, while
-# the height-1 funding coinbase is also mature and can cover the payout fee.
-for _ in $(seq 1 99); do
+# Mine 100 descendants. The accounting maturity gate is 100 confirmations,
+# but the wallet only treats a coinbase as spendable after it is past the
+# COINBASE_MATURITY boundary. At tip 102 both the height-1 funding coinbase and
+# the height-2 credited pool coinbase are spendable, giving the wallet enough
+# value for the exact 5 CRAK payout plus its transaction fee.
+for _ in $(seq 1 100); do
   "$CLI" -regtest "-datadir=$DATADIR" "-rpcport=$RPCPORT" -rpcwallet=poolci \
     generatetoaddress 1 "$POOL_ADDRESS" 1000000 >/dev/null
 done
 HEIGHT="$("$CLI" -regtest "-datadir=$DATADIR" "-rpcport=$RPCPORT" getblockcount)"
-[[ "$HEIGHT" == "101" ]] || { echo "CRAK-020 expected maturity height 101, got $HEIGHT" >&2; exit 1; }
+[[ "$HEIGHT" == "102" ]] || { echo "CRAK-020 expected spendable maturity height 102, got $HEIGHT" >&2; exit 1; }
+
+POOL_BALANCE="$("$CLI" -regtest "-datadir=$DATADIR" "-rpcport=$RPCPORT" -rpcwallet=poolci getbalance)"
+python3 - "$POOL_BALANCE" <<'PY'
+from decimal import Decimal
+import sys
+balance = Decimal(sys.argv[1])
+assert balance >= Decimal('10.00000000'), f'expected at least 10 mature CRAK for payout+fee, got {balance}'
+PY
 
 python3 "$PAYOUT" --db "$DB" plan \
   --network regtest \
