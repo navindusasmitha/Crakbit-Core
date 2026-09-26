@@ -49,7 +49,16 @@ class FakeRpc:
             return {"psbt": "cHNidP8BAFake", "fee": 0.00000123, "changepos": 2}
         if method == "gettransaction":
             assert wallet == "poolwallet"
-            return {"confirmations": 6, "blockhash": "bb" * 32}
+            return {"confirmations": 6, "blockhash": "bb" * 32, "hex": "deadbeef"}
+        if method == "decoderawtransaction":
+            assert params[0] == "deadbeef"
+            return {
+                "vout": [
+                    {"value": 0.00000050, "scriptPubKey": {"address": "crak1alice"}},
+                    {"value": 0.00000050, "scriptPubKey": {"address": "crak1bob"}},
+                    {"value": 1.0, "scriptPubKey": {"address": "rcrak1change"}},
+                ]
+            }
         if method == "getblockheader":
             return {"height": 106}
         raise AssertionError(f"unexpected RPC {method} {params}")
