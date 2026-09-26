@@ -1,0 +1,44 @@
+name: Verify Crakbit Public Testnet Bootstrap
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'network/TESTNET_BOOTSTRAP.json'
+      - 'scripts/crakbit-bootstrap.py'
+      - 'tests/bootstrap_unit.py'
+      - 'docs/CRAK-026.md'
+      - 'docs/PUBLIC_TESTNET.md'
+      - '.github/workflows/verify-testnet-bootstrap.yml'
+      - 'scripts/verify-repo-integrity.py'
+  pull_request:
+    paths:
+      - 'network/TESTNET_BOOTSTRAP.json'
+      - 'scripts/crakbit-bootstrap.py'
+      - 'tests/bootstrap_unit.py'
+      - 'docs/CRAK-026.md'
+      - 'docs/PUBLIC_TESTNET.md'
+      - '.github/workflows/verify-testnet-bootstrap.yml'
+      - 'scripts/verify-repo-integrity.py'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap-control-plane:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check CRAK-026 tooling
+        run: |
+          python3 -m py_compile scripts/crakbit-bootstrap.py tests/bootstrap_unit.py
+          python3 -m json.tool network/TESTNET_BOOTSTRAP.json >/dev/null
+      - name: CRAK-026 bootstrap validation and health regression tests
+        run: python3 tests/bootstrap_unit.py
+      - name: Repository integrity includes CRAK-026
+        run: python3 scripts/verify-repo-integrity.py
