@@ -78,8 +78,24 @@ The archive layer normalizes tar ordering, mtimes, uid/gid and gzip timestamp me
 `tests/package_reproducibility_smoke.sh` to prove the archive contract on Linux CI.
 
 This is not yet a claim of compiler-level reproducibility across independent machines, distributions or
-architectures. Cross-platform reproducible builds, ARM64 runtime validation, release signing/key custody,
-public testnet operations and mainnet activation remain separate gates.
+architectures. Cross-platform reproducible builds, release signing/key custody, public testnet operations
+and mainnet activation remain separate gates.
+
+## Native ARM64 runtime policy
+
+CRAK-023 adds a native ARM64 build/package/runtime gate. The dedicated
+`Verify Crakbit ARM64 Runtime` workflow must run on the GitHub-hosted `ubuntu-24.04-arm` runner and
+must fail if the host architecture is not `aarch64`.
+
+The ARM64 gate builds the wallet-enabled node, CLI and native yespower scanner on ARM64 hardware,
+requires ARM64 ELF binaries, creates the normal `linux-arm64` package, verifies its CRAK-022 build
+manifest and checksums, installs it, and executes the node, wallet, RPC miner, native miner, persistent
+pool, Stratum worker and payout/operations entry points on isolated regtest.
+
+A cross-compile-only or qemu-only result does not satisfy CRAK-023. Passing this gate proves the current
+Ubuntu 24.04 ARM64 package path on native hosted hardware; it does not prove every Linux distribution or
+ARM board, independent cross-builder compiler reproducibility, public-testnet readiness, release signing,
+internet-facing pool security or mainnet readiness.
 
 ## Experimental work
 
