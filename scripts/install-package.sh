@@ -4,12 +4,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREFIX="${1:-$HOME/.local}"
 
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-paytx crakpool-payguard crakpool-payops crakpool-base.py crakpool-payout.py crakpool-paytx.py crakpool-payguard.py crakminer-stratum; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-edge crakpool-stats crakpool-payout crakpool-paytx crakpool-payguard crakpool-payops crakpool-base.py crakpool-payout.py crakpool-paytx.py crakpool-payguard.py crakminer-stratum; do
   [[ -f "$ROOT/bin/$file" ]] || { echo "missing package file: bin/$file" >&2; exit 1; }
 done
 
 install -d "$PREFIX/bin"
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-paytx crakpool-payguard crakpool-payops crakminer-stratum; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-edge crakpool-stats crakpool-payout crakpool-paytx crakpool-payguard crakpool-payops crakminer-stratum; do
   install -m 0755 "$ROOT/bin/$file" "$PREFIX/bin/$file"
 done
 # Internal Python modules used by CRAK-017/018/019 dynamic loading. Public CLI
@@ -36,11 +36,20 @@ Start the Crakbit testnet node:
 CRAK-013 native yespower mining example:
   $PREFIX/bin/crakminer-native --network testnet4 --wallet miner --threads 1 --cpu-limit 50
 
-CRAK-015 accounting/vardiff pool example:
+CRAK-015 internal accounting/vardiff pool (keep loopback-only):
   $PREFIX/bin/crakpool --network testnet4 --wallet pool --listen 127.0.0.1 --port 3333 --payout-mode pplns
 
-CRAK-014/015 worker example:
-  $PREFIX/bin/crakminer-stratum --pool 127.0.0.1:3333 --worker worker1 --threads 1 --cpu-limit 50
+CRAK-028 create a worker credential (secret is prompted, not placed in argv):
+  $PREFIX/bin/crakpool-edge credential --file \"$HOME/.crakbit/pool-workers.json\" --worker worker1
+
+CRAK-028 validate a public TLS edge before serving miners:
+  $PREFIX/bin/crakpool-edge check --auth-file \"$HOME/.crakbit/pool-workers.json\" --listen 0.0.0.0 --port 3443 --upstream-host 127.0.0.1 --upstream-port 3333 --tls-cert /etc/crakbit/pool.crt --tls-key /etc/crakbit/pool.key
+
+CRAK-028 hardened public Stratum edge:
+  $PREFIX/bin/crakpool-edge serve --auth-file \"$HOME/.crakbit/pool-workers.json\" --listen 0.0.0.0 --port 3443 --upstream-host 127.0.0.1 --upstream-port 3333 --tls-cert /etc/crakbit/pool.crt --tls-key /etc/crakbit/pool.key --security-log /var/log/crakbit/pool-security.jsonl
+
+CRAK-028 verified-TLS worker example (password file must be mode 0600):
+  $PREFIX/bin/crakminer-stratum --pool pool.example.org:3443 --worker worker1 --password-file \"$HOME/.crakbit/worker1.secret\" --tls --tls-server-name pool.example.org --threads 1 --cpu-limit 50
 
 Inspect the pool ledger:
   $PREFIX/bin/crakpool-stats --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\"
