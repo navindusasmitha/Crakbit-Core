@@ -20,8 +20,18 @@ from typing import Any
 
 DETERMINISTIC_MANIFEST = "REPRODUCIBILITY-MANIFEST.json"
 BUILDER_INFO = "BUILDER-INFO.json"
-REQUIRED_BINARIES = ("crakbitd", "crakbit-cli", "crakminer-scan")
+REQUIRED_PACKAGE_MEMBERS = (
+    "bin/crakbitd",
+    "bin/crakbit-cli",
+    "bin/crakminer-scan",
+    "share/doc/crakbit-core/BUILD-MANIFEST.json",
+    "SHA256SUMS",
+)
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
 
 def sha256_file(path: Path) -> str:
@@ -56,15 +66,27 @@ def only_archive(bundle: Path) -> Path:
     return archives[0]
 
 
-def package_build_manifest(archive: Path) -> dict[str, Any]:
+def package_member_bytes(tf: tarfile.TarFile, rel: str) -> bytes:
+    suffix = "/" + rel
+    matches = [m for m in tf.getmembers() if m.isfile() and m.name.endswith(suffix)]
+    if len(matches) != 1:
+        raise RuntimeError(f"expected exactly one package member ending {rel!r}, found {len(matches)}")
+    extracted = tf.extractfile(matches[0])
+    if extracted is None:
+        raise RuntimeError(f"unable to read package member: {rel}")
+    return extracted.read()
+
+
+def inspect_package(archive: Path) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    entries: dict[str, dict[str, Any]] = {}
     with tarfile.open(archive, mode="r:gz") as tf:
-        matches = [m for m in tf.getmembers() if m.name.endswith("/share/doc/crakbit-core/BUILD-MANIFEST.json")]
-        if len(matches) != 1:
-            raise RuntimeError(f"expected one BUILD-MANIFEST.json in {archive.name}, found {len(matches)}")
-        extracted = tf.extractfile(matches[0])
-        if extracted is None:
-            raise RuntimeError("unable to read BUILD-MANIFEST.json from archive")
-        return json.loads(extracted.read().decode("utf-8"))
+        raw: dict[str, bytes] = {}
+        for rel in REQUIRED_PACKAGE_MEMBERS:
+            data = package_member_bytes(tf, rel)
+            raw[rel] = data
+            entries[rel] = {"sha256": sha256_bytes(data), "size": len(data)}
+        build_manifest = json.loads(raw["share/doc/crakbit-core/BUILD-MANIFEST.json"].decode("utf-8"))
+    return build_manifest, entries
 
 
 def verify_sidecar(archive: Path) -> Path:
@@ -98,20 +120,10 @@ def create_manifest(args: argparse.Namespace) -> int:
     if not args.builder_id.strip():
         raise RuntimeError("--builder-id must not be empty")
 
-    bin_dir = bundle / "bin"
-    files: dict[str, dict[str, Any]] = {}
-    for name in REQUIRED_BINARIES:
-        path = bin_dir / name
-        if not path.is_file():
-            raise RuntimeError(f"missing required reproducibility binary: bin/{name}")
-        files[f"bin/{name}"] = artifact_entry(path)
-
     archive = only_archive(bundle)
     sidecar = verify_sidecar(archive)
-    files[archive.name] = artifact_entry(archive)
-    files[sidecar.name] = artifact_entry(sidecar)
+    build_manifest, package_members = inspect_package(archive)
 
-    build_manifest = package_build_manifest(archive)
     if build_manifest.get("source_commit") != source_commit:
         raise RuntimeError(
             f"package source_commit mismatch: {build_manifest.get('source_commit')!r} != {source_commit!r}"
@@ -131,8 +143,12 @@ def create_manifest(args: argparse.Namespace) -> int:
         "package": {
             "archive": archive.name,
             "build_manifest": build_manifest,
+            "members": package_members,
         },
-        "artifacts": files,
+        "artifacts": {
+            archive.name: artifact_entry(archive),
+            sidecar.name: artifact_entry(sidecar),
+        },
     }
     canonical_write(bundle / DETERMINISTIC_MANIFEST, deterministic)
 
@@ -162,7 +178,7 @@ def create_manifest(args: argparse.Namespace) -> int:
 
     print(
         f"CRAK-024 manifest: OK builder={args.builder_id} "
-        f"archive={archive.name} sha256={files[archive.name]['sha256']}"
+        f"archive={archive.name} sha256={deterministic['artifacts'][archive.name]['sha256']}"
     )
     return 0
 
@@ -181,6 +197,15 @@ def verify_bundle_against_manifest(bundle: Path, manifest: dict[str, Any]) -> No
             raise RuntimeError(f"{bundle}: SHA256 mismatch for {rel}")
         if int(expected.get("size", -1)) != actual_size:
             raise RuntimeError(f"{bundle}: size mismatch for {rel}")
+
+    archive_name = manifest.get("package", {}).get("archive")
+    archive = bundle / str(archive_name)
+    verify_sidecar(archive)
+    build_manifest, package_members = inspect_package(archive)
+    if manifest.get("package", {}).get("build_manifest") != build_manifest:
+        raise RuntimeError(f"{bundle}: package BUILD-MANIFEST.json no longer matches reproducibility manifest")
+    if manifest.get("package", {}).get("members") != package_members:
+        raise RuntimeError(f"{bundle}: package member hashes no longer match reproducibility manifest")
 
 
 def compare(args: argparse.Namespace) -> int:
@@ -218,9 +243,7 @@ def compare(args: argparse.Namespace) -> int:
         )
 
     for rel in sorted(lm["artifacts"]):
-        lp = left / rel
-        rp = right / rel
-        if lp.read_bytes() != rp.read_bytes():
+        if (left / rel).read_bytes() != (right / rel).read_bytes():
             raise RuntimeError(f"byte comparison failed despite manifest equality: {rel}")
 
     archive_name = lm["package"]["archive"]
@@ -228,7 +251,7 @@ def compare(args: argparse.Namespace) -> int:
     print(
         "CRAK-024 independent cross-builder reproducibility: OK "
         f"builders={left_id},{right_id} source={lm['source_commit']} "
-        f"archive_sha256={archive_hash} artifacts={len(lm['artifacts'])}"
+        f"archive_sha256={archive_hash} package_members={len(lm['package']['members'])}"
     )
     return 0
 
