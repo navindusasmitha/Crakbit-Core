@@ -37,18 +37,21 @@ def run(*args: str, ok: bool = True) -> subprocess.CompletedProcess[str]:
 
 
 def seed_bundle(bundle: Path) -> None:
-    (bundle / "bin").mkdir(parents=True)
+    bundle.mkdir(parents=True)
+    staging = bundle.parent / f"stage-{bundle.name}"
+    pkg_root = staging / "crakbit-core-unit-linux-x86_64"
+    manifest_dir = pkg_root / "share" / "doc" / "crakbit-core"
+    bin_dir = pkg_root / "bin"
+    manifest_dir.mkdir(parents=True)
+    bin_dir.mkdir(parents=True)
+
     for name, payload in {
         "crakbitd": b"daemon-bytes\n",
         "crakbit-cli": b"cli-bytes\n",
         "crakminer-scan": b"scanner-bytes\n",
     }.items():
-        (bundle / "bin" / name).write_bytes(payload)
+        (bin_dir / name).write_bytes(payload)
 
-    staging = bundle.parent / "stage"
-    pkg_root = staging / "crakbit-core-unit-linux-x86_64"
-    manifest_dir = pkg_root / "share" / "doc" / "crakbit-core"
-    manifest_dir.mkdir(parents=True)
     build_manifest = {
         "schema": 1,
         "project": "Crakbit Core",
@@ -68,6 +71,8 @@ def seed_bundle(bundle: Path) -> None:
         json.dumps(build_manifest, sort_keys=True, indent=2) + "\n",
         encoding="utf-8",
     )
+    (pkg_root / "SHA256SUMS").write_text("unit internal checksums\n", encoding="utf-8")
+
     archive = bundle / ARCHIVE_NAME
     with tarfile.open(archive, "w:gz") as tf:
         tf.add(pkg_root, arcname=pkg_root.name)
@@ -106,11 +111,12 @@ def main() -> None:
         good = run("compare", "--left", str(a), "--right", str(b))
         assert "reproducibility: OK" in good.stdout
 
-        # A byte mutation after manifest creation must be detected even if the
-        # deterministic JSON manifests still match.
-        (b / "bin" / "crakbit-cli").write_bytes(b"tampered\n")
+        # A release-archive byte mutation after manifest creation must be
+        # detected even though the deterministic JSON manifests still match.
+        archive_b = b / ARCHIVE_NAME
+        archive_b.write_bytes(archive_b.read_bytes() + b"tampered")
         bad = run("compare", "--left", str(a), "--right", str(b), ok=False)
-        assert "SHA256 mismatch" in bad.stdout
+        assert "SHA256 mismatch" in bad.stdout or "sidecar mismatch" in bad.stdout
 
         # Restore the bundle, then prove that two lanes cannot masquerade as
         # independent builders by using the same builder identity.
