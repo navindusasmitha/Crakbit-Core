@@ -11,6 +11,16 @@ from pathlib import Path
 from typing import Any
 
 
+def default_manifest_path() -> Path:
+    script = Path(__file__).resolve()
+    repo_or_prefix = script.parent.parent
+    source_path = repo_or_prefix / "network" / "TESTNET_BOOTSTRAP.json"
+    if source_path.is_file():
+        return source_path
+    installed_path = repo_or_prefix / "share" / "crakbit-core" / "network" / "TESTNET_BOOTSTRAP.json"
+    return installed_path
+
+
 def load_manifest(path: Path) -> dict[str, Any]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -189,7 +199,7 @@ def check_health(data: dict[str, Any], timeout: float) -> tuple[list[dict[str, A
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Crakbit public-testnet bootstrap control plane")
-    parser.add_argument("--manifest", default="network/TESTNET_BOOTSTRAP.json")
+    parser.add_argument("--manifest", default=str(default_manifest_path()))
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_validate = sub.add_parser("validate")
