@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+WALLET="${1:-}"
+BLOCKS="${2:-1}"
+NETWORK="${3:-regtest}"
+MAXTRIES="${4:-1000000}"
+
+if [[ -z "$WALLET" ]]; then
+  echo "usage: crakbit-mine <wallet> [blocks=1] [regtest|testnet4] [maxtries=1000000]" >&2
+  exit 2
+fi
+
+case "$NETWORK" in
+  testnet4) NETWORK_FLAG="-testnet4" ;;
+  regtest)  NETWORK_FLAG="-regtest" ;;
+  *)
+    echo "network must be regtest or testnet4" >&2
+    exit 2
+    ;;
+esac
+
+if ! [[ "$BLOCKS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "blocks must be a positive integer" >&2
+  exit 2
+fi
+if ! [[ "$MAXTRIES" =~ ^[1-9][0-9]*$ ]]; then
+  echo "maxtries must be a positive integer" >&2
+  exit 2
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -x "$SCRIPT_DIR/crakbit-cli" ]]; then
+  CLI="$SCRIPT_DIR/crakbit-cli"
+elif command -v crakbit-cli >/dev/null 2>&1; then
+  CLI="$(command -v crakbit-cli)"
+else
+  echo "crakbit-cli not found next to this script or in PATH" >&2
+  exit 1
+fi
+
+DATADIR="${CRAKBIT_DATADIR:-$HOME/.crakbit}"
+RPC=("$CLI" "$NETWORK_FLAG" "-datadir=$DATADIR" "-rpcwallet=$WALLET")
+
+ADDRESS="$("${RPC[@]}" getnewaddress "" bech32)"
+echo "CRAK-011: mining $BLOCKS block(s) to $ADDRESS on $NETWORK"
+exec "${RPC[@]}" generatetoaddress "$BLOCKS" "$ADDRESS" "$MAXTRIES"

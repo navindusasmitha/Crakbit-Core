@@ -9,62 +9,41 @@ for cmd in git python3; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "missing required command: $cmd" >&2; exit 1; }
 done
 
-readarray -t CFG < <(python3 - "$LOCK" <<'PY'
+readarray -t LOCKED < <(python3 - "$LOCK" <<'PY'
 import json, sys
 p=json.load(open(sys.argv[1], encoding='utf-8'))
-b=p['upstreams']['base_source']
-y=p['upstreams']['yespower']
-print(b['repository'])
-print(b['ref'])
-print(b.get('commit_sha') or '')
-print(y['repository'])
-print(y['commit_sha'])
+print(p['upstreams']['bitcoin_core']['repository'])
+print(p['upstreams']['bitcoin_core']['commit_sha'])
+print(p['upstreams']['yespower']['repository'])
+print(p['upstreams']['yespower']['commit_sha'])
 PY
 )
 
-BASE_REPO="${CFG[0]}"
-BASE_REF="${CFG[1]}"
-BASE_SHA="${CFG[2]}"
-YES_REPO="${CFG[3]}"
-YES_SHA="${CFG[4]}"
+BTC_REPO="${LOCKED[0]}"
+BTC_SHA="${LOCKED[1]}"
+YES_REPO="${LOCKED[2]}"
+YES_SHA="${LOCKED[3]}"
 
 mkdir -p "$WORK"
 
-checkout_ref() {
-  local repo="$1" ref="$2" expected_sha="$3" dir="$4"
+checkout_exact() {
+  local repo="$1" sha="$2" dir="$3"
   if [[ ! -d "$dir/.git" ]]; then
-    git clone --no-checkout "$repo" "$dir"
+    git clone --filter=blob:none --no-checkout "$repo" "$dir"
   fi
-  git -C "$dir" fetch --force --tags origin "$ref"
-  git -C "$dir" checkout --detach --force FETCH_HEAD
+  git -C "$dir" fetch --force --depth=1 origin "$sha"
+  git -C "$dir" checkout --detach --force "$sha"
   local got
   got="$(git -C "$dir" rev-parse HEAD)"
-  if [[ -n "$expected_sha" && "$got" != "$expected_sha" ]]; then
-    echo "source lock mismatch for $repo: expected $expected_sha got $got" >&2
-    exit 1
-  fi
-  printf '%s\n' "$got"
+  [[ "$got" == "$sha" ]] || { echo "source lock mismatch: expected $sha got $got" >&2; exit 1; }
 }
 
-BASE_GOT="$(checkout_ref "$BASE_REPO" "$BASE_REF" "$BASE_SHA" "$WORK/base-upstream")"
-YES_GOT="$(checkout_ref "$YES_REPO" "$YES_SHA" "$YES_SHA" "$WORK/yespower")"
-
-for required in README.md COPYING scripts src genesis pool explorer; do
-  [[ -e "$WORK/base-upstream/$required" ]] || {
-    echo "unexpected base-source layout: missing $required" >&2
-    exit 1
-  }
-done
-
-rm -rf "$WORK/crakbit-source"
-cp -a "$WORK/base-upstream" "$WORK/crakbit-source"
-printf '%s\n' "$BASE_GOT" > "$WORK/BASE_RESOLVED_SHA"
-printf 'Crakbit working tree prepared from pinned base source %s (%s)\n' "$BASE_REF" "$BASE_GOT" > "$WORK/crakbit-source/.crakbit-origin"
+checkout_exact "$BTC_REPO" "$BTC_SHA" "$WORK/bitcoin"
+checkout_exact "$YES_REPO" "$YES_SHA" "$WORK/yespower"
 
 python3 "$ROOT/scripts/verify-lock.py"
-python3 "$ROOT/scripts/verify-address-prefixes.py"
 
-echo "Crakbit working tree prepared:"
-echo "  base:     $BASE_GOT"
-echo "  yespower: $YES_GOT"
-echo "  tree:     $WORK/crakbit-source"
+echo "Pinned upstreams are ready:"
+echo "  Bitcoin Core: $BTC_SHA"
+echo "  yespower:     $YES_SHA"
+echo "Next stage: apply the reviewed Crakbit consensus patch series."

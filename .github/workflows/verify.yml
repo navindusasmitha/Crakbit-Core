@@ -1,68 +1,205 @@
-name: Verify Crakbit Core
+name: Verify Crakbit v0.1
 
 on:
   push:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
-  verify:
+  verify-locks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify source and consensus lock
+      - name: Verify source, consensus, vectors, network, genesis and monetary lock
         run: python3 scripts/verify-lock.py
-      - name: Verify address-prefix reservations
-        run: python3 scripts/verify-address-prefixes.py
-      - name: Verify exact monetary schedule
-        run: python3 scripts/verify_supply.py --schedule
-      - name: Verify Bitcoin-compatible serialization
-        run: python3 genesis/test_serialization.py
-      - name: Verify Crakbit patch manifest
-        run: python3 scripts/patch_upstream.py --list
-      - name: Syntax-check Python migration tools
-        run: python3 -m py_compile scripts/*.py genesis/*.py
-      - name: Syntax-check shell entrypoints
+      - name: Verify independent CRAK-007 ASERT vectors
+        run: python3 scripts/verify-asert-vectors.py
+      - name: Syntax-check migration tools, miners, pool and smoke tests
         run: |
           bash -n scripts/bootstrap.sh
-          bash -n scripts/materialize_core.sh
-          bash -n install.sh
+          bash -n scripts/materialize-locked.sh
+          bash -n scripts/build-linux.sh
+          bash -n scripts/build-native-miner.sh
+          bash -n scripts/package-linux.sh
+          bash -n scripts/install-package.sh
+          bash -n scripts/crakbit-start
+          bash -n scripts/crakbit-mine
+          bash -n scripts/crakminer
+          bash -n tests/local_multinode_smoke.sh
+          bash -n tests/wallet_restart_smoke.sh
+          bash -n tests/native_miner_smoke.sh
+          bash -n tests/stratum_pool_smoke.sh
+          bash -n tests/accounting_pool_smoke.sh
+          bash -n tests/payout_planner_smoke.sh
+          bash -n tests/package_smoke.sh
+          python3 -m py_compile \
+            scripts/materialize.py \
+            scripts/finalize-genesis.py \
+            scripts/apply-asert.py \
+            scripts/apply-monetary.py \
+            scripts/apply-node.py \
+            scripts/crakminer-native.py \
+            scripts/crakpool.py \
+            scripts/crakpool-accounting.py \
+            scripts/crakpool-stats.py \
+            scripts/crakpool-payout.py \
+            scripts/crakminer-stratum.py \
+            scripts/verify-asert-vectors.py \
+            scripts/check-asert-binary.py \
+            scripts/check-subsidy-binary.py \
+            tests/native_scanner_vector.py \
+            tests/pool_accounting_unit.py \
+            tests/payout_planner_unit.py
+          python3 tests/pool_accounting_unit.py
+          python3 tests/payout_planner_unit.py
+          python3 -m json.tool tests/yespower_vectors.json >/dev/null
+          python3 -m json.tool tests/genesis_vectors.json >/dev/null
+          python3 -m json.tool tests/asert_vectors.json >/dev/null
+          python3 -m json.tool tests/subsidy_vectors.json >/dev/null
+          python3 -m json.tool consensus/params.json >/dev/null
 
-  source-smoke:
+  yespower-network-smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch pinned base source and yespower
-        run: bash ./scripts/bootstrap.sh
-      - name: Inspect pinned Bitcoin upstream pin
-        run: sed -n '1,220p' .work/crakbit-source/scripts/fetch-upstream.sh
-      - name: Inspect pinned base materializer interface
-        run: python3 .work/crakbit-source/scripts/patch_upstream.py --help
-      - name: Validate base-source layout
-        run: python3 scripts/patch_upstream.py --check-tree
-      - name: Stage Crakbit-owned overlay
-        run: python3 scripts/patch_upstream.py --stage-overlay
-      - name: Inventory inherited economics hooks
-        run: python3 scripts/inventory_economics.py
-      - name: Apply CRAK-001 and CRAK-002
-        run: python3 scripts/apply_economics_patch.py
-      - name: Audit zero premine and zero treasury
-        run: python3 scripts/audit_economics.py
-      - name: Apply CRAK-003 monetary policy
-        run: python3 scripts/apply_monetary_patch.py
-      - name: Audit CRAK-003 monetary policy
-        run: python3 scripts/audit_monetary.py
-      - name: Inventory legacy PoW hooks for CRAK-004 and CRAK-005
-        run: python3 scripts/inventory_pow.py
-      - name: Snapshot consensus PoW anchors in source layer
-        run: python3 scripts/snapshot_pow_context.py
-      - name: Materialize pinned Bitcoin Core v28.1 tree
-        run: bash ./scripts/materialize_core.sh
-      - name: Snapshot final Core PoW anchors
-        run: python3 scripts/snapshot_materialized_pow.py --core .work/base-upstream/build/wam-core
-      - name: Show resolved source pins
+      - name: Install build dependencies
         run: |
-          cat .work/BASE_RESOLVED_SHA
-          cat .work/BITCOIN_CORE_RESOLVED_SHA
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libevent-dev libboost-dev libsqlite3-dev
+      - name: Fetch exact pinned upstreams
+        run: bash scripts/bootstrap.sh
+      - name: Materialize locked Crakbit source tree
+        run: bash scripts/materialize-locked.sh
+      - name: Verify materialized identity, network separation, ASERT, monetary and node rules
+        run: |
+          grep -Fx 'bitcoin_core_commit=9be056a8a72b624dae9623b2f7bded92c2a21c91' .work/materialized-source.txt
+          grep -Fx 'yespower_commit=1977c283bc43eed5a2c2579e02d6d996e49866b0' .work/materialized-source.txt
+          grep -Fx 'block_header_serialized_bytes=80' .work/materialized-source.txt
+          grep -Fx 'block_identity_hash=yespower' .work/materialized-source.txt
+          grep -Fx 'testnet4_magic=713281fe' .work/materialized-source.txt
+          grep -Fx 'regtest_magic=d874d0df' .work/materialized-source.txt
+          grep -Fx 'bitcoin_mainnet_enabled=false' .work/materialized-source.txt
+          grep -Fx 'bitcoin_testnet3_enabled=false' .work/materialized-source.txt
+          grep -Fx 'signet_enabled=false' .work/materialized-source.txt
+          grep -Fx 'genesis_vectors_locked=true' .work/materialized-source.txt
+          grep -Fx 'testnet4_genesis=000913228cf3264838e841dfa1cb7a8d45c0b431004fbd72952cea3eed107406' .work/materialized-source.txt
+          grep -Fx 'regtest_genesis=25c66306da130d34aeafdc40bdb18fe48cd67bd973a01287ff9cb49ab247f2f0' .work/materialized-source.txt
+          grep -Fx 'difficulty_algorithm=ASERT' .work/materialized-source.txt
+          grep -Fx 'difficulty_target_spacing_seconds=60' .work/materialized-source.txt
+          grep -Fx 'difficulty_half_life_seconds=7200' .work/materialized-source.txt
+          grep -Fx 'difficulty_anchor=genesis-conceptual-parent-minus-one-spacing' .work/materialized-source.txt
+          grep -Fx 'testnet_min_difficulty=false' .work/materialized-source.txt
+          grep -Fx 'regtest_no_retarget=true' .work/materialized-source.txt
+          grep -Fx 'initial_subsidy_sats=500000000' .work/materialized-source.txt
+          grep -Fx 'halving_interval_blocks=2100000' .work/materialized-source.txt
+          grep -Fx 'coinbase_maturity_blocks=100' .work/materialized-source.txt
+          grep -Fx 'premine_sats=0' .work/materialized-source.txt
+          grep -Fx 'integer_rounded_max_subsidy_sats=2099999972700000' .work/materialized-source.txt
+          grep -Fx 'daemon_binary=crakbitd' .work/materialized-source.txt
+          grep -Fx 'cli_binary=crakbit-cli' .work/materialized-source.txt
+          grep -Fx 'cpu_mining_rpc=generatetodescriptor' .work/materialized-source.txt
+          grep -Fx 'cpu_mining_hash=yespower-block-header' .work/materialized-source.txt
+          grep -Fx 'node_smoke_nodes=3' .work/materialized-source.txt
+          grep -Fx 'reorg_smoke_required=true' .work/materialized-source.txt
+          grep -Fx 'invalid_block_smoke_required=true' .work/materialized-source.txt
+          grep -F 'yespower_tls(' .work/crakbit/src/primitives/block.cpp
+          grep -F 'bech32_hrp = "tcrak"' .work/crakbit/src/kernel/chainparams.cpp
+          grep -F 'bech32_hrp = "rcrak"' .work/crakbit/src/kernel/chainparams.cpp
+          grep -F 'consensus.fPowUseASERT = true;' .work/crakbit/src/kernel/chainparams.cpp
+          grep -F 'consensus.nASERTHalfLife = 7200;' .work/crakbit/src/kernel/chainparams.cpp
+          grep -F 'consensus.nSubsidyHalvingInterval = 2100000;' .work/crakbit/src/kernel/chainparams.cpp
+          grep -F 'crakbit::GetNextASERTWorkRequired' .work/crakbit/src/pow.cpp
+          grep -F 'crakbit::CalculateBlockSubsidy' .work/crakbit/src/validation.cpp
+          grep -F 'static const int COINBASE_MATURITY = 100;' .work/crakbit/src/consensus/consensus.h
+          grep -F 'set_target_properties(bitcoind PROPERTIES OUTPUT_NAME crakbitd)' .work/crakbit/src/CMakeLists.txt
+          grep -F 'set_target_properties(bitcoin-cli PROPERTIES OUTPUT_NAME crakbit-cli)' .work/crakbit/src/CMakeLists.txt
+          grep -F 'CheckProofOfWork(block.GetHash(), block.nBits, chainman.GetConsensus())' .work/crakbit/src/rpc/mining.cpp
+          grep -F 'template base_uint<512>& base_uint<512>::operator<<=(unsigned int);' .work/crakbit/src/arith_uint256.cpp
+          grep -F 'assert(consensus.hashGenesisBlock == uint256{' .work/crakbit/src/kernel/chainparams.cpp
+          if grep -Fq 'HashWriter{} << *this' .work/crakbit/src/primitives/block.cpp; then
+            echo 'unexpected SHA256d block-hash fallback remains' >&2
+            exit 1
+          fi
+          if grep -Fq 'seed.testnet4.bitcoin' .work/crakbit/src/kernel/chainparams.cpp; then
+            echo 'Bitcoin testnet seed leaked into Crakbit testnet' >&2
+            exit 1
+          fi
+          if grep -Fq 'CAmount nSubsidy = 50 * COIN;' .work/crakbit/src/validation.cpp; then
+            echo 'Bitcoin 50 BTC subsidy formula leaked into Crakbit consensus' >&2
+            exit 1
+          fi
+      - name: Configure full Crakbit wallet node and CLI source tree
+        run: |
+          cmake -S .work/crakbit -B .work/crakbit-build \
+            -DENABLE_WALLET=ON \
+            -DENABLE_EXTERNAL_SIGNER=OFF \
+            -DENABLE_IPC=OFF \
+            -DWITH_ZMQ=OFF \
+            -DWITH_EMBEDDED_ASMAP=OFF \
+            -DBUILD_GUI=OFF \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_BENCH=OFF \
+            -DBUILD_DAEMON=ON \
+            -DBUILD_CLI=ON \
+            -DBUILD_TX=OFF \
+            -DBUILD_UTIL=OFF \
+            -DBUILD_BITCOIN_BIN=OFF
+      - name: Build full wallet node, CLI, yespower and consensus probes
+        run: |
+          cmake --build .work/crakbit-build \
+            --target bitcoind bitcoin-cli crakbit_yespower crakbit_yespower_vector bitcoin_consensus crakbit_header_hash_vector crakbit_genesis_probe crakbit_asert_vector crakbit_subsidy_vector \
+            --parallel 2
+          test -x .work/crakbit-build/bin/crakbitd
+          test -x .work/crakbit-build/bin/crakbit-cli
+      - name: Build and verify CRAK-013 native scanner
+        run: |
+          bash scripts/build-native-miner.sh .work/crakbit-build/bin/crakminer-scan
+          python3 tests/native_scanner_vector.py .work/crakbit-build/bin/crakminer-scan
+      - name: Verify deterministic yespower and block-header vectors
+        run: |
+          RAW_EXPECTED="$(python3 -c 'import json; print(json.load(open("tests/yespower_vectors.json"))["vectors"][0]["raw_hash_hex"])')"
+          DISPLAY_EXPECTED="$(python3 -c 'import json; print(json.load(open("tests/yespower_vectors.json"))["vectors"][0]["uint256_display_hex"])')"
+          RAW_ACTUAL="$(.work/crakbit-build/bin/crakbit_yespower_vector)"
+          DISPLAY_ACTUAL="$(.work/crakbit-build/bin/crakbit_header_hash_vector)"
+          printf 'raw yespower: %s\n' "$RAW_ACTUAL"
+          printf 'uint256 hash: %s\n' "$DISPLAY_ACTUAL"
+          test "$RAW_ACTUAL" = "$RAW_EXPECTED"
+          test "$DISPLAY_ACTUAL" = "$DISPLAY_EXPECTED"
+      - name: Verify frozen CRAK-006 genesis vectors
+        run: |
+          OUTPUT="$(.work/crakbit-build/bin/crakbit_genesis_probe)"
+          printf '%s\n' "$OUTPUT"
+          TEST_NONCE="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["testnet4"]["nonce"])')"
+          TEST_HASH="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["testnet4"]["hash"])')"
+          TEST_MERKLE="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["testnet4"]["merkle_root"])')"
+          TEST_BITS="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["testnet4"]["bits"])')"
+          REG_NONCE="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["regtest"]["nonce"])')"
+          REG_HASH="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["regtest"]["hash"])')"
+          REG_MERKLE="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["regtest"]["merkle_root"])')"
+          REG_BITS="$(python3 -c 'import json; print(json.load(open("tests/genesis_vectors.json"))["networks"]["regtest"]["bits"])')"
+          grep -Fx "testnet4 nonce=$TEST_NONCE hash=$TEST_HASH merkle=$TEST_MERKLE bits=$TEST_BITS" <<<"$OUTPUT"
+          grep -Fx "regtest nonce=$REG_NONCE hash=$REG_HASH merkle=$REG_MERKLE bits=$REG_BITS" <<<"$OUTPUT"
+      - name: Verify CRAK-007 ASERT C++ vectors and chain route
+        run: python3 scripts/check-asert-binary.py .work/crakbit-build/bin/crakbit_asert_vector
+      - name: Verify CRAK-008 subsidy C++ vectors and maturity
+        run: python3 scripts/check-subsidy-binary.py .work/crakbit-build/bin/crakbit_subsidy_vector
+      - name: CRAK-009 three-node mining, invalid-block and reorg smoke
+        run: bash tests/local_multinode_smoke.sh .work/crakbit-build
+      - name: CRAK-010 wallet send receive and restart smoke
+        run: bash tests/wallet_restart_smoke.sh .work/crakbit-build
+      - name: CRAK-013 native getblocktemplate miner smoke
+        run: bash tests/native_miner_smoke.sh .work/crakbit-build
+      - name: CRAK-014 two-worker Stratum pool smoke
+        run: bash tests/stratum_pool_smoke.sh .work/crakbit-build
+      - name: CRAK-015 persistent accounting pool smoke
+        run: bash tests/accounting_pool_smoke.sh .work/crakbit-build
+      - name: CRAK-016 maturity, payout-plan and reorg smoke
+        run: bash tests/payout_planner_smoke.sh .work/crakbit-build
+      - name: CRAK-011/012/013/014/015/016 package mining smoke
+        run: bash tests/package_smoke.sh .work/crakbit-build

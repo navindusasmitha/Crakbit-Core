@@ -1,0 +1,49 @@
+name: Verify Crakbit native miner
+
+on:
+  push:
+    paths:
+      - 'src/miner/**'
+      - 'scripts/build-native-miner.sh'
+      - 'scripts/crakminer-native.py'
+      - 'tests/native_scanner_vector.py'
+      - 'tests/genesis_vectors.json'
+      - 'SOURCE_LOCK.json'
+      - '.github/workflows/native-miner.yml'
+  pull_request:
+    paths:
+      - 'src/miner/**'
+      - 'scripts/build-native-miner.sh'
+      - 'scripts/crakminer-native.py'
+      - 'tests/native_scanner_vector.py'
+      - 'tests/genesis_vectors.json'
+      - 'SOURCE_LOCK.json'
+      - '.github/workflows/native-miner.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-miner-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scanner-vector:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned yespower source
+        run: |
+          mkdir -p .work
+          git clone --no-checkout https://github.com/openwall/yespower.git .work/yespower
+          git -C .work/yespower fetch --depth=1 origin 1977c283bc43eed5a2c2579e02d6d996e49866b0
+          git -C .work/yespower checkout --detach 1977c283bc43eed5a2c2579e02d6d996e49866b0
+          test "$(git -C .work/yespower rev-parse HEAD)" = "1977c283bc43eed5a2c2579e02d6d996e49866b0"
+      - name: Syntax check controller and vector
+        run: |
+          bash -n scripts/build-native-miner.sh
+          python3 -m py_compile scripts/crakminer-native.py tests/native_scanner_vector.py
+      - name: Build native yespower scanner
+        run: bash scripts/build-native-miner.sh .work/crakminer-scan
+      - name: Verify regtest genesis nonce/hash vector
+        run: python3 tests/native_scanner_vector.py .work/crakminer-scan

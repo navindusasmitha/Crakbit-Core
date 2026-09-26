@@ -7,27 +7,19 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 lock = json.loads((ROOT / 'SOURCE_LOCK.json').read_text(encoding='utf-8'))
 params = json.loads((ROOT / 'consensus' / 'params.json').read_text(encoding='utf-8'))
+vectors = json.loads((ROOT / 'tests' / 'yespower_vectors.json').read_text(encoding='utf-8'))
+genesis_vectors = json.loads((ROOT / 'tests' / 'genesis_vectors.json').read_text(encoding='utf-8'))
+subsidy_vectors = json.loads((ROOT / 'tests' / 'subsidy_vectors.json').read_text(encoding='utf-8'))
 
 sha40 = re.compile(r'^[0-9a-f]{40}$')
+hex8 = re.compile(r'^[0-9a-f]{8}$')
+hex64 = re.compile(r'^[0-9a-f]{64}$')
 errors = []
 
-base = lock['upstreams']['base_source']
-base_sha = base.get('commit_sha', '')
-if not sha40.fullmatch(base_sha):
-    errors.append('base_source.commit_sha must be a 40-char lowercase git SHA')
-
-bitcoin = lock['upstreams']['bitcoin_core']
-bitcoin_sha = bitcoin.get('commit_sha', '')
-if not sha40.fullmatch(bitcoin_sha):
-    errors.append('bitcoin_core.commit_sha must be a 40-char lowercase git SHA')
-if bitcoin.get('tag') != 'v28.1':
-    errors.append(f"bitcoin_core.tag must remain v28.1 during this migration, got {bitcoin.get('tag')!r}")
-if bitcoin_sha != '32efe850438ef22e2de39e562af557872a402c31':
-    errors.append('bitcoin_core.commit_sha does not match the verified v28.1 release commit')
-
-yes_sha = lock['upstreams']['yespower'].get('commit_sha', '')
-if not sha40.fullmatch(yes_sha):
-    errors.append('yespower commit_sha is not a 40-char lowercase git SHA')
+for name, entry in lock['upstreams'].items():
+    sha = entry.get('commit_sha', '')
+    if not sha40.fullmatch(sha):
+        errors.append(f'{name}: commit_sha is not a 40-char lowercase git SHA')
 
 pow_lock = lock['pow']
 pow_params = params['proof_of_work']
@@ -36,50 +28,192 @@ for key in ('algorithm', 'version', 'N', 'r', 'personalization'):
         errors.append(f'PoW mismatch for {key}: SOURCE_LOCK={pow_lock[key]!r} params={pow_params[key]!r}')
 
 if pow_params['algorithm'] != 'yespower' or pow_params['version'] != 'YESPOWER_1_0':
-    errors.append('PoW must be yespower YESPOWER_1_0')
+    errors.append('PoW must remain yespower YESPOWER_1_0 for v0.1')
 if pow_params['N'] != 2048 or pow_params['r'] != 8:
-    errors.append('PoW parameters must be N=2048, r=8')
+    errors.append('v0.1 PoW parameters must remain N=2048, r=8')
 if pow_params['target_spacing_seconds'] != 60:
     errors.append('target block spacing must be 60 seconds')
-if pow_params.get('block_id_hash') != 'SHA256d' or pow_params.get('pow_hash') != 'yespower':
-    errors.append('Crakbit requires SHA256d block IDs with a separate yespower PoW hash')
+
+vector_profile = vectors.get('profile', {})
+for key in ('algorithm', 'version', 'N', 'r', 'personalization'):
+    if vector_profile.get(key) != pow_lock[key]:
+        errors.append(
+            f'vector profile mismatch for {key}: vectors={vector_profile.get(key)!r} '
+            f'SOURCE_LOCK={pow_lock[key]!r}'
+        )
+
+vector_list = vectors.get('vectors', [])
+if len(vector_list) != 1:
+    errors.append('v0.1 must contain exactly one frozen sequential-header yespower vector')
+else:
+    vector = vector_list[0]
+    try:
+        input_bytes = bytes.fromhex(vector['input_hex'])
+        raw_hash = bytes.fromhex(vector['raw_hash_hex'])
+        display_hash = bytes.fromhex(vector['uint256_display_hex'])
+    except (KeyError, TypeError, ValueError) as exc:
+        errors.append(f'invalid yespower vector encoding: {exc}')
+    else:
+        if input_bytes != bytes(range(80)):
+            errors.append('yespower vector input must be the exact 80-byte sequence 00..4f')
+        if len(raw_hash) != 32:
+            errors.append('yespower raw vector must be exactly 32 bytes')
+        if len(display_hash) != 32:
+            errors.append('yespower uint256 display vector must be exactly 32 bytes')
+        if display_hash != raw_hash[::-1]:
+            errors.append('uint256 display vector must be raw yespower bytes in reverse display order')
 
 money = params['money']
-expected = {
-    'initial_subsidy_coins': 5,
-    'halving_interval_blocks': 2_100_000,
-    'premine_coins': 0,
-    'treasury_percent': 0,
-    'coinbase_maturity_blocks': 100,
-}
-for key, value in expected.items():
-    if money.get(key) != value:
-        errors.append(f'{key} must be {value!r}, got {money.get(key)!r}')
+if money['initial_subsidy_coins'] != 5:
+    errors.append('initial subsidy must be 5 CRAK')
+if money['halving_interval_blocks'] != 2_100_000:
+    errors.append('halving interval must be 2,100,000 blocks')
+if money['premine_coins'] != 0:
+    errors.append('premine must be zero')
+if money['coinbase_maturity_blocks'] != 100:
+    errors.append('coinbase maturity must be 100 blocks')
+if money.get('status') != 'implemented_testnet_v0.1':
+    errors.append('monetary consensus status must be implemented_testnet_v0.1')
 
 ideal_supply = 2 * money['initial_subsidy_coins'] * money['halving_interval_blocks']
 if ideal_supply != money['intended_max_supply_coins']:
     errors.append(f'intended supply mismatch: geometric target is {ideal_supply:,}')
 
-if params['difficulty'].get('design') != 'DarkGravityWave-v3':
-    errors.append('difficulty design must be DarkGravityWave-v3')
-
-net = params['network_separation']['testnet']
-forbidden_legacy = {
-    'message_start_hex': '77616d21',
-    'p2p_port': 19555,
-    'rpc_port': 19554,
-    'bech32_hrp': 'twam',
+subsidy_profile = subsidy_vectors.get('profile', {})
+expected_subsidy_profile = {
+    'initial_subsidy_sats': 500_000_000,
+    'halving_interval_blocks': 2_100_000,
+    'coinbase_maturity_blocks': 100,
+    'premine_sats': 0,
+    'integer_rounded_max_subsidy_sats': 2_099_999_972_700_000,
 }
-for key, forbidden in forbidden_legacy.items():
-    if net.get(key) == forbidden:
-        errors.append(f'testnet {key} still matches a legacy upstream identity and must be unique')
+if subsidy_profile != expected_subsidy_profile:
+    errors.append('frozen CRAK-008 subsidy profile mismatch')
+
+initial_sats = 500_000_000
+interval = 2_100_000
+calculated_total = 0
+for era in range(64):
+    subsidy = initial_sats >> era
+    if subsidy == 0:
+        break
+    calculated_total += subsidy * interval
+
+if calculated_total != expected_subsidy_profile['integer_rounded_max_subsidy_sats']:
+    errors.append(f'internal subsidy total calculation mismatch: {calculated_total}')
+if money.get('integer_rounded_max_subsidy_sats') != calculated_total:
+    errors.append('consensus params integer-rounded subsidy total mismatch')
+if money.get('integer_rounded_max_subsidy_coins') != '20999999.72700000':
+    errors.append('consensus params integer-rounded subsidy coin string mismatch')
+
+for vector in subsidy_vectors.get('vectors', []):
+    height = vector.get('height')
+    expected = vector.get('expected_sats')
+    if not isinstance(height, int) or height < 0 or not isinstance(expected, int) or expected < 0:
+        errors.append(f'invalid subsidy vector: {vector!r}')
+        continue
+    halvings = height // interval
+    actual = 0 if halvings >= 64 else initial_sats >> halvings
+    if actual != expected:
+        errors.append(
+            f"subsidy vector {vector.get('name', '<unnamed>')} mismatch: expected {expected}, got {actual}"
+        )
+
+networks = params.get('networks', {})
+required_networks = ('testnet4', 'regtest')
+for network_name in required_networks:
+    if network_name not in networks:
+        errors.append(f'missing {network_name} network lock')
+
+frozen_genesis = genesis_vectors.get('networks', {})
+if genesis_vectors.get('pow_profile') != {
+    'algorithm': pow_lock['algorithm'],
+    'version': pow_lock['version'],
+    'N': pow_lock['N'],
+    'r': pow_lock['r'],
+    'personalization': pow_lock['personalization'],
+}:
+    errors.append('genesis vector PoW profile does not match SOURCE_LOCK')
+
+if all(name in networks for name in required_networks):
+    magics = []
+    p2p_ports = []
+    rpc_ports = []
+    hrps = []
+    for name in required_networks:
+        network = networks[name]
+        magic = network.get('message_start_hex', '')
+        if not hex8.fullmatch(magic):
+            errors.append(f'{name}: message_start_hex must be exactly 4 lowercase hex bytes')
+        magics.append(magic)
+
+        p2p = network.get('p2p_port')
+        rpc = network.get('rpc_port')
+        if not isinstance(p2p, int) or not 1024 <= p2p <= 65535:
+            errors.append(f'{name}: invalid p2p port')
+        if not isinstance(rpc, int) or not 1024 <= rpc <= 65535:
+            errors.append(f'{name}: invalid rpc port')
+        p2p_ports.append(p2p)
+        rpc_ports.append(rpc)
+        if p2p == rpc:
+            errors.append(f'{name}: p2p and rpc ports must differ')
+
+        hrp = network.get('bech32_hrp', '')
+        if not re.fullmatch(r'[a-z0-9]{2,20}', hrp):
+            errors.append(f'{name}: invalid bech32 hrp')
+        hrps.append(hrp)
+
+        base58 = network.get('base58', {})
+        for key in ('pubkey_address', 'script_address', 'secret_key'):
+            value = base58.get(key)
+            if not isinstance(value, int) or not 0 <= value <= 255:
+                errors.append(f'{name}: invalid base58 {key}')
+        for key in ('ext_public_key_hex', 'ext_secret_key_hex'):
+            value = base58.get(key, '')
+            if not hex8.fullmatch(value):
+                errors.append(f'{name}: {key} must be exactly 4 lowercase hex bytes')
+
+        genesis = network.get('genesis', {})
+        if genesis.get('reward_coins') != 0:
+            errors.append(f'{name}: genesis reward must remain zero (no premine)')
+        if genesis.get('version') != 1:
+            errors.append(f'{name}: genesis version must remain 1 for v0.1')
+        if not isinstance(genesis.get('timestamp'), str) or not genesis['timestamp'].startswith('Crakbit Core'):
+            errors.append(f'{name}: genesis timestamp must be Crakbit-specific')
+        if not isinstance(genesis.get('nonce'), int):
+            errors.append(f'{name}: genesis nonce must be frozen')
+        if not hex64.fullmatch(genesis.get('hash', '')):
+            errors.append(f'{name}: genesis hash must be 32-byte lowercase hex')
+        if not hex64.fullmatch(genesis.get('merkle_root', '')):
+            errors.append(f'{name}: genesis merkle root must be 32-byte lowercase hex')
+
+        frozen = frozen_genesis.get(name)
+        if frozen is None:
+            errors.append(f'{name}: missing frozen genesis vector')
+        else:
+            for key in ('timestamp', 'time', 'bits', 'nonce', 'version', 'reward_coins', 'hash', 'merkle_root'):
+                if genesis.get(key) != frozen.get(key):
+                    errors.append(
+                        f'{name}: genesis {key} mismatch between consensus params and frozen vector'
+                    )
+
+    if len(set(magics)) != len(magics):
+        errors.append('testnet4/regtest message-start bytes must be unique')
+    if len(set(p2p_ports + rpc_ports)) != len(p2p_ports + rpc_ports):
+        errors.append('all Crakbit p2p/rpc ports must be unique')
+    if len(set(hrps)) != len(hrps):
+        errors.append('testnet4/regtest bech32 HRPs must be unique')
+
+    bitcoin_magics = {'f9beb4d9', '0b110907', '1c163f28', 'fabfb5da'}
+    if any(magic in bitcoin_magics for magic in magics):
+        errors.append('Crakbit message-start bytes must not reuse Bitcoin network magic')
 
 if lock.get('mainnet_enabled') or params.get('mainnet_enabled'):
-    errors.append('mainnet must remain disabled during testnet migration')
+    errors.append('mainnet must remain disabled in v0.1 engineering base')
 
 if errors:
     for error in errors:
         print(f'ERROR: {error}', file=sys.stderr)
     raise SystemExit(1)
 
-print('Crakbit source/consensus lock: OK')
+print('Crakbit source/consensus/vector/network/genesis/monetary lock: OK')

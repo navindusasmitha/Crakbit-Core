@@ -1,22 +1,18 @@
-# Crakbit patch series
+# Patch series
 
-Crakbit is maintained as a reviewed delta from a pinned Bitcoin-derived engineering base.
+Crakbit is maintained as a small reviewed transformation series on top of the pinned Bitcoin Core release.
 
-Planned order:
+Current order/status:
 
-1. lock the base source to an exact commit SHA;
-2. preserve all inherited MIT/BSD notices;
-3. rename daemon/CLI/config/data-directory branding to Crakbit;
-4. remove inherited founder reserve, vesting and spendable-genesis consensus changes;
-5. remove inherited treasury/dev-fee validation, RPC and pool payout assumptions;
-6. set 21M `MAX_MONEY`, 5 CRAK subsidy, 2.1M halving interval and 100-block maturity;
-7. vendor/pin Openwall yespower and wire it into the separate PoW-hash path;
-8. keep SHA256d as the block ID and yespower as the target-comparison hash;
-9. retain DGW v3 but retune/test for a 60-second target;
-10. replace all legacy network magic, ports, address prefixes, seeds and genesis data;
-11. convert reference miner and pool hashing to yespower;
-12. generate Crakbit testnet genesis and commit deterministic vectors;
-13. run multi-node, reorg, wallet, pool and long-running mining tests;
-14. only after those gates, create separate mainnet parameters and genesis.
+1. ✅ pin Openwall yespower source revision and retain upstream notices;
+2. ✅ wire yespower into the Bitcoin Core CMake build;
+3. ✅ implement the Crakbit block-header identity hash using fixed yespower parameters;
+4. ✅ add deterministic yespower/header test vectors;
+5. ✅ replace Bitcoin testnet/regtest network identity with Crakbit values;
+6. ✅ generate and lock Crakbit zero-reward testnet/regtest genesis blocks;
+7. ✅ implement and test CRAK-007 ASERT difficulty;
+8. ✅ implement and test CRAK-008 subsidy/halving/coinbase-maturity monetary rules;
+9. ⏳ add CPU miner and multi-node functional/reorg tests;
+10. ⏳ only after testnet gates pass, create separate mainnet parameters and genesis.
 
-No production build may silently fall back to SHA256d proof of work, retain a legacy PoW validation path, or accept a legacy genesis/network identity.
+No patch in this series may silently fall back to SHA256d PoW, restore the Bitcoin 50 BTC subsidy formula, introduce a premine, or enable mainnet before the documented launch gates pass.

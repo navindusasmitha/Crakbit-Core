@@ -1,6 +1,5 @@
 {
   "network_name": "crakbit-testnet-v0.1",
-  "coin_name": "Crakbit",
   "ticker": "CRAK",
   "mainnet_enabled": false,
   "money": {
@@ -9,8 +8,10 @@
     "halving_interval_blocks": 2100000,
     "coinbase_maturity_blocks": 100,
     "premine_coins": 0,
-    "treasury_percent": 0,
-    "intended_max_supply_coins": 21000000
+    "intended_max_supply_coins": 21000000,
+    "integer_rounded_max_subsidy_sats": 2099999972700000,
+    "integer_rounded_max_subsidy_coins": "20999999.72700000",
+    "status": "implemented_testnet_v0.1"
   },
   "proof_of_work": {
     "algorithm": "yespower",
@@ -18,36 +19,68 @@
     "N": 2048,
     "r": 8,
     "personalization": "Crakbit-Core-v0.1",
-    "target_spacing_seconds": 60,
-    "header_bytes": 80,
-    "block_id_hash": "SHA256d",
-    "pow_hash": "yespower"
+    "target_spacing_seconds": 60
   },
   "difficulty": {
-    "design": "DarkGravityWave-v3",
-    "window_blocks": 24,
-    "retarget": "every-block",
-    "timespan_clamp": "1/3x..3x",
-    "status": "retune-and-test-at-60s"
+    "design": "ASERT",
+    "half_life_seconds": 7200,
+    "anchor": "genesis_conceptual_parent_minus_one_spacing",
+    "testnet_enabled": true,
+    "regtest_no_retarget": true,
+    "status": "implemented_testnet_v0.1"
+  },
+  "networks": {
+    "testnet4": {
+      "message_start_hex": "713281fe",
+      "p2p_port": 19131,
+      "rpc_port": 19130,
+      "bech32_hrp": "tcrak",
+      "base58": {
+        "pubkey_address": 28,
+        "script_address": 88,
+        "secret_key": 156,
+        "ext_public_key_hex": "e64a2503",
+        "ext_secret_key_hex": "95d33ce8"
+      },
+      "genesis": {
+        "timestamp": "Crakbit Core testnet 25/Sep/2026 CPU-first yespower launch",
+        "time": 1790294400,
+        "bits": "0x1f0fffff",
+        "nonce": 1986,
+        "version": 1,
+        "reward_coins": 0,
+        "hash": "000913228cf3264838e841dfa1cb7a8d45c0b431004fbd72952cea3eed107406",
+        "merkle_root": "3985c37165bb0a8b3b963894bf6e078f63df43d033ba9621b46aa71ed72d37ab"
+      }
+    },
+    "regtest": {
+      "message_start_hex": "d874d0df",
+      "p2p_port": 19141,
+      "rpc_port": 19140,
+      "bech32_hrp": "rcrak",
+      "base58": {
+        "pubkey_address": 29,
+        "script_address": 89,
+        "secret_key": 157,
+        "ext_public_key_hex": "ea0663b1",
+        "ext_secret_key_hex": "78e65d99"
+      },
+      "genesis": {
+        "timestamp": "Crakbit Core regtest 25/Sep/2026 deterministic local chain",
+        "time": 1790294460,
+        "bits": "0x207fffff",
+        "nonce": 6,
+        "version": 1,
+        "reward_coins": 0,
+        "hash": "25c66306da130d34aeafdc40bdb18fe48cd67bd973a01287ff9cb49ab247f2f0",
+        "merkle_root": "09c295e8f0bb50ca9dd122da3a3f8f42f77aa66d8892bd495bd7cdfdf045ff04"
+      }
+    }
   },
   "network_separation": {
-    "mainnet": {
-      "enabled": false,
-      "message_start_hex": null,
-      "p2p_port": null,
-      "rpc_port": null,
-      "bech32_hrp": null,
-      "genesis": null
-    },
-    "testnet": {
-      "message_start_hex": "4352414b",
-      "p2p_port": 17771,
-      "rpc_port": 17772,
-      "pubkey_address_version": 28,
-      "script_address_version": 87,
-      "secret_key_version": 197,
-      "bech32_hrp": "crak",
-      "genesis": null
-    }
+    "unique_message_start_required": true,
+    "unique_default_ports_required": true,
+    "unique_address_prefixes_required": true,
+    "custom_genesis_required": true
   }
 }
