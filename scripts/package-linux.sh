@@ -49,7 +49,7 @@ for helper in crakbit-start crakbit-mine crakminer crakminer-native.py crakpool.
   [[ -f "$ROOT/scripts/$helper" ]] || { echo "missing helper: scripts/$helper" >&2; exit 1; }
 done
 
-for doc in README.md docs/BUILD.md docs/CONSENSUS.md docs/POOL.md docs/CRAK-018.md docs/CRAK-019.md docs/CRAK-020.md docs/CRAK-021.md docs/CRAK-022.md docs/CRAK-023.md docs/PROJECT_STATE.md; do
+for doc in README.md docs/BUILD.md docs/CONSENSUS.md docs/POOL.md docs/CRAK-018.md docs/CRAK-019.md docs/CRAK-020.md docs/CRAK-021.md docs/CRAK-022.md docs/CRAK-023.md docs/CRAK-024.md docs/PROJECT_STATE.md; do
   [[ -f "$ROOT/$doc" ]] || { echo "missing package documentation: $doc" >&2; exit 1; }
 done
 
@@ -102,6 +102,7 @@ cp "$ROOT/docs/CRAK-020.md" "$STAGE/share/doc/crakbit-core/CRAK-020.md"
 cp "$ROOT/docs/CRAK-021.md" "$STAGE/share/doc/crakbit-core/CRAK-021.md"
 cp "$ROOT/docs/CRAK-022.md" "$STAGE/share/doc/crakbit-core/CRAK-022.md"
 cp "$ROOT/docs/CRAK-023.md" "$STAGE/share/doc/crakbit-core/CRAK-023.md"
+cp "$ROOT/docs/CRAK-024.md" "$STAGE/share/doc/crakbit-core/CRAK-024.md"
 cp "$ROOT/docs/PROJECT_STATE.md" "$STAGE/share/doc/crakbit-core/PROJECT_STATE.md"
 cp "$ROOT/LICENSE" "$STAGE/share/licenses/crakbit-core/LICENSE"
 [[ -f "$ROOT/.work/crakbit/COPYING" ]] && cp "$ROOT/.work/crakbit/COPYING" "$STAGE/share/licenses/bitcoin-core/COPYING"

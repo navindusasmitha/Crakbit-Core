@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""CRAK-021/022/023 repository and release integrity gate.
+"""CRAK-021/022/023/024 repository and release integrity gate.
 
 This fast, dependency-free verifier keeps the default-branch engineering path
 coherent. It checks the official payout toolchain, docs, package wiring,
-reproducible-release contract, native ARM64 runtime gate and CI workflows, and
+reproducible-release contracts, native ARM64 runtime gate and CI workflows, and
 rejects known legacy/conflicting artifacts or migration-era branding from the
 tracked source surface.
 """
@@ -51,6 +51,7 @@ REQUIRED_PATHS = [
     "docs/CRAK-021.md",
     "docs/CRAK-022.md",
     "docs/CRAK-023.md",
+    "docs/CRAK-024.md",
     "docs/PROJECT_STATE.md",
     "scripts/crakpool-accounting.py",
     "scripts/crakpool-payout.py",
@@ -59,6 +60,8 @@ REQUIRED_PATHS = [
     "scripts/crakpool-payops.py",
     "scripts/package-linux.sh",
     "scripts/install-package.sh",
+    "scripts/build-independent-repro.sh",
+    "scripts/repro-manifest.py",
     "tests/pool_accounting_unit.py",
     "tests/payout_planner_unit.py",
     "tests/paytx_unit.py",
@@ -69,6 +72,7 @@ REQUIRED_PATHS = [
     "tests/payout_e2e_smoke.sh",
     "tests/package_reproducibility_smoke.sh",
     "tests/arm64_runtime_smoke.sh",
+    "tests/repro_manifest_unit.py",
     ".github/workflows/verify-accounting.yml",
     ".github/workflows/verify-payout.yml",
     ".github/workflows/verify-paytx.yml",
@@ -78,6 +82,7 @@ REQUIRED_PATHS = [
     ".github/workflows/verify-repo-integrity.yml",
     ".github/workflows/verify-release-repro.yml",
     ".github/workflows/verify-arm64.yml",
+    ".github/workflows/verify-independent-repro.yml",
     ".github/workflows/verify.yml",
 ]
 
@@ -112,6 +117,7 @@ require_text(
         "docs/CRAK-021.md",
         "docs/CRAK-022.md",
         "docs/CRAK-023.md",
+        "docs/CRAK-024.md",
         "docs/PROJECT_STATE.md",
         "BUILD-MANIFEST.json",
         "CRAKBIT_SOURCE_COMMIT",
@@ -154,6 +160,7 @@ for workflow in (
     ".github/workflows/verify-repo-integrity.yml",
     ".github/workflows/verify-release-repro.yml",
     ".github/workflows/verify-arm64.yml",
+    ".github/workflows/verify-independent-repro.yml",
     ".github/workflows/verify.yml",
 ):
     require_text(workflow, ["push:\n    branches:\n      - main", "pull_request:"])
@@ -222,6 +229,56 @@ require_text(
     ],
 )
 
+# CRAK-024 must prove that two independent clean x86_64 builder lanes reproduce
+# both the release archive and the packaged release binaries. Builder provenance
+# is intentionally separate from the deterministic equality manifest.
+require_text(
+    ".github/workflows/verify-independent-repro.yml",
+    [
+        "runner: ubuntu-22.04",
+        "runner: ubuntu-24.04",
+        "image: ubuntu:24.04",
+        "scripts/build-independent-repro.sh",
+        "actions/upload-artifact@v4",
+        "actions/download-artifact@v4",
+        "CRAK-024 prove byte-identical independent builds",
+        "scripts/repro-manifest.py compare",
+    ],
+)
+require_text(
+    "scripts/build-independent-repro.sh",
+    [
+        "SOURCE_DATE_EPOCH",
+        "-ffile-prefix-map=",
+        "-fdebug-prefix-map=",
+        "-fmacro-prefix-map=",
+        "scripts/package-linux.sh",
+        "repro-manifest.py",
+    ],
+)
+require_text(
+    "scripts/repro-manifest.py",
+    [
+        "REPRODUCIBILITY-MANIFEST.json",
+        "BUILDER-INFO.json",
+        "bin/crakbitd",
+        "bin/crakbit-cli",
+        "bin/crakminer-scan",
+        "package sidecar mismatch",
+        "independent builder IDs must differ",
+        "byte comparison failed",
+    ],
+)
+require_text(
+    "tests/repro_manifest_unit.py",
+    [
+        "reproducibility: OK",
+        "tampered",
+        "builder IDs must differ",
+        "sidecar mismatch",
+    ],
+)
+
 # Prevent migration-era branding from silently returning to maintained product
 # source/docs. The CRAK-021 policy files are excluded because they intentionally
 # document the term being prohibited. Git history and upstream material are not
@@ -257,14 +314,14 @@ for scan_root in scan_roots:
             fail(f"legacy migration branding found in maintained file {rel}: {match.group(0)!r}")
 
 if errors:
-    print("CRAK-021/022/023 repository integrity: FAILED", file=sys.stderr)
+    print("CRAK-021/022/023/024 repository integrity: FAILED", file=sys.stderr)
     for item in errors:
         print(f" - {item}", file=sys.stderr)
     raise SystemExit(1)
 
 print(
-    "CRAK-021/022/023 repository integrity: OK "
+    "CRAK-021/022/023/024 repository integrity: OK "
     "official_payout_path=planner+paytx+payguard+payops "
     "legacy_executor=absent package_wiring=ok payout_modules=installed workflows=ok branding=ok "
-    "release_reproducibility=required arm64_runtime=required"
+    "release_reproducibility=required arm64_runtime=required independent_builders=required"
 )
