@@ -1,0 +1,79 @@
+name: Verify Crakbit ARM64 Runtime
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'SOURCE_LOCK.json'
+      - 'consensus/**'
+      - 'patches/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'tests/arm64_runtime_smoke.sh'
+      - '.github/workflows/verify-arm64.yml'
+  pull_request:
+    paths:
+      - 'SOURCE_LOCK.json'
+      - 'consensus/**'
+      - 'patches/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'tests/arm64_runtime_smoke.sh'
+      - '.github/workflows/verify-arm64.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  arm64-native-runtime:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify native ARM64 runner
+        run: |
+          test "$(uname -m)" = "aarch64"
+          uname -a
+      - name: Syntax-check CRAK-023 runtime tooling
+        run: |
+          bash -n tests/arm64_runtime_smoke.sh
+          bash -n scripts/package-linux.sh
+          bash -n scripts/build-native-miner.sh
+          python3 scripts/verify-repo-integrity.py
+      - name: Install ARM64 build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libevent-dev libboost-dev libsqlite3-dev file
+      - name: Fetch exact pinned upstreams
+        run: bash scripts/bootstrap.sh
+      - name: Materialize locked Crakbit source tree
+        run: bash scripts/materialize-locked.sh
+      - name: Configure native ARM64 wallet node and CLI
+        run: |
+          cmake -S .work/crakbit -B .work/crakbit-build \
+            -DENABLE_WALLET=ON \
+            -DENABLE_EXTERNAL_SIGNER=OFF \
+            -DENABLE_IPC=OFF \
+            -DWITH_ZMQ=OFF \
+            -DWITH_EMBEDDED_ASMAP=OFF \
+            -DBUILD_GUI=OFF \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_BENCH=OFF \
+            -DBUILD_DAEMON=ON \
+            -DBUILD_CLI=ON \
+            -DBUILD_TX=OFF \
+            -DBUILD_UTIL=OFF \
+            -DBUILD_BITCOIN_BIN=OFF
+      - name: Build native ARM64 node, CLI and yespower scanner
+        run: |
+          cmake --build .work/crakbit-build --target bitcoind bitcoin-cli --parallel 4
+          bash scripts/build-native-miner.sh .work/crakbit-build/bin/crakminer-scan
+          file .work/crakbit-build/bin/crakbitd
+          file .work/crakbit-build/bin/crakbit-cli
+          file .work/crakbit-build/bin/crakminer-scan
+      - name: CRAK-023 package install and runtime validation
+        run: bash tests/arm64_runtime_smoke.sh .work/crakbit-build
