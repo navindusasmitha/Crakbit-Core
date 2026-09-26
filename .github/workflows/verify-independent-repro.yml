@@ -94,7 +94,7 @@ jobs:
         env:
           CRAKBIT_REPRO_BUILDER_ID: ${{ matrix.id }}
           CRAKBIT_REPRO_RUNNER_LABEL: ${{ matrix.runner }}
-          CRAKBIT_REPRO_BUNDLE_ROOT: ${{ github.workspace }}/repro-output
+          CRAKBIT_REPRO_BUNDLE_ROOT: repro-output
           CRAKBIT_REPRO_JOBS: '2'
         run: bash scripts/build-independent-repro.sh "${CRAKBIT_REPRO_BUILDER_ID}"
       - name: Inspect deterministic manifest
