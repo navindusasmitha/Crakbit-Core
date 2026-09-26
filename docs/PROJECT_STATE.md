@@ -57,8 +57,9 @@ CRAK-021 adds `scripts/verify-repo-integrity.py` and a dedicated CI workflow. Th
 - Linux package and install scripts still expose the official payout toolchain;
 - current milestone documentation is included in the Linux package;
 - the full payout E2E workflow is pull-request driven and only push-triggered on `main`;
-- deterministic-release, ARM64-runtime and independent-builder gates cannot silently disappear;
+- deterministic-release, ARM64-runtime, independent-builder and release-trust gates cannot silently disappear;
 - a conflicting `scripts/crakpool-pay.py` executor is absent from the official path;
+- private release-key material is not committed under the release trust surface;
 - migration-era WAM branding is not reintroduced into maintained source/docs/workflows.
 
 Git history, external upstream source and experimental branches are not rewritten or deleted by this gate.
@@ -82,8 +83,8 @@ CRAK-024 extends that contract to independent compiler/build jobs for the contro
 It does not replace CRAK-022; CRAK-022 proves packaging determinism for one input set, while CRAK-024
 proves two clean builders independently regenerate the same release inputs and final archive.
 
-Cross-distribution/compiler-family reproducibility, release signing/key custody, public testnet operations
-and mainnet activation remain separate gates.
+Cross-distribution/compiler-family reproducibility, public testnet operations and mainnet activation remain
+separate gates. Release artifact trust is governed separately by CRAK-025 below.
 
 ## Native ARM64 runtime policy
 
@@ -98,7 +99,7 @@ pool, Stratum worker and payout/operations entry points on isolated regtest.
 
 A cross-compile-only or qemu-only result does not satisfy CRAK-023. Passing this gate proves the current
 Ubuntu 24.04 ARM64 package path on native hosted hardware; it does not prove every Linux distribution or
-ARM board, release signing, public-testnet readiness, internet-facing pool security or mainnet readiness.
+ARM board, public-testnet readiness, internet-facing pool security or mainnet readiness.
 
 ## Independent cross-builder policy
 
@@ -122,8 +123,48 @@ uploaded artifact against its own manifest so stale or modified proof files cann
 alone.
 
 Passing CRAK-024 proves controlled-toolchain independent-builder reproducibility for the current Linux
-x86_64 path. It does not claim arbitrary compiler/distribution reproducibility and does not imply release
-signing, public-testnet operational readiness, pool perimeter security or mainnet readiness.
+x86_64 path. It does not claim arbitrary compiler/distribution reproducibility and does not imply public-
+testnet operational readiness, pool perimeter security or mainnet readiness.
+
+## Release trust and signing policy
+
+CRAK-025 adds `release/RELEASE_POLICY.json`, `scripts/release-trust.py`, regression tests and the dedicated
+`Verify Crakbit Release Trust` workflow.
+
+The release-trust chain is:
+
+`deterministic package -> SHA256 sidecar -> embedded BUILD-MANIFEST + SHA256SUMS -> RELEASE-MANIFEST.json -> authenticated provenance -> optional/required offline operator signature`
+
+For official testnet release artifacts produced from `main`, GitHub keyless artifact attestation is required.
+The workflow uses GitHub OIDC and short-lived Sigstore signing material rather than a long-lived project
+secret. The archive, SHA sidecar and external release manifest are all attested as release subjects.
+
+CRAK-025 also defines a detached Ed25519 signature protocol for the external `RELEASE-MANIFEST.json`.
+A real operator private release key is intentionally not created or stored by the repository or CI. Any
+future mainnet release requires offline operator signing in addition to authenticated build provenance.
+The trusted operator public key must be generated, reviewed and pinned through a separate repository
+change before a mainnet release; private-key material must never be committed.
+
+The `mainnet` entry in `release/RELEASE_POLICY.json` is a trust-policy rule only. It does not enable mainnet,
+change consensus parameters or bypass the explicit mainnet activation milestone.
+
+## Launch gates after CRAK-025
+
+The engineering chain can be used on regtest/testnet4 today, but a public network launch is treated as an
+operations/security event rather than only a build milestone.
+
+Major remaining launch gates are:
+
+1. public testnet bootstrap infrastructure: independently hosted seed/boot nodes, documented peer/bootstrap configuration and recovery procedures;
+2. sustained public testnet soak: multi-node uptime, continuous mining, natural/forced reorg observation, restart/recovery and monitoring evidence;
+3. internet-facing pool perimeter hardening: TLS or protected transport where appropriate, authentication/abuse controls, rate limiting, RPC isolation and operational logging;
+4. broader miner/node interoperability and upgrade/release rehearsal across supported x86_64/ARM64 environments;
+5. external security/code review and remediation of material findings;
+6. offline trusted release-key provisioning/public-key distribution for mainnet releases;
+7. a separate explicit mainnet activation milestone covering final network parameters/genesis, seeds/checkpoints policy, release procedure and rollback/emergency operations.
+
+Public testnet can be launched before the mainnet-only gates, once its bootstrap, monitoring and security
+requirements are satisfied. Mainnet must not be activated merely because CI and testnet pass.
 
 ## Experimental work
 
