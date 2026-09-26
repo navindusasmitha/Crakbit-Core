@@ -44,6 +44,7 @@ Crakbit Core is a Bitcoin-style UTXO Proof-of-Work blockchain project focused on
 - CRAK-022: deterministic Linux release archive, source/build manifest and byte-identical package reproducibility smoke
 - CRAK-023: native ARM64 build/package/install/runtime validation for node, wallet, mining, pool, Stratum and payout tooling
 - CRAK-024: independent x86_64 clean builders, controlled toolchain/path normalization, packaged-binary hashes and byte-identical release proof
+- CRAK-025: deterministic external release manifest, GitHub keyless SLSA provenance, offline Ed25519 signature protocol and private-key custody boundary
 
 ## Build a Linux testnet package
 
@@ -290,7 +291,7 @@ Run the fast default-branch integrity gate locally:
 python3 scripts/verify-repo-integrity.py
 ```
 
-It verifies the official payout scripts/tests/workflows/docs, package/install wiring, current E2E CI trigger policy, deterministic release contracts, native ARM64 runtime gate, independent-builder reproducibility gate, absence of a competing legacy signed payout executor, and absence of migration-era branding in maintained product source/docs.
+It verifies the official payout scripts/tests/workflows/docs, package/install wiring, current E2E CI trigger policy, deterministic release contracts, native ARM64 runtime gate, independent-builder reproducibility gate, CRAK-025 release-trust policy/workflow, absence of a competing legacy signed payout executor, absence of private release keys under the release surface, and absence of migration-era branding in maintained product source/docs.
 
 ## Reproducible Linux package — CRAK-022
 
@@ -318,6 +319,28 @@ python3 tests/repro_manifest_unit.py
 
 See `docs/CRAK-024.md` for the exact builder and comparison contract.
 
+## Trusted release provenance — CRAK-025
+
+`release/RELEASE_POLICY.json` defines the release-channel trust requirements. `scripts/release-trust.py` validates the final archive, external SHA256 sidecar, embedded `BUILD-MANIFEST.json` and embedded package `SHA256SUMS`, then creates a deterministic external `RELEASE-MANIFEST.json`.
+
+Fast release-trust regression test:
+
+```bash
+python3 tests/release_trust_unit.py
+```
+
+On `main`, the dedicated `Verify Crakbit Release Trust` workflow creates GitHub keyless SLSA provenance attestations for the testnet archive, SHA sidecar and release manifest. A downloaded archive can be checked against repository identity with GitHub CLI:
+
+```bash
+gh attestation verify \
+  crakbit-core-0.1.0-testnet-linux-x86_64.tar.gz \
+  --repo navindusasmitha/Crakbit-Core
+```
+
+Future mainnet releases additionally require a detached offline Ed25519 operator signature over `RELEASE-MANIFEST.json`. The real private release key is intentionally not generated or stored by this repository/CI and must never be committed.
+
+See `docs/CRAK-025.md` for the release-manifest, provenance and offline-key custody contract.
+
 See also:
 
 - `docs/PROJECT_STATE.md` — official integration, payout, release and network boundaries
@@ -325,6 +348,7 @@ See also:
 - `docs/CRAK-022.md` — reproducible archive contract
 - `docs/CRAK-023.md` — native ARM64 runtime contract
 - `docs/CRAK-024.md` — independent cross-builder reproducibility contract
+- `docs/CRAK-025.md` — release trust, provenance and offline signing boundary
 
 ## Verification
 
@@ -340,10 +364,11 @@ python3 tests/paytx_unit.py
 python3 tests/payguard_unit.py
 python3 tests/payops_unit.py
 python3 tests/repro_manifest_unit.py
+python3 tests/release_trust_unit.py
 python3 scripts/verify-repo-integrity.py
 ```
 
-Dedicated CI also covers three-node/reorg behavior, wallet persistence, native mining, Stratum mining, accounting/vardiff persistence, payout maturity/reorg planning, CRAK-017/018/019 unit contracts, Linux package smoke, CRAK-020 full regtest payout E2E, CRAK-022 reproducible Linux archives, CRAK-023 native ARM64 runtime validation and CRAK-024 independent cross-builder release equality.
+Dedicated CI also covers three-node/reorg behavior, wallet persistence, native mining, Stratum mining, accounting/vardiff persistence, payout maturity/reorg planning, CRAK-017/018/019 unit contracts, Linux package smoke, CRAK-020 full regtest payout E2E, CRAK-022 reproducible Linux archives, CRAK-023 native ARM64 runtime validation, CRAK-024 independent cross-builder release equality and CRAK-025 release trust/provenance.
 
 ## Network status
 
@@ -361,7 +386,7 @@ The custom testnet and regtest genesis blocks have a **zero CRAK reward**, so th
 
 This repository is still a **v0.1 engineering/testnet project**. It is **not mainnet-ready** and does not claim production safety.
 
-Remaining major gates include independent public testnet nodes, sustained mining/reorg operation, release signing/key custody, public-pool security controls, broader miner interoperability, external security/code review, and a separate explicit mainnet activation milestone.
+Remaining major gates include independent public testnet bootstrap nodes, sustained public mining/reorg/uptime observation, internet-facing pool security controls, broader miner/node interoperability, external security/code review, offline trusted mainnet release-key provisioning/public-key distribution, and a separate explicit mainnet activation milestone.
 
 No mainnet genesis block will be finalized until those gates pass review.
 
