@@ -24,7 +24,7 @@ CRAKBIT_BUILD_JOBS=4 bash scripts/build-linux.sh
 CRAKBIT_BUILD_DIR=/tmp/crakbit-build CRAKBIT_OUT_DIR=/tmp/crakbit-dist bash scripts/build-linux.sh
 ```
 
-The script fetches pinned upstreams, materializes Crakbit, configures a wallet-enabled daemon/CLI build, compiles `crakbitd` and `crakbit-cli`, builds the CRAK-013 native yespower scanner, then calls `scripts/package-linux.sh`.
+The script fetches pinned upstreams, materializes Crakbit, configures a wallet-enabled daemon/CLI build, compiles `crakbitd` and `crakbit-cli`, builds the native yespower scanner, then calls `scripts/package-linux.sh`.
 
 Current package naming is:
 
@@ -101,6 +101,8 @@ crakbit-mine
 crakminer
 crakminer-native
 crakminer-scan
+crakpool
+crakminer-stratum
 ```
 
 It also includes the installer, internal checksums, project docs, Crakbit license, Bitcoin Core COPYING file when present, and the exact vendored yespower source/header material carrying the upstream redistribution notices.
@@ -161,13 +163,41 @@ CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakminer-native \
 
 CRAK-013 no longer asks `crakbitd` to perform the hashing loop. `crakminer-native` obtains `getblocktemplate`, constructs the BIP34/SegWit coinbase and txid merkle root, then launches `crakminer-scan`. The native scanner partitions nonce work across C++ worker threads and runs yespower directly. Solved blocks are serialized and returned to the node through `submitblock` for full consensus validation.
 
-`--cpu-limit` is an approximate duty cycle per native worker, not a kernel-enforced quota. `--batch-hashes` controls how often the controller refreshes the template/extranonce. The controller requires Python 3; the hashing hot path does not run in Python.
+### CRAK-014 Stratum pool and worker
+
+Start a pool against a locally reachable Crakbit node/wallet:
+
+```bash
+CRAKBIT_DATADIR="$HOME/.crakbit-regtest" crakpool \
+  --network regtest \
+  --wallet miner \
+  --listen 127.0.0.1 \
+  --port 3333 \
+  --share-difficulty 0.000000001
+```
+
+Connect an external worker:
+
+```bash
+crakminer-stratum \
+  --pool 127.0.0.1:3333 \
+  --worker worker1 \
+  --threads 2 \
+  --cpu-limit 50
+```
+
+For testnet/LAN use, change `--listen` to a reachable server interface and point workers at that server address. Do not expose the node RPC port; only the Stratum TCP port needs to be reachable by miners.
+
+The CRAK-014 server implements a limited Stratum V1-compatible JSON-lines surface for subscription, authorization, difficulty, job notification and share submission. Pool payout is one configured address. Persistent share accounting, automated payouts, vardiff and production public-pool hardening are not part of CRAK-014.
+
+See `docs/POOL.md` for details.
 
 ## Verification
 
 ```bash
 python3 scripts/verify-lock.py
 python3 scripts/verify-asert-vectors.py
+python3 tests/stratum_protocol_unit.py
 ```
 
 CI covers:
@@ -183,8 +213,10 @@ CI covers:
 - CRAK-012 multi-worker RPC controller and sibling-race-safe finite chain-height target;
 - CRAK-013 standalone native scanner genesis vector;
 - CRAK-013 real `getblocktemplate` → native yespower → `submitblock` regtest mining;
-- installed-package CRAK-011/012/013 mining paths.
+- CRAK-014 BIP34/difficulty/merkle protocol unit vectors;
+- CRAK-014 two external Stratum worker sessions across refreshed pool jobs;
+- installed-package CRAK-011/012/013/014 mining and pool paths.
 
-A separate fast native-miner workflow verifies the scanner build/vector without waiting for the full Bitcoin node compile.
+Separate fast native-miner and Stratum workflows verify their local vectors without waiting for the full Bitcoin node compile.
 
-Passing these gates still does not make the project mainnet-ready. Independent public testnet operation, sustained mining/reorg testing, reproducible cross-platform builds, ARM64 runtime validation, Stratum/pool integration, and external review remain required.
+Passing these gates still does not make the project mainnet-ready. Independent public testnet operation, sustained mining/reorg testing, reproducible cross-platform builds, ARM64 runtime validation, hardened persistent pool payouts/accounting, third-party miner interoperability and external review remain required.

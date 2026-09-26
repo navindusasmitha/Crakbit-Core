@@ -8,8 +8,15 @@ OUT="$TMP/out"
 EXTRACT="$TMP/extract"
 PREFIX="$TMP/prefix"
 DATADIR="$TMP/datadir"
+POOL_PID=""
+POOLPORT=19653
 
 cleanup() {
+  set +e
+  if [[ -n "$POOL_PID" ]]; then
+    kill "$POOL_PID" >/dev/null 2>&1 || true
+    wait "$POOL_PID" >/dev/null 2>&1 || true
+  fi
   if [[ -x "$PREFIX/bin/crakbit-cli" ]]; then
     "$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" stop >/dev/null 2>&1 || true
   fi
@@ -45,7 +52,7 @@ fi
 
 bash "$PKGDIR/install.sh" "$PREFIX" >/dev/null
 
-for bin in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan; do
+for bin in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakminer-stratum; do
   test -x "$PREFIX/bin/$bin"
 done
 
@@ -99,7 +106,61 @@ if [[ "$HEIGHT" != "4" ]]; then
   exit 1
 fi
 
+echo "CRAK-013 packaged native miner smoke: OK height=$HEIGHT"
+
+# CRAK-014: host a pool and mine through the installed Stratum client. The
+# selected regtest share difficulty is harder than the regtest network target,
+# so an accepted share is deterministically also a valid block candidate.
+"$PREFIX/bin/crakpool" \
+  --network regtest \
+  --wallet ciwallet \
+  --listen 127.0.0.1 \
+  --port "$POOLPORT" \
+  --share-difficulty 0.000000001 \
+  --datadir "$DATADIR" \
+  >"$TMP/package-pool.log" 2>&1 &
+POOL_PID=$!
+
+for _ in $(seq 1 60); do
+  if grep -Fq 'crakpool ready ' "$TMP/package-pool.log" 2>/dev/null; then
+    break
+  fi
+  if ! kill -0 "$POOL_PID" >/dev/null 2>&1; then
+    echo "CRAK-014: packaged pool exited during startup" >&2
+    cat "$TMP/package-pool.log" >&2 || true
+    exit 1
+  fi
+  sleep 1
+done
+
+grep -F 'crakpool ready ' "$TMP/package-pool.log" >/dev/null
+
+"$PREFIX/bin/crakminer-stratum" \
+  --pool "127.0.0.1:$POOLPORT" \
+  --worker package.worker \
+  --threads 2 \
+  --cpu-limit 50 \
+  --batch-hashes 64 \
+  --shares 1 \
+  --blocks 1 \
+  >"$TMP/package-worker.log" 2>&1
+
+HEIGHT="$("$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" getblockcount)"
+if [[ "$HEIGHT" != "5" ]]; then
+  echo "CRAK-014: packaged Stratum miner expected active height 5, got $HEIGHT" >&2
+  cat "$TMP/package-pool.log" >&2 || true
+  cat "$TMP/package-worker.log" >&2 || true
+  exit 1
+fi
+
+grep -F 'crakpool BLOCK worker=package.worker ' "$TMP/package-pool.log" >/dev/null
+grep -F 'crakminer-stratum complete accepted=1 blocks=1 ' "$TMP/package-worker.log" >/dev/null
+
+kill "$POOL_PID" >/dev/null 2>&1 || true
+wait "$POOL_PID" >/dev/null 2>&1 || true
+POOL_PID=""
+
 "$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" stop >/dev/null
 sleep 1
 
-echo "CRAK-013 packaged native miner smoke: OK height=$HEIGHT"
+echo "CRAK-014 packaged Stratum pool smoke: OK height=$HEIGHT"

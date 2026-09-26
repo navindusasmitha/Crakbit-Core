@@ -16,7 +16,7 @@ jobs:
         run: python3 scripts/verify-lock.py
       - name: Verify independent CRAK-007 ASERT vectors
         run: python3 scripts/verify-asert-vectors.py
-      - name: Syntax-check migration tools, vectors and smoke tests
+      - name: Syntax-check migration tools, miners, pool and smoke tests
         run: |
           bash -n scripts/bootstrap.sh
           bash -n scripts/materialize-locked.sh
@@ -30,6 +30,7 @@ jobs:
           bash -n tests/local_multinode_smoke.sh
           bash -n tests/wallet_restart_smoke.sh
           bash -n tests/native_miner_smoke.sh
+          bash -n tests/stratum_pool_smoke.sh
           bash -n tests/package_smoke.sh
           python3 -m py_compile \
             scripts/materialize.py \
@@ -38,6 +39,8 @@ jobs:
             scripts/apply-monetary.py \
             scripts/apply-node.py \
             scripts/crakminer-native.py \
+            scripts/crakpool.py \
+            scripts/crakminer-stratum.py \
             scripts/verify-asert-vectors.py \
             scripts/check-asert-binary.py \
             scripts/check-subsidy-binary.py \
@@ -179,5 +182,7 @@ jobs:
         run: bash tests/wallet_restart_smoke.sh .work/crakbit-build
       - name: CRAK-013 native getblocktemplate miner smoke
         run: bash tests/native_miner_smoke.sh .work/crakbit-build
-      - name: CRAK-011/012/013 package mining smoke
+      - name: CRAK-014 two-worker Stratum pool smoke
+        run: bash tests/stratum_pool_smoke.sh .work/crakbit-build
+      - name: CRAK-011/012/013/014 package mining smoke
         run: bash tests/package_smoke.sh .work/crakbit-build

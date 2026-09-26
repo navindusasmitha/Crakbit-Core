@@ -31,6 +31,7 @@ Crakbit Core is a Bitcoin-style UTXO Proof-of-Work blockchain project focused on
 - CRAK-011: Linux package builder, installer, safe node launcher, single-request CPU mining helper, checksums, bundled license material, and package install/start/mine smoke
 - CRAK-012: packaged `crakminer` RPC mining controller with configurable workers, finite/continuous mining, per-worker duty-cycle CPU limiting, sibling/stale handling, and active-chain height quota tracking
 - CRAK-013: native external yespower miner path using `getblocktemplate`, custom BIP34/SegWit coinbase construction, txid merkle assembly, native multi-thread nonce scanning, `submitblock`, deterministic scanner vectors, and packaged end-to-end mining smoke
+- CRAK-014: Stratum V1 subset pool server + external CPU worker, unique per-session extranonces, native yespower share verification, block submission, two-worker regtest smoke, and package integration
 
 ## Build a Linux testnet package
 
@@ -52,6 +53,8 @@ bin/crakbit-mine
 bin/crakminer
 bin/crakminer-native
 bin/crakminer-scan
+bin/crakpool
+bin/crakminer-stratum
 install.sh
 SHA256SUMS
 share/doc/crakbit-core/
@@ -66,7 +69,7 @@ The archive also gets a separate `.sha256` checksum file.
 bash install.sh ~/.local
 ```
 
-Then ensure `~/.local/bin` is in your `PATH`. `crakminer-native` uses Python 3 for template/RPC orchestration; the yespower hashing loop itself runs in the native `crakminer-scan` binary.
+Then ensure `~/.local/bin` is in your `PATH`. Python 3 is used for template/RPC/Stratum orchestration; yespower hashing itself runs in native `crakminer-scan`.
 
 Start an isolated local regtest node:
 
@@ -90,7 +93,7 @@ crakbit-start testnet4
 
 ## Native CPU mining — CRAK-013
 
-`crakminer-native` is the preferred CRAK-013 miner path. It asks `crakbitd` for a block template, constructs the coinbase and merkle root outside the node, sends the canonical 80-byte header to native yespower worker threads, inserts a solved nonce, then submits the complete block back through `submitblock`.
+`crakminer-native` asks `crakbitd` for a block template, constructs the coinbase and merkle root outside the node, sends the canonical 80-byte header to native yespower worker threads, inserts a solved nonce, then submits the complete block through `submitblock`.
 
 Low-end CPU example:
 
@@ -115,16 +118,48 @@ crakminer-native \
 
 `--cpu-limit` is an approximate duty cycle per native worker rather than an OS-enforced CPU quota. `--batch-hashes` controls how much nonce work is attempted before refreshing the block template/extranonce.
 
-The older `crakminer` command remains available as the CRAK-012 RPC-controller test/helper path. Its finite `--blocks` mode now targets actual active-chain height advancement, preventing competing sibling blocks from satisfying the requested quota early.
+The older `crakminer` command remains available as the CRAK-012 RPC-controller test/helper path.
+
+## Stratum pool — CRAK-014
+
+Create/load a wallet on the node for the pool payout address, then start a localhost pool:
+
+```bash
+crakpool \
+  --network testnet4 \
+  --wallet pool \
+  --listen 127.0.0.1 \
+  --port 3333 \
+  --share-difficulty 0.0001
+```
+
+Connect a worker on the same machine:
+
+```bash
+crakminer-stratum \
+  --pool 127.0.0.1:3333 \
+  --worker worker1 \
+  --threads 1 \
+  --cpu-limit 50
+```
+
+For a controlled private testnet/LAN pool, bind `crakpool` to the server's reachable interface and point each worker at `SERVER_IP:3333`. Keep the node RPC port private; miners only need the Stratum port.
+
+CRAK-014 implements `mining.subscribe`, `mining.authorize`, `mining.set_difficulty`, `mining.notify`, and `mining.submit`. Each TCP session receives a unique `extranonce1`; the worker rotates `extranonce2`, preventing separate machines from intentionally scanning the same header/nonce space.
+
+**Current pool limitation:** the whole block coinbase pays one configured pool wallet/address. CRAK-014 does not yet include persistent share accounting, proportional/PPLNS payouts, automatic worker payments, vardiff, TLS/auth hardening, or guaranteed compatibility with unrelated third-party Stratum miners. Do not expose this first pool implementation as a production public service.
+
+See `docs/POOL.md` for the pool architecture and deployment notes.
 
 ## Verification
 
 ```bash
 python3 scripts/verify-lock.py
 python3 scripts/verify-asert-vectors.py
+python3 tests/stratum_protocol_unit.py
 ```
 
-CI additionally proves the pinned yespower output, canonical block hash, genesis, ASERT, subsidy, three-node reorg behavior, wallet persistence, native scanner genesis vector, native `getblocktemplate`/`submitblock` mining, CRAK-012 sibling-race handling, and installed Linux package mining paths.
+CI additionally proves the pinned yespower output, canonical block hash, genesis, ASERT, subsidy, three-node reorg behavior, wallet persistence, native scanner genesis vector, native `getblocktemplate`/`submitblock` mining, CRAK-012 sibling-race handling, CRAK-014 Stratum protocol vectors, two sequential external pool workers, and installed Linux package pool/mining paths.
 
 ## Network status
 
@@ -142,7 +177,7 @@ The custom testnet and regtest genesis blocks have a **zero CRAK reward**, so th
 
 This repository is still a **v0.1 engineering/testnet project**. It is **not mainnet-ready** and does not claim production safety.
 
-The remaining major gates include independent public testnet nodes, longer-duration CPU mining/reorg operation, reproducible cross-platform release builds, ARM64 runtime validation, Stratum/pool support, and external security/code review.
+The remaining major gates include independent public testnet nodes, longer-duration CPU mining/reorg operation, reproducible cross-platform release builds, ARM64 runtime validation, hardened persistent pool accounting/payout infrastructure, broader miner interoperability testing, and external security/code review.
 
 No mainnet genesis block will be finalized until those gates pass review in addition to the consensus/network gates already covered by CI.
 
