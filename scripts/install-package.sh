@@ -4,12 +4,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREFIX="${1:-$HOME/.local}"
 
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-paytx crakpool-payguard crakpool-base.py crakminer-stratum; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-paytx crakpool-payguard crakpool-payops crakpool-base.py crakminer-stratum; do
   [[ -f "$ROOT/bin/$file" ]] || { echo "missing package file: bin/$file" >&2; exit 1; }
 done
 
 install -d "$PREFIX/bin"
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-paytx crakpool-payguard crakminer-stratum; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-paytx crakpool-payguard crakpool-payops crakminer-stratum; do
   install -m 0755 "$ROOT/bin/$file" "$PREFIX/bin/$file"
 done
 install -m 0644 "$ROOT/bin/crakpool-base.py" "$PREFIX/bin/crakpool-base.py"
@@ -58,4 +58,13 @@ After signing/broadcasting with your own wallet tooling, attach the resulting tx
 
 Cancel only a PSBT you have verified was never signed or broadcast:
   $PREFIX/bin/crakpool-payguard --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" cancel --network testnet4 --wallet pool --batch <BATCH_ID> --confirm-not-broadcast
+
+CRAK-019 payout operations summary:
+  $PREFIX/bin/crakpool-payops --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" summary
+
+CRAK-019 list batches and next operator actions:
+  $PREFIX/bin/crakpool-payops --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" list
+
+Refresh one broadcast/confirmed payment explicitly (never signs, broadcasts, or settles):
+  $PREFIX/bin/crakpool-payops --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" refresh --network testnet4 --wallet pool --batch <BATCH_ID>
 EOF
