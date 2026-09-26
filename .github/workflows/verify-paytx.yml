@@ -1,0 +1,22 @@
+name: Verify Crakbit Payout Lifecycle
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  payout-lifecycle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check CRAK-017 payout lifecycle
+        run: python3 -m py_compile scripts/crakpool.py scripts/crakpool-accounting.py scripts/crakpool-payout.py scripts/crakpool-paytx.py tests/paytx_unit.py
+      - name: Run CRAK-017 payout lifecycle vectors
+        run: python3 tests/paytx_unit.py

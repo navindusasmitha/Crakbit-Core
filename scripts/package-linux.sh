@@ -14,24 +14,15 @@ fi
 case "$(uname -m)" in
   x86_64|amd64) ARCH="x86_64" ;;
   aarch64|arm64) ARCH="arm64" ;;
-  *)
-    echo "unsupported Linux architecture: $(uname -m)" >&2
-    exit 1
-    ;;
+  *) echo "unsupported Linux architecture: $(uname -m)" >&2; exit 1 ;;
 esac
 
 for bin in crakbitd crakbit-cli; do
-  if [[ ! -x "$BUILD_DIR/bin/$bin" ]]; then
-    echo "missing executable: $BUILD_DIR/bin/$bin" >&2
-    exit 1
-  fi
+  [[ -x "$BUILD_DIR/bin/$bin" ]] || { echo "missing executable: $BUILD_DIR/bin/$bin" >&2; exit 1; }
 done
 
-for helper in crakbit-start crakbit-mine crakminer crakminer-native.py crakpool.py crakpool-accounting.py crakpool-stats.py crakpool-payout.py crakminer-stratum.py build-native-miner.sh install-package.sh; do
-  if [[ ! -f "$ROOT/scripts/$helper" ]]; then
-    echo "missing helper: scripts/$helper" >&2
-    exit 1
-  fi
+for helper in crakbit-start crakbit-mine crakminer crakminer-native.py crakpool.py crakpool-accounting.py crakpool-stats.py crakpool-payout.py crakpool-paytx.py crakminer-stratum.py build-native-miner.sh install-package.sh; do
+  [[ -f "$ROOT/scripts/$helper" ]] || { echo "missing helper: scripts/$helper" >&2; exit 1; }
 done
 
 if [[ ! -d "$ROOT/.work/crakbit/src/crypto/yespower" ]]; then
@@ -39,8 +30,6 @@ if [[ ! -d "$ROOT/.work/crakbit/src/crypto/yespower" ]]; then
   exit 1
 fi
 
-# CRAK-013+ hash block headers outside crakbitd. Build the standalone scanner
-# from the same exact pinned yespower checkout used by the node materializer.
 bash "$ROOT/scripts/build-native-miner.sh" "$BUILD_DIR/bin/crakminer-scan" >/dev/null
 
 PKG="crakbit-core-${VERSION}-linux-${ARCH}"
@@ -58,29 +47,21 @@ install -m 0755 "$ROOT/scripts/crakbit-start" "$STAGE/bin/crakbit-start"
 install -m 0755 "$ROOT/scripts/crakbit-mine" "$STAGE/bin/crakbit-mine"
 install -m 0755 "$ROOT/scripts/crakminer" "$STAGE/bin/crakminer"
 install -m 0755 "$ROOT/scripts/crakminer-native.py" "$STAGE/bin/crakminer-native"
-# CRAK-014 remains the internal protocol/base module. CRAK-015 is the public
-# `crakpool` command and CRAK-016 payout tooling shares the same RPC helper.
 install -m 0644 "$ROOT/scripts/crakpool.py" "$STAGE/bin/crakpool-base.py"
 install -m 0755 "$ROOT/scripts/crakpool-accounting.py" "$STAGE/bin/crakpool"
 install -m 0755 "$ROOT/scripts/crakpool-stats.py" "$STAGE/bin/crakpool-stats"
 install -m 0755 "$ROOT/scripts/crakpool-payout.py" "$STAGE/bin/crakpool-payout"
+install -m 0755 "$ROOT/scripts/crakpool-paytx.py" "$STAGE/bin/crakpool-paytx"
 install -m 0755 "$ROOT/scripts/crakminer-stratum.py" "$STAGE/bin/crakminer-stratum"
 install -m 0755 "$ROOT/scripts/install-package.sh" "$STAGE/install.sh"
 
 cp "$ROOT/README.md" "$STAGE/share/doc/crakbit-core/README.md"
 cp "$ROOT/docs/BUILD.md" "$STAGE/share/doc/crakbit-core/BUILD.md"
 cp "$ROOT/docs/CONSENSUS.md" "$STAGE/share/doc/crakbit-core/CONSENSUS.md"
-if [[ -f "$ROOT/docs/POOL.md" ]]; then
-  cp "$ROOT/docs/POOL.md" "$STAGE/share/doc/crakbit-core/POOL.md"
-fi
+[[ -f "$ROOT/docs/POOL.md" ]] && cp "$ROOT/docs/POOL.md" "$STAGE/share/doc/crakbit-core/POOL.md"
 cp "$ROOT/LICENSE" "$STAGE/share/licenses/crakbit-core/LICENSE"
+[[ -f "$ROOT/.work/crakbit/COPYING" ]] && cp "$ROOT/.work/crakbit/COPYING" "$STAGE/share/licenses/bitcoin-core/COPYING"
 
-if [[ -f "$ROOT/.work/crakbit/COPYING" ]]; then
-  cp "$ROOT/.work/crakbit/COPYING" "$STAGE/share/licenses/bitcoin-core/COPYING"
-fi
-
-# yespower licensing is carried in the upstream source headers. Include the exact
-# vendored files used by this build so binary distributions retain those notices.
 for file in yespower-opt.c yespower-platform.c yespower.h sha256.c sha256.h sysendian.h insecure_memzero.h README; do
   cp "$ROOT/.work/crakbit/src/crypto/yespower/$file" "$STAGE/share/licenses/yespower/$file"
 done
@@ -98,6 +79,5 @@ tar -C "$STAGE_PARENT" -czf "$ARCHIVE" "$PKG"
   sha256sum "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256"
 )
 rm -rf "$STAGE_PARENT"
-
 printf '%s\n' "$ARCHIVE"
 printf '%s\n' "$ARCHIVE.sha256"
