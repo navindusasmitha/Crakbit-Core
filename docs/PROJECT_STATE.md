@@ -63,6 +63,24 @@ CRAK-021 adds `scripts/verify-repo-integrity.py` and a dedicated CI workflow. Th
 Git history, external upstream source and experimental branches are not rewritten or deleted by this gate.
 It validates the maintained tree that is proposed for `main`.
 
+## Release reproducibility policy
+
+CRAK-022 defines the first reproducible release-packaging contract for the Linux engineering package.
+For identical input binaries, source commit, version and `SOURCE_DATE_EPOCH`, `scripts/package-linux.sh`
+must produce byte-for-byte identical `.tar.gz` archives and matching SHA256 sidecars.
+
+Every package must contain `share/doc/crakbit-core/BUILD-MANIFEST.json` with the exact Crakbit source
+commit, normalized release epoch, target Linux architecture, mainnet-enabled state, pinned Bitcoin Core
+commit, pinned yespower commit and locked yespower profile.
+
+The archive layer normalizes tar ordering, mtimes, uid/gid and gzip timestamp metadata. The dedicated
+`Verify Crakbit Reproducible Release` workflow builds the release inputs and runs
+`tests/package_reproducibility_smoke.sh` to prove the archive contract on Linux CI.
+
+This is not yet a claim of compiler-level reproducibility across independent machines, distributions or
+architectures. Cross-platform reproducible builds, ARM64 runtime validation, release signing/key custody,
+public testnet operations and mainnet activation remain separate gates.
+
 ## Experimental work
 
 Draft/native or alternate architecture branches can remain for research. They must not be interpreted as
