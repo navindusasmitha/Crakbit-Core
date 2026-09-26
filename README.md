@@ -41,6 +41,8 @@ Crakbit Core is a Bitcoin-style UTXO Proof-of-Work blockchain project focused on
 - CRAK-019: payout operations monitor with list/show/summary, next-action classification, stale detection and explicit confirmation refresh
 - CRAK-020: isolated regtest end-to-end proof from mature payout plan through PSBT, preflight, CI-only sign/broadcast, confirmations and final paid state
 - CRAK-021: repository/release integrity gate, maintained project-state policy, package-doc alignment and legacy/conflicting-path protection
+- CRAK-022: deterministic Linux release archive, source/build manifest and byte-identical package reproducibility smoke
+- CRAK-023: native ARM64 build/package/install/runtime validation for node, wallet, mining, pool, Stratum and payout tooling
 
 ## Build a Linux testnet package
 
@@ -67,6 +69,7 @@ bin/crakpool-payops
 bin/crakminer-stratum
 install.sh
 SHA256SUMS
+share/doc/crakbit-core/BUILD-MANIFEST.json
 share/doc/crakbit-core/
 share/licenses/
 ```
@@ -286,12 +289,26 @@ Run the fast default-branch integrity gate locally:
 python3 scripts/verify-repo-integrity.py
 ```
 
-It verifies the official payout scripts/tests/workflows/docs, package/install wiring, current E2E CI trigger policy, absence of a competing legacy signed payout executor, and absence of migration-era branding in maintained product source/docs.
+It verifies the official payout scripts/tests/workflows/docs, package/install wiring, current E2E CI trigger policy, release reproducibility contract, native ARM64 runtime gate, absence of a competing legacy signed payout executor, and absence of migration-era branding in maintained product source/docs.
 
-See:
+## Reproducible Linux package — CRAK-022
 
-- `docs/PROJECT_STATE.md` — official integration, payout and network boundary
+For identical binaries, source commit, version and source-date epoch, the Linux package archive must be byte-for-byte reproducible. Every archive includes `share/doc/crakbit-core/BUILD-MANIFEST.json` with source and pinned-upstream provenance.
+
+The dedicated `Verify Crakbit Reproducible Release` workflow runs `tests/package_reproducibility_smoke.sh` and validates deterministic tar/gzip metadata, archive SHA256 and internal package hashes.
+
+## Native ARM64 runtime — CRAK-023
+
+The dedicated `Verify Crakbit ARM64 Runtime` workflow uses a native `ubuntu-24.04-arm` runner. It builds ARM64 `crakbitd`, `crakbit-cli` and `crakminer-scan`, creates and installs the `linux-arm64` package, then exercises regtest node/wallet mining, native yespower mining, Stratum pool/worker accounting and the packaged payout/operations tools.
+
+A cross-compile-only or emulated result does not satisfy this gate. See `docs/CRAK-023.md` for the exact runtime contract.
+
+See also:
+
+- `docs/PROJECT_STATE.md` — official integration, payout, release and network boundaries
 - `docs/CRAK-021.md` — integrity-gate details
+- `docs/CRAK-022.md` — reproducible archive contract
+- `docs/CRAK-023.md` — native ARM64 runtime contract
 
 ## Verification
 
@@ -309,7 +326,7 @@ python3 tests/payops_unit.py
 python3 scripts/verify-repo-integrity.py
 ```
 
-Dedicated CI also covers three-node/reorg behavior, wallet persistence, native mining, Stratum mining, accounting/vardiff persistence, payout maturity/reorg planning, CRAK-017/018/019 unit contracts, Linux package smoke and CRAK-020 full regtest payout E2E.
+Dedicated CI also covers three-node/reorg behavior, wallet persistence, native mining, Stratum mining, accounting/vardiff persistence, payout maturity/reorg planning, CRAK-017/018/019 unit contracts, Linux package smoke, CRAK-020 full regtest payout E2E, CRAK-022 reproducible Linux archives and CRAK-023 native ARM64 runtime validation.
 
 ## Network status
 
@@ -327,7 +344,7 @@ The custom testnet and regtest genesis blocks have a **zero CRAK reward**, so th
 
 This repository is still a **v0.1 engineering/testnet project**. It is **not mainnet-ready** and does not claim production safety.
 
-Remaining major gates include independent public testnet nodes, sustained mining/reorg operation, reproducible cross-platform builds, ARM64 runtime validation, public-pool security controls, broader miner interoperability, external security/code review, and a separate explicit mainnet activation milestone.
+Remaining major gates include independent public testnet nodes, sustained mining/reorg operation, independent cross-builder reproducibility, release signing/key custody, public-pool security controls, broader miner interoperability, external security/code review, and a separate explicit mainnet activation milestone.
 
 No mainnet genesis block will be finalized until those gates pass review.
 
