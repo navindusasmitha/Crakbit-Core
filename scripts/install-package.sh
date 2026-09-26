@@ -4,12 +4,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREFIX="${1:-$HOME/.local}"
 
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-paytx crakpool-base.py crakminer-stratum; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-paytx crakpool-payguard crakpool-base.py crakminer-stratum; do
   [[ -f "$ROOT/bin/$file" ]] || { echo "missing package file: bin/$file" >&2; exit 1; }
 done
 
 install -d "$PREFIX/bin"
-for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-paytx crakminer-stratum; do
+for file in crakbitd crakbit-cli crakbit-start crakbit-mine crakminer crakminer-native crakminer-scan crakpool crakpool-stats crakpool-payout crakpool-paytx crakpool-payguard crakminer-stratum; do
   install -m 0755 "$ROOT/bin/$file" "$PREFIX/bin/$file"
 done
 install -m 0644 "$ROOT/bin/crakpool-base.py" "$PREFIX/bin/crakpool-base.py"
@@ -50,6 +50,12 @@ CRAK-016 create a mature non-broadcast payout plan:
 CRAK-017 build an operator-controlled funded PSBT (does not sign or broadcast):
   $PREFIX/bin/crakpool-paytx --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" build-psbt --network testnet4 --wallet pool --batch <BATCH_ID> --fee-rate 1.0
 
-After signing/broadcasting with your own wallet tooling, attach the resulting txid:
-  $PREFIX/bin/crakpool-paytx --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" attach-txid --batch <BATCH_ID> --txid <TXID>
+CRAK-018 preflight immediately before external signing/broadcast:
+  $PREFIX/bin/crakpool-payguard --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" preflight --network testnet4 --wallet pool --batch <BATCH_ID> --max-fee-sats <MAX_FEE_SATS>
+
+After signing/broadcasting with your own wallet tooling, attach the resulting txid through the fresh-preflight guard:
+  $PREFIX/bin/crakpool-payguard --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" guarded-attach --batch <BATCH_ID> --txid <TXID>
+
+Cancel only a PSBT you have verified was never signed or broadcast:
+  $PREFIX/bin/crakpool-payguard --db \"$HOME/.crakbit/crakpool-testnet4.sqlite3\" cancel --network testnet4 --wallet pool --batch <BATCH_ID> --confirm-not-broadcast
 EOF

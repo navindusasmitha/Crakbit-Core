@@ -1,0 +1,22 @@
+name: Verify Crakbit Payout Guard
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  payout-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check CRAK-018 payout guard
+        run: python3 -m py_compile scripts/crakpool.py scripts/crakpool-accounting.py scripts/crakpool-payout.py scripts/crakpool-paytx.py scripts/crakpool-payguard.py tests/payguard_unit.py
+      - name: Run CRAK-018 payout guard vectors
+        run: python3 tests/payguard_unit.py
