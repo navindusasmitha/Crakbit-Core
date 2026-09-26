@@ -121,6 +121,9 @@ require_text(
         "--owner=0",
         "--group=0",
         "gzip -n -9",
+        '"$STAGE/bin/crakpool-payout.py"',
+        '"$STAGE/bin/crakpool-paytx.py"',
+        '"$STAGE/bin/crakpool-payguard.py"',
     ],
 )
 
@@ -132,6 +135,17 @@ INSTALLED_COMMANDS = [
     "crakpool-payops",
 ]
 require_text("scripts/install-package.sh", INSTALLED_COMMANDS)
+# payops -> payguard.py -> paytx.py -> payout.py is the runtime dependency
+# chain. The public commands stay extensionless, but these private sibling
+# modules must survive packaging and installation for dynamic imports.
+require_text(
+    "scripts/install-package.sh",
+    [
+        "crakpool-payout.py",
+        "crakpool-paytx.py",
+        "crakpool-payguard.py",
+    ],
+)
 
 # Keep expensive workflows from running twice on feature branch updates.
 # Feature work is tested by pull_request; push is main-only.
@@ -251,6 +265,6 @@ if errors:
 print(
     "CRAK-021/022/023 repository integrity: OK "
     "official_payout_path=planner+paytx+payguard+payops "
-    "legacy_executor=absent package_wiring=ok workflows=ok branding=ok "
+    "legacy_executor=absent package_wiring=ok payout_modules=installed workflows=ok branding=ok "
     "release_reproducibility=required arm64_runtime=required"
 )
