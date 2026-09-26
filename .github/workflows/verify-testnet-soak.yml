@@ -9,6 +9,7 @@ on:
       - 'network/SOAK_POLICY.json'
       - 'scripts/crakbit-bootstrap.py'
       - 'scripts/crakbit-soak.py'
+      - 'scripts/verify-testnet-ops-integrity.py'
       - 'tests/bootstrap_unit.py'
       - 'tests/soak_unit.py'
       - 'docs/CRAK-026.md'
@@ -24,6 +25,7 @@ on:
       - 'network/SOAK_POLICY.json'
       - 'scripts/crakbit-bootstrap.py'
       - 'scripts/crakbit-soak.py'
+      - 'scripts/verify-testnet-ops-integrity.py'
       - 'tests/bootstrap_unit.py'
       - 'tests/soak_unit.py'
       - 'docs/CRAK-026.md'
@@ -48,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Syntax-check CRAK-027 policy and tooling
         run: |
-          python3 -m py_compile scripts/crakbit-bootstrap.py scripts/crakbit-soak.py tests/soak_unit.py
+          python3 -m py_compile scripts/crakbit-bootstrap.py scripts/crakbit-soak.py scripts/verify-testnet-ops-integrity.py tests/soak_unit.py
           python3 -m json.tool network/TESTNET_BOOTSTRAP.json >/dev/null
           python3 -m json.tool network/SOAK_POLICY.json >/dev/null
       - name: CRAK-027 soak collector and evaluator regression tests
@@ -60,5 +62,7 @@ jobs:
             echo 'checked-in placeholder bootstrap unexpectedly qualified as public-ready' >&2
             exit 1
           fi
-      - name: Repository integrity includes CRAK-026 and CRAK-027
+      - name: Existing repository integrity remains green
         run: python3 scripts/verify-repo-integrity.py
+      - name: CRAK-026/027 testnet operations integrity
+        run: python3 scripts/verify-testnet-ops-integrity.py
