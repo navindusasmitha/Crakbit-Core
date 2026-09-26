@@ -27,6 +27,12 @@ for cmd in git cmake cc c++ python3 sha256sum tar gzip file; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "missing required command: $cmd" >&2; exit 1; }
 done
 
+# GitHub job containers mount the checkout with host ownership. actions/checkout
+# temporarily marks it safe while the action runs, but later shell steps may use a
+# different HOME. Explicitly trust only this exact checked-out repository path so
+# source-commit/epoch discovery remains fail-closed instead of using unsafe '*'.
+git config --global --add safe.directory "$ROOT"
+
 [[ -d "$ROOT/.work/crakbit" ]] || {
   echo "materialized source missing; run scripts/bootstrap.sh and scripts/materialize-locked.sh first" >&2
   exit 1
