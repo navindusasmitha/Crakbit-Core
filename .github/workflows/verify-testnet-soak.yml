@@ -1,0 +1,68 @@
+name: Verify Crakbit Public Testnet Soak
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'network/TESTNET_BOOTSTRAP.json'
+      - 'network/SOAK_POLICY.json'
+      - 'scripts/crakbit-bootstrap.py'
+      - 'scripts/crakbit-soak.py'
+      - 'scripts/verify-testnet-ops-integrity.py'
+      - 'tests/bootstrap_unit.py'
+      - 'tests/soak_unit.py'
+      - 'docs/CRAK-026.md'
+      - 'docs/CRAK-027.md'
+      - 'docs/PUBLIC_TESTNET.md'
+      - 'docs/TESTNET_SOAK.md'
+      - '.github/workflows/verify-testnet-bootstrap.yml'
+      - '.github/workflows/verify-testnet-soak.yml'
+      - 'scripts/verify-repo-integrity.py'
+  pull_request:
+    paths:
+      - 'network/TESTNET_BOOTSTRAP.json'
+      - 'network/SOAK_POLICY.json'
+      - 'scripts/crakbit-bootstrap.py'
+      - 'scripts/crakbit-soak.py'
+      - 'scripts/verify-testnet-ops-integrity.py'
+      - 'tests/bootstrap_unit.py'
+      - 'tests/soak_unit.py'
+      - 'docs/CRAK-026.md'
+      - 'docs/CRAK-027.md'
+      - 'docs/PUBLIC_TESTNET.md'
+      - 'docs/TESTNET_SOAK.md'
+      - '.github/workflows/verify-testnet-bootstrap.yml'
+      - '.github/workflows/verify-testnet-soak.yml'
+      - 'scripts/verify-repo-integrity.py'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  soak-control-plane:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check CRAK-027 policy and tooling
+        run: |
+          python3 -m py_compile scripts/crakbit-bootstrap.py scripts/crakbit-soak.py scripts/verify-testnet-ops-integrity.py tests/soak_unit.py
+          python3 -m json.tool network/TESTNET_BOOTSTRAP.json >/dev/null
+          python3 -m json.tool network/SOAK_POLICY.json >/dev/null
+      - name: CRAK-027 soak collector and evaluator regression tests
+        run: python3 tests/soak_unit.py
+      - name: Placeholder bootstrap must not qualify as public-ready
+        run: |
+          python3 scripts/crakbit-bootstrap.py validate
+          if python3 scripts/crakbit-bootstrap.py validate --require-public-ready; then
+            echo 'checked-in placeholder bootstrap unexpectedly qualified as public-ready' >&2
+            exit 1
+          fi
+      - name: Existing repository integrity remains green
+        run: python3 scripts/verify-repo-integrity.py
+      - name: CRAK-026/027 testnet operations integrity
+        run: python3 scripts/verify-testnet-ops-integrity.py
