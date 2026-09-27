@@ -54,7 +54,8 @@ independent-builder gate, release-trust gate, absence of the competing signed pa
 of committed private release keys and absence of migration-era branding from maintained product files.
 
 CRAK-027 and CRAK-028 add separate fail-closed operations/security integrity gates for public-testnet
-soak requirements and the internet-facing pool perimeter. They supplement rather than replace CRAK-021.
+soak requirements and the internet-facing pool perimeter. CRAK-029 adds a separate fail-closed
+interoperability/release-rehearsal integrity gate. They supplement rather than replace CRAK-021.
 
 ## Release reproducibility policy
 
@@ -144,7 +145,23 @@ default; the maintained path does not provide an insecure public-TLS bypass.
 Passing CRAK-028 CI proves the repository/runtime perimeter controls. It does not claim that a production
 public pool has already been deployed, firewall-reviewed, DDoS-tested or externally penetration-tested.
 
-## Launch gates after CRAK-028
+## Miner/node interoperability and release rehearsal — CRAK-029
+
+CRAK-029 adds `release/INTEROP_MATRIX.json`, `tests/interop_protocol_probe.py`,
+`tests/release_rehearsal_smoke.sh`, `scripts/verify-interop-integrity.py` and a dedicated native CI matrix.
+
+The maintained rehearsal runs the real release package on native Linux x86_64 and ARM64. Each lane checks
+archive and internal checksums, installs the package, starts a regtest node/wallet, mines through the
+getblocktemplate/native-miner path, exercises the pool with an independent Stratum JSON client, mines an
+accepted Stratum share/block with the official worker, stops the stack, installs a second rehearsal package
+over the same prefix, verifies the CRAK-025 release manifest, restarts the same datadir and verifies chain,
+wallet and pool-ledger continuity before post-upgrade mining.
+
+The independent Stratum JSON client intentionally does not import the Crakbit pool or miner implementation.
+It verifies the maintained protocol contract separately from the official `crakminer-stratum` execution
+path. Passing CRAK-029 therefore proves the maintained package/protocol/restart matrix; it does not certify arbitrary third-party miners or replace real public-testnet deployment evidence.
+
+## Launch gates after CRAK-029
 
 The build/release/control-plane chain can be used on regtest/testnet4 today, but public launch remains an
 operations/security event. Major outstanding gates are:
@@ -152,13 +169,13 @@ operations/security event. Major outstanding gates are:
 1. provision real CRAK-026 bootstrap nodes in independent failure domains and replace the disabled placeholders;
 2. execute and retain real CRAK-027 24-hour candidate and 72-hour launch soak evidence, including restart and reorg recovery;
 3. deploy CRAK-028 on the real public pool host with firewall/RPC isolation, certificate lifecycle, log retention and abuse/DDoS observations;
-4. broader miner/node interoperability and upgrade/release rehearsal across supported x86_64/ARM64 environments;
+4. execute CRAK-029 release rehearsal evidence against the final intended public-testnet deployment package and retain the outputs;
 5. external security/code review and remediation of material findings;
 6. offline trusted mainnet release-key provisioning and public-key distribution;
 7. a separate explicit mainnet activation milestone covering final network parameters/genesis, seeds/checkpoints policy, release procedure and rollback/emergency operations.
 
-Public testnet may launch only after its real bootstrap, soak and perimeter deployment evidence is
-satisfactory. Mainnet must not be activated merely because CI and testnet gates pass.
+Public testnet may launch only after its real bootstrap, soak, perimeter deployment and final release-rehearsal
+evidence is satisfactory. Mainnet must not be activated merely because CI and testnet gates pass.
 
 ## Experimental work
 
