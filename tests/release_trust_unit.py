@@ -85,9 +85,9 @@ def seed_release(bundle: Path) -> tuple[Path, Path]:
     return archive, sidecar
 
 
-def create_manifest(bundle: Path, archive: Path) -> Path:
-    manifest = bundle / "RELEASE-MANIFEST.json"
-    run(
+def create_manifest(bundle: Path, archive: Path, *, channel: str = "testnet", ok: bool = True) -> tuple[Path, subprocess.CompletedProcess[str]]:
+    manifest = bundle / f"RELEASE-MANIFEST-{channel}.json"
+    proc = run(
         [
             "python3",
             str(TOOL),
@@ -99,12 +99,13 @@ def create_manifest(bundle: Path, archive: Path) -> Path:
             "--source-commit",
             SOURCE,
             "--channel",
-            "testnet",
+            channel,
             "--output",
             str(manifest),
-        ]
+        ],
+        ok=ok,
     )
-    return manifest
+    return manifest, proc
 
 
 def main() -> None:
@@ -112,7 +113,15 @@ def main() -> None:
         tmp = Path(td)
         bundle = tmp / "release"
         archive, sidecar = seed_release(bundle)
-        manifest = create_manifest(bundle, archive)
+        manifest, _ = create_manifest(bundle, archive)
+
+        manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+        assert manifest_data["trust_policy"]["security_review_gate_required"] is False
+
+        # CRAK-030: a mainnet release manifest is fail-closed until the external
+        # review/remediation gate authorizes the requested source commit.
+        _, blocked_mainnet = create_manifest(bundle, archive, channel="mainnet", ok=False)
+        assert "CRAK-030 security review gate blocked release" in blocked_mainnet.stdout, blocked_mainnet.stdout
 
         good = run(["python3", str(TOOL), "verify", "--manifest", str(manifest), "--bundle", str(bundle)])
         assert "release verification: OK" in good.stdout
@@ -208,7 +217,7 @@ def main() -> None:
         )
         assert "never a private key" in private_as_public.stdout
 
-    print("CRAK-025 release trust unit: OK")
+    print("CRAK-025/030 release trust unit: OK")
 
 
 if __name__ == "__main__":

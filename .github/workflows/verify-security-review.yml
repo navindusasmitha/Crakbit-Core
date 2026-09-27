@@ -1,0 +1,63 @@
+name: Verify Crakbit Security Review
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'security/**'
+      - 'SECURITY.md'
+      - 'scripts/security-review-gate.py'
+      - 'scripts/release-trust.py'
+      - 'release/RELEASE_POLICY.json'
+      - 'tests/security_review_gate_unit.py'
+      - 'tests/release_trust_unit.py'
+      - 'docs/CRAK-030.md'
+      - 'docs/PROJECT_STATE.md'
+      - 'scripts/package-linux.sh'
+      - '.github/workflows/verify-security-review.yml'
+  pull_request:
+    paths:
+      - 'security/**'
+      - 'SECURITY.md'
+      - 'scripts/security-review-gate.py'
+      - 'scripts/release-trust.py'
+      - 'release/RELEASE_POLICY.json'
+      - 'tests/security_review_gate_unit.py'
+      - 'tests/release_trust_unit.py'
+      - 'docs/CRAK-030.md'
+      - 'docs/PROJECT_STATE.md'
+      - 'scripts/package-linux.sh'
+      - '.github/workflows/verify-security-review.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  security-review-policy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Syntax and schema checks
+        run: |
+          python3 -m py_compile scripts/security-review-gate.py tests/security_review_gate_unit.py
+          python3 -m json.tool security/SECURITY_REVIEW_POLICY.json >/dev/null
+          python3 -m json.tool security/SECURITY_REVIEW_STATUS.json >/dev/null
+          python3 -m json.tool security/SECURITY_FINDINGS.json >/dev/null
+      - name: CRAK-030 security review registry validation
+        run: python3 scripts/security-review-gate.py validate
+      - name: CRAK-030 severity/remediation regression tests
+        run: python3 tests/security_review_gate_unit.py
+      - name: Display current launch authorization state
+        run: python3 scripts/security-review-gate.py status --source-commit "$GITHUB_SHA" --json
+      - name: CRAK-025 release trust regression with CRAK-030 mainnet blocker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssl
+          python3 tests/release_trust_unit.py

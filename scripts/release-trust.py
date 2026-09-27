@@ -4,6 +4,9 @@
 Private keys are never generated, stored, or discovered by this tool. Operators pass
 an explicit private-key path only to the `sign` subcommand. Public verification is
 performed with OpenSSL Ed25519 and the deterministic external release manifest.
+
+CRAK-030 extends the mainnet channel with a fail-closed external security-review and
+remediation gate. Engineering/testnet artifacts remain available for continued testing.
 """
 from __future__ import annotations
 
@@ -13,6 +16,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tarfile
 from pathlib import Path
 from typing import Any
@@ -136,6 +140,24 @@ def load_policy(path: Path) -> dict[str, Any]:
     return policy
 
 
+def enforce_security_review_gate(source_commit: str) -> None:
+    gate = Path(__file__).resolve().with_name("security-review-gate.py")
+    if not gate.is_file():
+        raise RuntimeError("CRAK-030 security review gate is missing")
+    proc = subprocess.run(
+        [sys.executable, str(gate), "launch", "--source-commit", source_commit],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if proc.returncode != 0:
+        detail = (proc.stdout or "").strip()
+        raise RuntimeError(
+            "CRAK-030 security review gate blocked release"
+            + (f": {detail}" if detail else "")
+        )
+
+
 def create_manifest(args: argparse.Namespace) -> int:
     archive = Path(args.archive).resolve()
     sidecar = Path(args.sidecar).resolve() if args.sidecar else archive.with_name(archive.name + ".sha256")
@@ -162,6 +184,8 @@ def create_manifest(args: argparse.Namespace) -> int:
     channel_policy = policy["channels"][args.channel]
     if bool(channel_policy.get("require_mainnet_disabled", False)) and bool(build.get("mainnet_enabled")):
         raise RuntimeError(f"{args.channel} release policy forbids mainnet-enabled packages")
+    if bool(channel_policy.get("security_review_gate_required", False)):
+        enforce_security_review_gate(source_commit)
 
     manifest = {
         "schema": 1,
@@ -188,6 +212,7 @@ def create_manifest(args: argparse.Namespace) -> int:
         "trust_policy": {
             "github_attestation_required": bool(channel_policy.get("github_attestation_required", False)),
             "offline_operator_signature_required": bool(channel_policy.get("offline_operator_signature_required", False)),
+            "security_review_gate_required": bool(channel_policy.get("security_review_gate_required", False)),
             "operator_signature_algorithm": policy.get("operator_signing", {}).get("algorithm"),
         },
     }

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "milestone": "CRAK-030",
+  "project": "Crakbit Core",
+  "review_state": "not_performed",
+  "independent_external_review_complete": false,
+  "independence_attested": false,
+  "reviewed_commit": null,
+  "review_completed_at": null,
+  "report_sha256": null,
+  "report_reference": null,
+  "reviewers": [],
+  "scope_coverage": [],
+  "notes": "CRAK-030 installs the external-review/remediation control plane. No independent external security review is claimed by this repository state."
+}

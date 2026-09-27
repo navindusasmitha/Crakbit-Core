@@ -49,11 +49,14 @@ for helper in crakbit-start crakbit-mine crakminer crakminer-native.py crakpool.
   [[ -f "$ROOT/scripts/$helper" ]] || { echo "missing helper: scripts/$helper" >&2; exit 1; }
 done
 
-for doc in README.md docs/BUILD.md docs/CONSENSUS.md docs/POOL.md docs/CRAK-018.md docs/CRAK-019.md docs/CRAK-020.md docs/CRAK-021.md docs/CRAK-022.md docs/CRAK-023.md docs/CRAK-024.md docs/CRAK-025.md docs/CRAK-026.md docs/CRAK-027.md docs/CRAK-028.md docs/CRAK-029.md docs/PUBLIC_TESTNET.md docs/TESTNET_SOAK.md docs/POOL_SECURITY.md docs/PROJECT_STATE.md; do
+for doc in README.md SECURITY.md docs/BUILD.md docs/CONSENSUS.md docs/POOL.md docs/CRAK-018.md docs/CRAK-019.md docs/CRAK-020.md docs/CRAK-021.md docs/CRAK-022.md docs/CRAK-023.md docs/CRAK-024.md docs/CRAK-025.md docs/CRAK-026.md docs/CRAK-027.md docs/CRAK-028.md docs/CRAK-029.md docs/CRAK-030.md docs/PUBLIC_TESTNET.md docs/TESTNET_SOAK.md docs/POOL_SECURITY.md docs/PROJECT_STATE.md; do
   [[ -f "$ROOT/$doc" ]] || { echo "missing package documentation: $doc" >&2; exit 1; }
 done
 [[ -f "$ROOT/network/POOL_SECURITY.json" ]] || { echo "missing pool security policy" >&2; exit 1; }
 [[ -f "$ROOT/release/INTEROP_MATRIX.json" ]] || { echo "missing CRAK-029 interoperability matrix" >&2; exit 1; }
+for security_file in SECURITY_REVIEW_POLICY.json SECURITY_REVIEW_STATUS.json SECURITY_FINDINGS.json; do
+  [[ -f "$ROOT/security/$security_file" ]] || { echo "missing CRAK-030 security review file: security/$security_file" >&2; exit 1; }
+done
 
 if [[ ! -d "$ROOT/.work/crakbit/src/crypto/yespower" ]]; then
   echo "materialized yespower source not found; run scripts/bootstrap.sh and scripts/materialize-locked.sh first" >&2
@@ -96,11 +99,15 @@ install -m 0755 "$ROOT/scripts/crakminer-stratum.py" "$STAGE/bin/crakminer-strat
 install -m 0755 "$ROOT/scripts/install-package.sh" "$STAGE/install.sh"
 
 cp "$ROOT/README.md" "$STAGE/share/doc/crakbit-core/README.md"
-for doc in BUILD CONSENSUS POOL CRAK-018 CRAK-019 CRAK-020 CRAK-021 CRAK-022 CRAK-023 CRAK-024 CRAK-025 CRAK-026 CRAK-027 CRAK-028 CRAK-029 PUBLIC_TESTNET TESTNET_SOAK POOL_SECURITY PROJECT_STATE; do
+cp "$ROOT/SECURITY.md" "$STAGE/share/doc/crakbit-core/SECURITY.md"
+for doc in BUILD CONSENSUS POOL CRAK-018 CRAK-019 CRAK-020 CRAK-021 CRAK-022 CRAK-023 CRAK-024 CRAK-025 CRAK-026 CRAK-027 CRAK-028 CRAK-029 CRAK-030 PUBLIC_TESTNET TESTNET_SOAK POOL_SECURITY PROJECT_STATE; do
   cp "$ROOT/docs/$doc.md" "$STAGE/share/doc/crakbit-core/$doc.md"
 done
 cp "$ROOT/network/POOL_SECURITY.json" "$STAGE/share/doc/crakbit-core/POOL_SECURITY.json"
 cp "$ROOT/release/INTEROP_MATRIX.json" "$STAGE/share/doc/crakbit-core/INTEROP_MATRIX.json"
+cp "$ROOT/security/SECURITY_REVIEW_POLICY.json" "$STAGE/share/doc/crakbit-core/SECURITY_REVIEW_POLICY.json"
+cp "$ROOT/security/SECURITY_REVIEW_STATUS.json" "$STAGE/share/doc/crakbit-core/SECURITY_REVIEW_STATUS.json"
+cp "$ROOT/security/SECURITY_FINDINGS.json" "$STAGE/share/doc/crakbit-core/SECURITY_FINDINGS.json"
 cp "$ROOT/LICENSE" "$STAGE/share/licenses/crakbit-core/LICENSE"
 [[ -f "$ROOT/.work/crakbit/COPYING" ]] && cp "$ROOT/.work/crakbit/COPYING" "$STAGE/share/licenses/bitcoin-core/COPYING"
 
