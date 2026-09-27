@@ -55,7 +55,8 @@ of committed private release keys and absence of migration-era branding from mai
 
 CRAK-027 and CRAK-028 add separate fail-closed operations/security integrity gates for public-testnet
 soak requirements and the internet-facing pool perimeter. CRAK-029 adds a separate fail-closed
-interoperability/release-rehearsal integrity gate. They supplement rather than replace CRAK-021.
+interoperability/release-rehearsal integrity gate. CRAK-030 adds a separate fail-closed external-review,
+finding-remediation and launch-authorization gate. They supplement rather than replace CRAK-021.
 
 ## Release reproducibility policy
 
@@ -93,6 +94,11 @@ uses GitHub OIDC and short-lived Sigstore signing material rather than a long-li
 Future mainnet releases additionally require an offline Ed25519 operator signature. A real operator
 private release key is intentionally not generated or stored by repository CI. The trusted operator public
 key must be generated, reviewed and pinned through a separate repository change before mainnet release.
+
+CRAK-030 further requires the external security-review/remediation launch gate for the `mainnet` release
+channel. `scripts/release-trust.py manifest --channel mainnet` refuses to create a trusted manifest unless
+the CRAK-030 gate authorizes that source commit. Engineering/testnet artifact generation is intentionally
+not blocked so security testing and public-testnet preparation can continue before mainnet readiness.
 
 ## Public testnet bootstrap policy — CRAK-026
 
@@ -161,7 +167,31 @@ The independent Stratum JSON client intentionally does not import the Crakbit po
 It verifies the maintained protocol contract separately from the official `crakminer-stratum` execution
 path. Passing CRAK-029 therefore proves the maintained package/protocol/restart matrix; it does not certify arbitrary third-party miners or replace real public-testnet deployment evidence.
 
-## Launch gates after CRAK-029
+## External security review and remediation gate — CRAK-030
+
+CRAK-030 adds `security/SECURITY_REVIEW_POLICY.json`, `security/SECURITY_REVIEW_STATUS.json`,
+`security/SECURITY_FINDINGS.json`, `scripts/security-review-gate.py`, regression tests, a dedicated CI
+workflow and `SECURITY.md` responsible-disclosure guidance.
+
+The mandatory review scope includes consensus/PoW, P2P/network boundaries, RPC/wallet/key handling,
+payout custody/state transitions, pool/Stratum/public edge, release supply chain/signing, build/CI/dependency
+trust, secrets/logging/operator data, DoS/resource exhaustion, and upgrade/reorg/recovery/rollback behavior.
+
+Critical and high findings are always material and cannot be risk accepted. Any material finding must be
+`verified_remediated` with a remediation commit and independent re-test evidence before launch. Non-material
+medium/low/informational findings may be risk accepted only with an explicit approver, reason and unexpired
+expiry. A completed review also requires an independent reviewer record, full required-scope coverage,
+reviewed commit, report SHA-256 and report reference.
+
+The launch gate requires the reviewed commit to be an ancestor of the release source commit and rejects
+post-review code drift outside the narrow evidence/governance allowlist. Code remediation therefore requires
+final external re-test/review of the post-remediation candidate rather than silently shipping unreviewed code.
+
+The checked-in CRAK-030 status initially remains `not_performed`. Passing CRAK-030 CI validates the control
+plane and state machine; it does not claim that an independent review has already happened. A real review
+must update the status/findings registry with actual evidence before `security-review-gate.py launch` can pass.
+
+## Launch gates after CRAK-030
 
 The build/release/control-plane chain can be used on regtest/testnet4 today, but public launch remains an
 operations/security event. Major outstanding gates are:
@@ -170,12 +200,13 @@ operations/security event. Major outstanding gates are:
 2. execute and retain real CRAK-027 24-hour candidate and 72-hour launch soak evidence, including restart and reorg recovery;
 3. deploy CRAK-028 on the real public pool host with firewall/RPC isolation, certificate lifecycle, log retention and abuse/DDoS observations;
 4. execute CRAK-029 release rehearsal evidence against the final intended public-testnet deployment package and retain the outputs;
-5. external security/code review and remediation of material findings;
-6. offline trusted mainnet release-key provisioning and public-key distribution;
-7. a separate explicit mainnet activation milestone covering final network parameters/genesis, seeds/checkpoints policy, release procedure and rollback/emergency operations.
+5. perform the real independent external review represented by CRAK-030 and independently re-test all material remediations until the launch gate passes;
+6. provision the offline trusted mainnet release key and distribute/pin the reviewed public key;
+7. complete a separate explicit mainnet activation milestone covering final network parameters/genesis, seeds/checkpoints policy, release procedure and rollback/emergency operations.
 
 Public testnet may launch only after its real bootstrap, soak, perimeter deployment and final release-rehearsal
-evidence is satisfactory. Mainnet must not be activated merely because CI and testnet gates pass.
+evidence is satisfactory. Mainnet must not be activated merely because CI and testnet gates pass; CRAK-030
+must also authorize the exact release source commit and the later activation milestone must pass its own gates.
 
 ## Experimental work
 
