@@ -202,7 +202,12 @@ POST_UPGRADE_TIP="$("$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" getbe
   echo "CRAK-029 upgrade preserved chain height but changed tip" >&2
   exit 1
 }
-"$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" -rpcwallet="$WALLET" validateaddress "$PRE_UPGRADE_WALLET_ADDR" >/dev/null
+"$PREFIX/bin/crakbit-cli" -regtest "-datadir=$DATADIR" -rpcwallet="$WALLET" getaddressinfo "$PRE_UPGRADE_WALLET_ADDR" >"$TMP/address-after.json"
+python3 - "$TMP/address-after.json" <<'PY'
+import json, sys
+info = json.load(open(sys.argv[1], encoding="utf-8"))
+assert info.get("ismine") is True, info
+PY
 printf '%s\n' "CRAK-029 upgrade preserved chain tip: $POST_UPGRADE_TIP"
 
 "$PREFIX/bin/crakpool-stats" --db "$POOL_DB" --window 600 --json >"$TMP/stats-after.json"
