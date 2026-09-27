@@ -17,16 +17,19 @@
     "engineering": {
       "github_attestation_required": false,
       "offline_operator_signature_required": false,
+      "security_review_gate_required": false,
       "require_mainnet_disabled": true
     },
     "testnet": {
       "github_attestation_required": true,
       "offline_operator_signature_required": false,
+      "security_review_gate_required": false,
       "require_mainnet_disabled": true
     },
     "mainnet": {
       "github_attestation_required": true,
       "offline_operator_signature_required": true,
+      "security_review_gate_required": true,
       "require_mainnet_disabled": false
     }
   }
