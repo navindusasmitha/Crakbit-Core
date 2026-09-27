@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "milestone": "CRAK-030",
+  "project": "Crakbit Core",
+  "repository": "navindusasmitha/Crakbit-Core",
+  "required_scopes": [
+    "consensus-and-pow",
+    "p2p-and-network-boundaries",
+    "rpc-wallet-and-key-handling",
+    "payout-custody-and-state-machine",
+    "pool-stratum-and-public-edge",
+    "release-supply-chain-and-signing",
+    "build-ci-and-dependencies",
+    "secrets-logging-and-operator-data",
+    "dos-resource-exhaustion-and-abuse",
+    "upgrade-reorg-recovery-and-rollback"
+  ],
+  "severity_policy": {
+    "critical": {
+      "material": true,
+      "risk_acceptance_allowed": false,
+      "target_remediation_days": 1
+    },
+    "high": {
+      "material": true,
+      "risk_acceptance_allowed": false,
+      "target_remediation_days": 7
+    },
+    "medium": {
+      "material": false,
+      "risk_acceptance_allowed": true,
+      "target_remediation_days": 30
+    },
+    "low": {
+      "material": false,
+      "risk_acceptance_allowed": true,
+      "target_remediation_days": 90
+    },
+    "informational": {
+      "material": false,
+      "risk_acceptance_allowed": true,
+      "target_remediation_days": null
+    }
+  },
+  "finding_statuses": [
+    "open",
+    "remediated_pending_retest",
+    "verified_remediated",
+    "risk_accepted"
+  ],
+  "launch_requirements": {
+    "independent_external_review_complete": true,
+    "independence_attestation_required": true,
+    "report_sha256_required": true,
+    "full_scope_coverage_required": true,
+    "all_material_findings_verified_remediated": true,
+    "critical_and_high_risk_acceptance_forbidden": true,
+    "expired_risk_acceptance_forbidden": true,
+    "reviewed_commit_must_be_ancestor": true,
+    "post_review_code_drift_forbidden": true,
+    "allowed_post_review_paths": [
+      "security/SECURITY_REVIEW_STATUS.json",
+      "security/SECURITY_FINDINGS.json",
+      "docs/CRAK-030.md"
+    ]
+  }
+}
