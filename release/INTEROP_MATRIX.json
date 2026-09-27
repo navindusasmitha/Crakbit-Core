@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "milestone": "CRAK-029",
+  "channel": "testnet",
+  "native_architectures": {
+    "x86_64": {
+      "runner": "ubuntu-24.04",
+      "required": true
+    },
+    "arm64": {
+      "runner": "ubuntu-24.04-arm",
+      "required": true
+    }
+  },
+  "required_commands": [
+    "crakbitd",
+    "crakbit-cli",
+    "crakbit-start",
+    "crakbit-mine",
+    "crakminer-scan",
+    "crakminer-native",
+    "crakminer-stratum",
+    "crakpool",
+    "crakpool-stats",
+    "crakpool-edge"
+  ],
+  "protocols": {
+    "getblocktemplate": {
+      "node": "crakbitd",
+      "reference_client": "crakminer-native",
+      "must_mine_block": true
+    },
+    "stratum_v1": {
+      "server": "crakpool",
+      "reference_client": "crakminer-stratum",
+      "independent_json_client_required": true,
+      "required_methods": [
+        "mining.subscribe",
+        "mining.authorize",
+        "mining.set_difficulty",
+        "mining.notify",
+        "mining.submit"
+      ],
+      "reference_client_must_submit_share": true
+    }
+  },
+  "release_rehearsal": {
+    "first_package_version": "ci-rehearsal-a",
+    "upgrade_package_version": "ci-rehearsal-b",
+    "verify_archive_sidecar": true,
+    "verify_internal_sha256sums": true,
+    "verify_release_manifest": true,
+    "preserve_datadir_across_reinstall": true,
+    "preserve_chain_tip_across_reinstall": true,
+    "preserve_wallet_across_reinstall": true,
+    "preserve_pool_ledger_across_reinstall": true,
+    "post_upgrade_mining_required": true
+  },
+  "scope": {
+    "networks": [
+      "regtest",
+      "testnet4"
+    ],
+    "mainnet_activation": false,
+    "external_third_party_miner_certification": false,
+    "real_public_testnet_evidence_required_separately": true
+  }
+}
