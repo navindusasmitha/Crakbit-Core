@@ -1,0 +1,114 @@
+name: Verify Crakbit Interoperability
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'SOURCE_LOCK.json'
+      - 'release/**'
+      - 'consensus/**'
+      - 'patches/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'tests/release_rehearsal_smoke.sh'
+      - 'tests/interop_protocol_probe.py'
+      - 'docs/CRAK-029.md'
+      - 'docs/PROJECT_STATE.md'
+      - '.github/workflows/verify-interoperability.yml'
+  pull_request:
+    paths:
+      - 'SOURCE_LOCK.json'
+      - 'release/**'
+      - 'consensus/**'
+      - 'patches/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'tests/release_rehearsal_smoke.sh'
+      - 'tests/interop_protocol_probe.py'
+      - 'docs/CRAK-029.md'
+      - 'docs/PROJECT_STATE.md'
+      - '.github/workflows/verify-interoperability.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  interop-policy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: CRAK-029 fail-closed interoperability policy
+        run: |
+          python3 -m json.tool release/INTEROP_MATRIX.json >/dev/null
+          python3 -m py_compile scripts/verify-interop-integrity.py tests/interop_protocol_probe.py
+          bash -n tests/release_rehearsal_smoke.sh
+          python3 scripts/verify-interop-integrity.py
+          python3 scripts/verify-repo-integrity.py
+
+  native-release-rehearsal:
+    name: native release rehearsal ${{ matrix.expected_arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            expected_arch: x86_64
+          - runner: ubuntu-24.04-arm
+            expected_arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify native runner architecture
+        run: |
+          case "${{ matrix.expected_arch }}" in
+            x86_64) test "$(uname -m)" = "x86_64" ;;
+            arm64) test "$(uname -m)" = "aarch64" ;;
+            *) exit 1 ;;
+          esac
+          uname -a
+      - name: Install controlled rehearsal dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libevent-dev libboost-dev libsqlite3-dev file openssl
+      - name: Verify source and CRAK-029 policy
+        run: |
+          python3 scripts/verify-lock.py
+          python3 scripts/verify-interop-integrity.py
+          python3 scripts/verify-repo-integrity.py
+      - name: Fetch exact pinned upstreams
+        run: bash scripts/bootstrap.sh
+      - name: Materialize locked Crakbit source tree
+        run: bash scripts/materialize-locked.sh
+      - name: Configure native wallet node and CLI
+        run: |
+          cmake -S .work/crakbit -B .work/crakbit-interop-build \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DENABLE_WALLET=ON \
+            -DENABLE_EXTERNAL_SIGNER=OFF \
+            -DENABLE_IPC=OFF \
+            -DWITH_ZMQ=OFF \
+            -DWITH_EMBEDDED_ASMAP=OFF \
+            -DBUILD_GUI=OFF \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_BENCH=OFF \
+            -DBUILD_DAEMON=ON \
+            -DBUILD_CLI=ON \
+            -DBUILD_TX=OFF \
+            -DBUILD_UTIL=OFF \
+            -DBUILD_BITCOIN_BIN=OFF
+      - name: Build native node CLI and yespower scanner
+        run: |
+          cmake --build .work/crakbit-interop-build --target bitcoind bitcoin-cli --parallel 4
+          bash scripts/build-native-miner.sh .work/crakbit-interop-build/bin/crakminer-scan
+          file .work/crakbit-interop-build/bin/crakbitd
+          file .work/crakbit-interop-build/bin/crakbit-cli
+          file .work/crakbit-interop-build/bin/crakminer-scan
+      - name: CRAK-029 native package interoperability and release rehearsal
+        run: bash tests/release_rehearsal_smoke.sh .work/crakbit-interop-build "${{ matrix.expected_arch }}"
