@@ -1,0 +1,54 @@
+name: Verify Crakbit Pool Security
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'network/POOL_SECURITY.json'
+      - 'scripts/crakpool-edge.py'
+      - 'scripts/crakminer-stratum.py'
+      - 'scripts/verify-pool-security-integrity.py'
+      - 'tests/pool_security_unit.py'
+      - 'tests/stratum_protocol_unit.py'
+      - 'docs/CRAK-028.md'
+      - 'docs/POOL_SECURITY.md'
+      - 'scripts/package-linux.sh'
+      - 'scripts/install-package.sh'
+      - '.github/workflows/verify-pool-security.yml'
+  pull_request:
+    paths:
+      - 'network/POOL_SECURITY.json'
+      - 'scripts/crakpool-edge.py'
+      - 'scripts/crakminer-stratum.py'
+      - 'scripts/verify-pool-security-integrity.py'
+      - 'tests/pool_security_unit.py'
+      - 'tests/stratum_protocol_unit.py'
+      - 'docs/CRAK-028.md'
+      - 'docs/POOL_SECURITY.md'
+      - 'scripts/package-linux.sh'
+      - 'scripts/install-package.sh'
+      - '.github/workflows/verify-pool-security.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pool-security:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check CRAK-028 security tooling
+        run: |
+          python3 -m py_compile scripts/crakpool-edge.py scripts/crakminer-stratum.py scripts/verify-pool-security-integrity.py tests/pool_security_unit.py
+          python3 -m json.tool network/POOL_SECURITY.json >/dev/null
+      - name: CRAK-028 perimeter security and TLS regression tests
+        run: python3 tests/pool_security_unit.py
+      - name: Existing Stratum protocol vectors remain green
+        run: python3 tests/stratum_protocol_unit.py
+      - name: CRAK-028 fail-closed security integrity
+        run: python3 scripts/verify-pool-security-integrity.py

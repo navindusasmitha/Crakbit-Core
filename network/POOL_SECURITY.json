@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "transport": {
+    "public_tls_required": true,
+    "minimum_tls_version": "TLSv1.2",
+    "upstream_loopback_required": true
+  },
+  "authentication": {
+    "worker_auth_required": true,
+    "kdf": "pbkdf2-hmac-sha256",
+    "iterations": 210000,
+    "salt_bytes": 16,
+    "max_worker_length": 128,
+    "worker_pattern": "^[A-Za-z0-9._:@-]+$",
+    "max_failures_per_window": 5,
+    "failure_window_seconds": 300,
+    "ban_seconds": 600
+  },
+  "limits": {
+    "max_connections": 512,
+    "max_connections_per_ip": 8,
+    "max_line_bytes": 16384,
+    "auth_timeout_seconds": 15,
+    "idle_timeout_seconds": 120,
+    "message_rate_per_second": 20,
+    "message_burst": 40,
+    "submit_rate_per_second": 4,
+    "submit_burst": 8,
+    "global_submit_rate_per_second": 16,
+    "global_submit_burst": 32,
+    "upstream_connect_timeout_seconds": 5,
+    "tls_handshake_timeout_seconds": 10
+  },
+  "logging": {
+    "structured_security_events": true,
+    "log_secrets": false
+  }
+}

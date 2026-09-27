@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""CRAK-014 external Crakbit Stratum worker.
-
-Connects to crakpool, receives mining.notify jobs, uses the CRAK-013 native
-crakminer-scan yespower engine locally, and submits shares with mining.submit.
-"""
-
+"""Crakbit external Stratum worker with CRAK-028 TLS/auth support."""
 from __future__ import annotations
 
 import argparse
@@ -13,6 +8,8 @@ import json
 import os
 import shutil
 import socket
+import ssl
+import stat
 import struct
 import subprocess
 import sys
@@ -47,10 +44,7 @@ def compact_target(bits: int) -> int:
     mantissa = bits & 0x007FFFFF
     if bits & 0x00800000:
         raise ValueError("negative compact target")
-    if exponent <= 3:
-        target = mantissa >> (8 * (3 - exponent))
-    else:
-        target = mantissa << (8 * (exponent - 3))
+    target = mantissa >> (8 * (3 - exponent)) if exponent <= 3 else mantissa << (8 * (exponent - 3))
     if target <= 0 or target > MAX_TARGET:
         raise ValueError("compact target outside uint256 range")
     return target
@@ -67,6 +61,69 @@ def resolve_scanner(explicit: str | None) -> str:
     if found:
         return found
     raise SystemExit("crakminer-scan not found; use --scanner")
+
+
+def private_file_permissions_ok(path: Path) -> bool:
+    if os.name != "posix":
+        return True
+    return (stat.S_IMODE(path.stat().st_mode) & 0o077) == 0
+
+
+def load_worker_secret(password: str | None, password_file: str | None, password_stdin: bool) -> str:
+    selected = sum([password is not None, password_file is not None, password_stdin])
+    if selected > 1:
+        raise ValueError("choose only one of --password, --password-file, or --password-stdin")
+    if password_file:
+        path = Path(password_file).expanduser()
+        if not path.is_file():
+            raise ValueError(f"password file not found: {path}")
+        if not private_file_permissions_ok(path):
+            raise ValueError(f"password file must not be group/world-readable: {path}")
+        text = path.read_text(encoding="utf-8")
+        secret = text.splitlines()[0] if text else ""
+    elif password_stdin:
+        secret = sys.stdin.readline().rstrip("\r\n")
+    elif password is not None:
+        secret = password
+    else:
+        secret = "x"
+    if not secret:
+        raise ValueError("worker password must not be empty")
+    if len(secret.encode("utf-8")) > 4096:
+        raise ValueError("worker password is unreasonably large")
+    return secret
+
+
+def make_tls_context(ca_file: str | None) -> ssl.SSLContext:
+    context = ssl.create_default_context(cafile=ca_file)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.check_hostname = True
+    context.verify_mode = ssl.CERT_REQUIRED
+    return context
+
+
+def open_pool_socket(
+    host: str,
+    port: int,
+    *,
+    use_tls: bool,
+    tls_server_name: str | None,
+    tls_ca_file: str | None,
+    timeout: float = 10.0,
+) -> socket.socket:
+    raw = socket.create_connection((host, port), timeout=timeout)
+    if not use_tls:
+        raw.settimeout(None)
+        return raw
+    context = make_tls_context(tls_ca_file)
+    server_name = tls_server_name or host
+    try:
+        wrapped = context.wrap_socket(raw, server_hostname=server_name)
+    except Exception:
+        raw.close()
+        raise
+    wrapped.settimeout(None)
+    return wrapped
 
 
 def parse_scan_result(text: str) -> tuple[int, str, int]:
@@ -91,13 +148,26 @@ class Job:
 
 
 class Stratum:
-    def __init__(self, host: str, port: int, worker: str, password: str):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        worker: str,
+        password: str,
+        *,
+        use_tls: bool = False,
+        tls_server_name: str | None = None,
+        tls_ca_file: str | None = None,
+    ):
         self.host = host
         self.port = port
         self.worker = worker
         self.password = password
-        self.sock = socket.create_connection((host, port), timeout=10)
-        self.sock.settimeout(None)
+        self.use_tls = use_tls
+        self.sock = open_pool_socket(
+            host, port, use_tls=use_tls, tls_server_name=tls_server_name,
+            tls_ca_file=tls_ca_file,
+        )
         self.reader = self.sock.makefile("r", encoding="utf-8", newline="\n")
         self.writer = self.sock.makefile("w", encoding="utf-8", newline="\n")
         self.write_lock = threading.Lock()
@@ -170,16 +240,11 @@ class Stratum:
                     if len(params) != 9:
                         raise ValueError("mining.notify expected 9 params")
                     job = Job(
-                        job_id=str(params[0]),
-                        previous=str(params[1]),
-                        coinb1=bytes.fromhex(str(params[2])),
-                        coinb2=bytes.fromhex(str(params[3])),
+                        job_id=str(params[0]), previous=str(params[1]),
+                        coinb1=bytes.fromhex(str(params[2])), coinb2=bytes.fromhex(str(params[3])),
                         branch=tuple(bytes.fromhex(str(item)) for item in params[4]),
-                        version=int(str(params[5]), 16),
-                        bits=int(str(params[6]), 16),
-                        ntime=int(str(params[7]), 16),
-                        ntime_hex=str(params[7]),
-                        clean=bool(params[8]),
+                        version=int(str(params[5]), 16), bits=int(str(params[6]), 16),
+                        ntime=int(str(params[7]), 16), ntime_hex=str(params[7]), clean=bool(params[8]),
                     )
                     with self.cv:
                         self.job = job
@@ -222,12 +287,8 @@ def build_header(job: Job, extranonce1: bytes, extranonce2: bytes) -> bytes:
     for sibling in job.branch:
         merkle = hash256(merkle + sibling)
     header = (
-        struct.pack("<I", job.version)
-        + bytes.fromhex(job.previous)[::-1]
-        + merkle
-        + struct.pack("<I", job.ntime)
-        + struct.pack("<I", job.bits)
-        + struct.pack("<I", 0)
+        struct.pack("<I", job.version) + bytes.fromhex(job.previous)[::-1] + merkle
+        + struct.pack("<I", job.ntime) + struct.pack("<I", job.bits) + struct.pack("<I", 0)
     )
     if len(header) != 80:
         raise AssertionError("header is not 80 bytes")
@@ -235,14 +296,8 @@ def build_header(job: Job, extranonce1: bytes, extranonce2: bytes) -> bytes:
 
 
 def scan(scanner: str, header: bytes, target: int, threads: int, cpu_limit: int, batch_hashes: int) -> tuple[int, str, int] | None:
-    cmd = [
-        scanner,
-        "--header", header.hex(),
-        "--target", f"{target:064x}",
-        "--threads", str(threads),
-        "--cpu-limit", str(cpu_limit),
-        "--max-hashes", str(batch_hashes),
-    ]
+    cmd = [scanner, "--header", header.hex(), "--target", f"{target:064x}", "--threads", str(threads),
+           "--cpu-limit", str(cpu_limit), "--max-hashes", str(batch_hashes)]
     proc = subprocess.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode == 2:
         return None
@@ -252,10 +307,16 @@ def scan(scanner: str, header: bytes, target: int, threads: int, cpu_limit: int,
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Crakbit CRAK-014 Stratum CPU worker")
+    parser = argparse.ArgumentParser(description="Crakbit Stratum CPU worker")
     parser.add_argument("--pool", required=True, help="host:port")
     parser.add_argument("--worker", required=True)
-    parser.add_argument("--password", default="x")
+    auth = parser.add_mutually_exclusive_group()
+    auth.add_argument("--password", help="worker password; avoid on shared systems because argv may be visible")
+    auth.add_argument("--password-file", help="private mode-0600 file whose first line is the worker password")
+    auth.add_argument("--password-stdin", action="store_true", help="read worker password from one stdin line")
+    parser.add_argument("--tls", action="store_true", help="use verified TLS for Stratum transport")
+    parser.add_argument("--tls-server-name", help="TLS certificate hostname; defaults to pool host")
+    parser.add_argument("--tls-ca-file", help="optional CA bundle/self-signed CA for pool TLS verification")
     parser.add_argument("--threads", type=int, default=1)
     parser.add_argument("--cpu-limit", type=int, default=100)
     parser.add_argument("--batch-hashes", type=int, default=250000)
@@ -279,19 +340,26 @@ def main() -> int:
         parser.error("--cpu-limit must be 1..100")
     if args.batch_hashes < 1 or args.shares < 0 or args.blocks < 0:
         parser.error("batch/shares/blocks values are invalid")
+    if (args.tls_server_name or args.tls_ca_file) and not args.tls:
+        parser.error("--tls-server-name/--tls-ca-file require --tls")
 
+    try:
+        secret = load_worker_secret(args.password, args.password_file, args.password_stdin)
+    except ValueError as exc:
+        parser.error(str(exc))
     scanner = resolve_scanner(args.scanner)
-    client = Stratum(host, port, args.worker, args.password)
-    accepted = 0
-    blocks = 0
-    extranonce_counter = 0
-    total_hashes = 0
+    client = Stratum(
+        host, port, args.worker, secret, use_tls=args.tls,
+        tls_server_name=args.tls_server_name, tls_ca_file=args.tls_ca_file,
+    )
+    secret = ""
+    accepted = blocks = extranonce_counter = total_hashes = 0
     started_all = time.monotonic()
 
     try:
         client.start()
         print(
-            f"crakminer-stratum connected pool={args.pool} worker={args.worker} "
+            f"crakminer-stratum connected pool={args.pool} worker={args.worker} tls={str(args.tls).lower()} "
             f"threads={args.threads} cpu_limit={args.cpu_limit}% extranonce1={client.extranonce1.hex()}",
             flush=True,
         )
@@ -306,14 +374,12 @@ def main() -> int:
             extranonce_counter = (extranonce_counter + 1) % (1 << (8 * client.extranonce2_size))
             extranonce2 = extranonce_counter.to_bytes(client.extranonce2_size, "big")
             header = build_header(job, client.extranonce1, extranonce2)
-
             started = time.monotonic()
             result = scan(scanner, header, target, args.threads, args.cpu_limit, args.batch_hashes)
             elapsed = max(time.monotonic() - started, 1e-9)
             if result is None:
                 total_hashes += args.batch_hashes
-                rate = args.batch_hashes / elapsed
-                print(f"crakminer-stratum work job={job.job_id} no-share rate={rate:.2f} H/s", flush=True)
+                print(f"crakminer-stratum work job={job.job_id} no-share rate={args.batch_hashes / elapsed:.2f} H/s", flush=True)
                 continue
             nonce, block_hash, attempts = result
             total_hashes += attempts
@@ -321,11 +387,7 @@ def main() -> int:
                 print(f"crakminer-stratum stale-local job={job.job_id} hash={block_hash}", file=sys.stderr, flush=True)
                 continue
             try:
-                ok = client.request(
-                    "mining.submit",
-                    [args.worker, job.job_id, extranonce2.hex(), job.ntime_hex, f"{nonce:08x}"],
-                    timeout=20.0,
-                )
+                ok = client.request("mining.submit", [args.worker, job.job_id, extranonce2.hex(), job.ntime_hex, f"{nonce:08x}"], timeout=20.0)
             except RuntimeError as exc:
                 print(f"crakminer-stratum share-rejected job={job.job_id} reason={exc}", file=sys.stderr, flush=True)
                 continue
@@ -336,18 +398,15 @@ def main() -> int:
             if int(block_hash, 16) <= network_target:
                 blocks += 1
                 print(f"crakminer-stratum BLOCK blocks={blocks} hash={block_hash} height-job={job.job_id}", flush=True)
-            rate = attempts / elapsed
             print(
-                f"crakminer-stratum accepted={accepted} job={job.job_id} nonce={nonce} "
-                f"hash={block_hash} attempts={attempts} rate={rate:.2f} H/s",
-                flush=True,
+                f"crakminer-stratum accepted={accepted} job={job.job_id} nonce={nonce} hash={block_hash} "
+                f"attempts={attempts} rate={attempts / elapsed:.2f} H/s", flush=True,
             )
 
         elapsed_all = max(time.monotonic() - started_all, 1e-9)
         print(
-            f"crakminer-stratum complete accepted={accepted} blocks={blocks} "
-            f"hashes={total_hashes} avg_rate={total_hashes / elapsed_all:.2f} H/s",
-            flush=True,
+            f"crakminer-stratum complete accepted={accepted} blocks={blocks} hashes={total_hashes} "
+            f"avg_rate={total_hashes / elapsed_all:.2f} H/s", flush=True,
         )
         return 0
     except KeyboardInterrupt:
@@ -360,6 +419,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (RuntimeError, ValueError, OSError, TimeoutError) as exc:
+    except (RuntimeError, ValueError, OSError, TimeoutError, ssl.SSLError) as exc:
         print(f"crakminer-stratum: {exc}", file=sys.stderr)
         raise SystemExit(1)

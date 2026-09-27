@@ -45,13 +45,14 @@ for bin in crakbitd crakbit-cli; do
   [[ -x "$BUILD_DIR/bin/$bin" ]] || { echo "missing executable: $BUILD_DIR/bin/$bin" >&2; exit 1; }
 done
 
-for helper in crakbit-start crakbit-mine crakminer crakminer-native.py crakpool.py crakpool-accounting.py crakpool-stats.py crakpool-payout.py crakpool-paytx.py crakpool-payguard.py crakpool-payops.py crakminer-stratum.py build-native-miner.sh install-package.sh; do
+for helper in crakbit-start crakbit-mine crakminer crakminer-native.py crakpool.py crakpool-accounting.py crakpool-stats.py crakpool-payout.py crakpool-paytx.py crakpool-payguard.py crakpool-payops.py crakpool-edge.py crakminer-stratum.py build-native-miner.sh install-package.sh; do
   [[ -f "$ROOT/scripts/$helper" ]] || { echo "missing helper: scripts/$helper" >&2; exit 1; }
 done
 
-for doc in README.md docs/BUILD.md docs/CONSENSUS.md docs/POOL.md docs/CRAK-018.md docs/CRAK-019.md docs/CRAK-020.md docs/CRAK-021.md docs/CRAK-022.md docs/CRAK-023.md docs/CRAK-024.md docs/CRAK-025.md docs/PROJECT_STATE.md; do
+for doc in README.md docs/BUILD.md docs/CONSENSUS.md docs/POOL.md docs/CRAK-018.md docs/CRAK-019.md docs/CRAK-020.md docs/CRAK-021.md docs/CRAK-022.md docs/CRAK-023.md docs/CRAK-024.md docs/CRAK-025.md docs/CRAK-026.md docs/CRAK-027.md docs/CRAK-028.md docs/PUBLIC_TESTNET.md docs/TESTNET_SOAK.md docs/POOL_SECURITY.md docs/PROJECT_STATE.md; do
   [[ -f "$ROOT/$doc" ]] || { echo "missing package documentation: $doc" >&2; exit 1; }
 done
+[[ -f "$ROOT/network/POOL_SECURITY.json" ]] || { echo "missing pool security policy" >&2; exit 1; }
 
 if [[ ! -d "$ROOT/.work/crakbit/src/crypto/yespower" ]]; then
   echo "materialized yespower source not found; run scripts/bootstrap.sh and scripts/materialize-locked.sh first" >&2
@@ -82,6 +83,7 @@ install -m 0755 "$ROOT/scripts/crakpool-payout.py" "$STAGE/bin/crakpool-payout"
 install -m 0755 "$ROOT/scripts/crakpool-paytx.py" "$STAGE/bin/crakpool-paytx"
 install -m 0755 "$ROOT/scripts/crakpool-payguard.py" "$STAGE/bin/crakpool-payguard"
 install -m 0755 "$ROOT/scripts/crakpool-payops.py" "$STAGE/bin/crakpool-payops"
+install -m 0755 "$ROOT/scripts/crakpool-edge.py" "$STAGE/bin/crakpool-edge"
 # CRAK-017/018/019 dynamically load their lower-layer Python modules by the
 # source filenames. Keep private sibling module copies beside the public,
 # extensionless commands so the installed package has the same dependency graph
@@ -93,18 +95,10 @@ install -m 0755 "$ROOT/scripts/crakminer-stratum.py" "$STAGE/bin/crakminer-strat
 install -m 0755 "$ROOT/scripts/install-package.sh" "$STAGE/install.sh"
 
 cp "$ROOT/README.md" "$STAGE/share/doc/crakbit-core/README.md"
-cp "$ROOT/docs/BUILD.md" "$STAGE/share/doc/crakbit-core/BUILD.md"
-cp "$ROOT/docs/CONSENSUS.md" "$STAGE/share/doc/crakbit-core/CONSENSUS.md"
-cp "$ROOT/docs/POOL.md" "$STAGE/share/doc/crakbit-core/POOL.md"
-cp "$ROOT/docs/CRAK-018.md" "$STAGE/share/doc/crakbit-core/CRAK-018.md"
-cp "$ROOT/docs/CRAK-019.md" "$STAGE/share/doc/crakbit-core/CRAK-019.md"
-cp "$ROOT/docs/CRAK-020.md" "$STAGE/share/doc/crakbit-core/CRAK-020.md"
-cp "$ROOT/docs/CRAK-021.md" "$STAGE/share/doc/crakbit-core/CRAK-021.md"
-cp "$ROOT/docs/CRAK-022.md" "$STAGE/share/doc/crakbit-core/CRAK-022.md"
-cp "$ROOT/docs/CRAK-023.md" "$STAGE/share/doc/crakbit-core/CRAK-023.md"
-cp "$ROOT/docs/CRAK-024.md" "$STAGE/share/doc/crakbit-core/CRAK-024.md"
-cp "$ROOT/docs/CRAK-025.md" "$STAGE/share/doc/crakbit-core/CRAK-025.md"
-cp "$ROOT/docs/PROJECT_STATE.md" "$STAGE/share/doc/crakbit-core/PROJECT_STATE.md"
+for doc in BUILD CONSENSUS POOL CRAK-018 CRAK-019 CRAK-020 CRAK-021 CRAK-022 CRAK-023 CRAK-024 CRAK-025 CRAK-026 CRAK-027 CRAK-028 PUBLIC_TESTNET TESTNET_SOAK POOL_SECURITY PROJECT_STATE; do
+  cp "$ROOT/docs/$doc.md" "$STAGE/share/doc/crakbit-core/$doc.md"
+done
+cp "$ROOT/network/POOL_SECURITY.json" "$STAGE/share/doc/crakbit-core/POOL_SECURITY.json"
 cp "$ROOT/LICENSE" "$STAGE/share/licenses/crakbit-core/LICENSE"
 [[ -f "$ROOT/.work/crakbit/COPYING" ]] && cp "$ROOT/.work/crakbit/COPYING" "$STAGE/share/licenses/bitcoin-core/COPYING"
 
@@ -116,7 +110,6 @@ python3 - "$ROOT/SOURCE_LOCK.json" "$STAGE/share/doc/crakbit-core/BUILD-MANIFEST
 import json
 import sys
 from pathlib import Path
-
 lock_path, out_path, version, arch, source_commit, epoch = sys.argv[1:]
 lock = json.loads(Path(lock_path).read_text(encoding="utf-8"))
 manifest = {
@@ -144,11 +137,8 @@ manifest = {
 Path(out_path).write_text(json.dumps(manifest, sort_keys=True, indent=2) + "\n", encoding="utf-8")
 PY
 
-# Normalize permissions that could otherwise vary with the caller's umask or
-# source checkout. Executable modes under bin/ were installed explicitly above.
 find "$STAGE" -type d -exec chmod 0755 {} +
 find "$STAGE/share" -type f -exec chmod 0644 {} +
-
 (
   cd "$STAGE"
   LC_ALL=C find bin share -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
@@ -157,12 +147,6 @@ chmod 0644 "$STAGE/SHA256SUMS"
 
 mkdir -p "$OUT_DIR"
 rm -f "$ARCHIVE" "$ARCHIVE.sha256"
-
-# CRAK-022 deterministic archive contract:
-# - lexical entry order
-# - one source-derived mtime for every archive entry
-# - numeric root ownership independent of the builder account
-# - gzip header without original name/timestamp
 LC_ALL=C tar \
   --sort=name \
   --format=gnu \
@@ -172,7 +156,6 @@ LC_ALL=C tar \
   --numeric-owner \
   -C "$STAGE_PARENT" \
   -cf - "$PKG" | gzip -n -9 > "$ARCHIVE"
-
 (
   cd "$OUT_DIR"
   sha256sum "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256"
